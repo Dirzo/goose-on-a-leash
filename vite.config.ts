@@ -1,11 +1,14 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
 
-export default defineConfig({
+// `--mode cdn` builds a variant that expects Phaser as a global from a CDN script tag
+// (used for the claude.ai playable page). The default build bundles Phaser.
+export default defineConfig(({ mode }) => ({
   base: './',
+  resolve: mode === 'cdn' ? { alias: { phaser: decodeURIComponent(new URL('./src/vendor/phaser-global.ts', import.meta.url).pathname) } } : {},
   build: {
     target: 'es2022',
-    outDir: 'dist',
+    outDir: mode === 'cdn' ? 'dist-cdn' : 'dist',
     assetsInlineLimit: 0,
     chunkSizeWarningLimit: 2000,
   },
@@ -13,4 +16,4 @@ export default defineConfig({
     include: ['test/**/*.test.ts'],
     environment: 'node',
   },
-});
+}));
