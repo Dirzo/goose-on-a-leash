@@ -1,0 +1,10 @@
+// Cloudflare Workers static-assets deploy, same pipeline as Crazy Weapon Man.
+// `npm run deploy` builds and publishes dist/. CI deploys main to production and each PR to a preview URL.
+{
+  "name": "goose-on-a-leash",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
