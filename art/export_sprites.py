@@ -47,6 +47,7 @@ strip('biscuit_fling', [biscuit_hd.build_fling(i) for i in range(8)], (22, 28), 
 strip('frog', [critters_hd.frog(False), critters_hd.frog(True)], (13, 15))
 strip('frog_awake', [critters_hd.frog(False, awake=True), critters_hd.frog(True, awake=True)], (13, 15))
 strip('snapper', [critters_hd.snapper(False, submerged=False), critters_hd.snapper(True, submerged=False)], (30, 24))
+strip('snapper_awake', [critters_hd.snapper(False, submerged=False, awake=True), critters_hd.snapper(True, submerged=False, awake=True)], (30, 24))
 
 with open(os.path.join(OUT, 'sprites.json'), 'w') as f:
     json.dump(manifest, f, indent=1)

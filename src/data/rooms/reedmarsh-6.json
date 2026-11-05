@@ -1,0 +1,231 @@
+{
+ "id": "reedmarsh-6",
+ "name": "Lily Crossing",
+ "subtitle": "Reedmarsh \u00b7 6",
+ "width": 1280,
+ "height": 640,
+ "playerStart": {
+  "x": 66,
+  "y": 320
+ },
+ "walls": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 620,
+   "w": 1280,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 278.0,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 362.0,
+   "w": 20,
+   "h": 278.0,
+   "kind": "border"
+  },
+  {
+   "x": 1260,
+   "y": 0,
+   "w": 20,
+   "h": 278.0,
+   "kind": "border"
+  },
+  {
+   "x": 1260,
+   "y": 362.0,
+   "w": 20,
+   "h": 278.0,
+   "kind": "border"
+  },
+  {
+   "x": 100,
+   "y": 120,
+   "w": 40,
+   "h": 30,
+   "kind": "rock"
+  },
+  {
+   "x": 1120,
+   "y": 520,
+   "w": 56,
+   "h": 24,
+   "kind": "log"
+  }
+ ],
+ "gate": {
+  "x": 1234,
+  "y": 274,
+  "w": 12,
+  "h": 92
+ },
+ "pits": [
+  {
+   "x": 240,
+   "y": 20,
+   "w": 780,
+   "h": 600
+  }
+ ],
+ "bridges": [
+  {
+   "x": 450,
+   "y": 240,
+   "w": 100,
+   "h": 90,
+   "kind": "island"
+  },
+  {
+   "x": 740,
+   "y": 335,
+   "w": 100,
+   "h": 90,
+   "kind": "island"
+  }
+ ],
+ "refills": [
+  {
+   "x": 216,
+   "y": 20,
+   "w": 26,
+   "h": 600
+  },
+  {
+   "x": 1018,
+   "y": 20,
+   "w": 26,
+   "h": 600
+  }
+ ],
+ "posts": [
+  {
+   "x": 500,
+   "y": 285,
+   "r": 9
+  },
+  {
+   "x": 790,
+   "y": 380,
+   "r": 9
+  },
+  {
+   "x": 1090,
+   "y": 330,
+   "r": 9
+  }
+ ],
+ "bell": {
+  "x": 1196,
+  "y": 180,
+  "r": 14
+ },
+ "exit": null,
+ "vents": [],
+ "bucket": null,
+ "breadSpots": [
+  {
+   "x": 1190,
+   "y": 570
+  },
+  {
+   "x": 120,
+   "y": 540
+  }
+ ],
+ "enemies": [
+  {
+   "kind": "frog",
+   "x": 520,
+   "y": 310
+  },
+  {
+   "kind": "frog",
+   "x": 815,
+   "y": 400
+  },
+  {
+   "kind": "snapper",
+   "x": 1150,
+   "y": 450
+  },
+  {
+   "kind": "frog",
+   "x": 1150,
+   "y": 230
+  }
+ ],
+ "knightSpawn": null,
+ "lightKind": "frog",
+ "heavyKind": "snapper",
+ "doors": [
+  {
+   "id": "w",
+   "x": 0,
+   "y": 278.0,
+   "w": 26,
+   "h": 84,
+   "to": "reedmarsh-5",
+   "toDoor": "e",
+   "spawn": {
+    "x": 66,
+    "y": 320
+   },
+   "label": "The Braided Line"
+  },
+  {
+   "id": "e",
+   "x": 1254,
+   "y": 278.0,
+   "w": 26,
+   "h": 84,
+   "to": "END",
+   "toDoor": "",
+   "spawn": {
+    "x": 1214,
+    "y": 320
+   },
+   "gated": true,
+   "label": "Deeper into Reedmarsh"
+  }
+ ],
+ "paths": [
+  [
+   [
+    66,
+    320
+   ],
+   [
+    216,
+    320
+   ]
+  ],
+  [
+   [
+    1044,
+    330
+   ],
+   [
+    1214,
+    320
+   ]
+  ]
+ ],
+ "lantern": {
+  "x": 230,
+  "y": 300
+ },
+ "winText": "Reedmarsh, part one: done. The Heron Ferryman waits deeper in the marsh."
+}

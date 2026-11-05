@@ -210,5 +210,15 @@
    24
   ],
   "points": {}
+ },
+ "snapper_awake": {
+  "w": 64,
+  "h": 30,
+  "frames": 2,
+  "anchor": [
+   30,
+   24
+  ],
+  "points": {}
  }
 }

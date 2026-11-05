@@ -44,9 +44,16 @@ export class Kit {
     for (const [k, v] of Object.entries(cost)) this.mats[k as ItemId] -= v ?? 0;
   }
 
+  /** Add a leash found in the world and equip it. */
+  findLeash(id: LeashId): boolean {
+    if (this.owned.has(id)) return false;
+    this.owned.add(id); this.leash = id;
+    return true;
+  }
+
   craftLeash(id: LeashId): boolean {
     const r = leashById(id);
-    if (this.owned.has(id) || !this.canAfford(r.cost)) return false;
+    if (this.owned.has(id) || r.found || !this.canAfford(r.cost)) return false;
     this.pay(r.cost);
     this.owned.add(id);
     this.leash = id;

@@ -1,13 +1,13 @@
 /**
- * The whole game simulation for one room. No Phaser imports: everything here runs headless in tests.
- * Ported 1:1 from the HTML prototype (Room 01) so behaviour and tuning match.
+ * The whole game simulation: the current room, plus what carries between rooms (kit, pack, hearts, room memory).
+ * No Phaser imports: everything here runs headless in tests. Room 01 behaviour is ported 1:1 from the prototype.
  */
 import { C, DEFAULT_TUNING, type Tuning } from './config';
 import { Kit } from './crafting';
 import { angDiff, clamp, dirTo, inRect, mulberry32, type Rng, type Vec } from './math';
 import { Room } from './room';
 import { Rope } from './rope';
-import { ROOM_01, type EnemyKind, type RoomDef } from '../data/rooms';
+import { ROOMS, ROOM_01, type Door, type EnemyKind, type RoomDef } from '../data/rooms';
 import { ITEMS, breadById, isCatalyst, leashById, type BreadId, type ItemId, type LeashId } from '../data/recipes';
 
 // ---------------------------------------------------------------- types
@@ -18,6 +18,13 @@ export type { EnemyKind };
 /** How close Rocco must get before an entranced critter notices him. Room 01's pests see across the room. */
 const AGGRO: Partial<Record<EnemyKind, number>> = { frog: 160, snapper: 210 };
 const HEAVY: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['knight', 'snapper']);
+/** Animals under the blood moon's trance. Beaten, they wake up and wander off instead of dying. */
+const ENTRANCED: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['frog', 'snapper']);
+/** Seconds a woken critter takes to hop away. */
+const WAKE_TIME = 1.6;
+
+/** What a room remembers after you leave it. */
+export interface RoomMemory { gateOpen: boolean; bread: boolean[]; chest: boolean; rang: boolean }
 
 export interface Player {
   x: number; y: number; r: number; vx: number; vy: number;
@@ -31,6 +38,8 @@ export interface Enemy {
   id: number; kind: EnemyKind; x: number; y: number; r: number;
   hp: number; max: number; heavy: boolean; stun: number;
   vx: number; vy: number; falling: number; dead: boolean; hitT: number; spd: number;
+  /** Seconds since it woke from the trance (0 = still entranced). A woken critter is harmless and leaving. */
+  woke: number;
 }
 
 export interface PostTarget { x: number; y: number; r: number; post: true }
@@ -64,12 +73,14 @@ export interface InputFrame {
   fling?: boolean; yank?: boolean; honk?: boolean; letGo?: boolean; feed?: boolean; cycle?: boolean; patch?: boolean;
 }
 
-export type FxKind = 'honk' | 'chomp' | 'boing' | 'poof' | 'ring' | 'snap' | 'bread' | 'pick' | 'tear' | 'splash' | 'faint' | 'patch';
+export type FxKind = 'honk' | 'chomp' | 'boing' | 'poof' | 'ring' | 'snap' | 'bread' | 'pick' | 'tear' | 'splash' | 'faint' | 'patch' | 'wake' | 'chest';
 export type SimEvent =
   | { type: 'say'; text: string }
   | { type: 'fx'; kind: FxKind; x: number; y: number; a?: number; cone?: number; range?: number; text?: string }
   | { type: 'won' }
-  | { type: 'reset' };
+  | { type: 'reset' }
+  /** Rocco arrived in a room through a door (or a save was loaded). */
+  | { type: 'room'; id: string };
 
 const QUIPS = {
   fling: ['HONK!', 'Airborne goose', 'Yeet.', 'Go get em'],
@@ -82,6 +93,7 @@ const QUIPS = {
   swim: ['Rocco fell in the pond. Biscuit honks with laughter.'],
   honk: ['HONK'],
   furious: ['FURY MODE. You are not in charge.'],
+  wake: ['The frog blinks awake. Ribbit?', 'Trance broken. The frog hops home.', 'Red eyes fade. Frog says thanks.'],
 } as const;
 
 // ---------------------------------------------------------------- sim
@@ -109,6 +121,12 @@ export class Sim {
   rang = false;
   bucketCd = 0;
   events: SimEvent[] = [];
+  /** Per-room memory: open gates, eaten bread, opened chests. Persists across rooms and saves. */
+  world: Record<string, RoomMemory> = {};
+  /** The door Rocco came in through; dying or restarting puts him back there. Null: the room's start. */
+  entryDoor: string | null = null;
+  /** Last spot on solid ground well away from water, for respawning after a fall in rooms without fixed respawns. */
+  lastSafe: Vec = { x: 0, y: 0 };
   private nextId = 1;
 
   constructor(opts: { tuning?: Partial<Tuning>; seed?: number; room?: RoomDef; kit?: Kit } = {}) {
@@ -135,28 +153,101 @@ export class Sim {
 
   // ------------------------------------------------ lifecycle
 
+  /** Start fresh in a room: full hearts, a full pack, room memory kept. */
   reset(def: RoomDef = this.room?.def ?? ROOM_01): void {
-    this.room = new Room(def);
     const s = def.playerStart;
     this.player = { x: s.x, y: s.y, r: C.playerRadius, vx: 0, vy: 0, hp: C.maxHp, inv: 0, air: false, pull: null, fx: 1, fy: 0, dead: 0 };
-    this.goose = { x: s.x - 30, y: s.y, vx: 0, vy: 0, state: 'held', feral: false, strain: 0, target: null, ox: 0, oy: 0, face: 1,
-      t: 0, fury: 0, furious: 0, tug: 0, honkCd: 0, biteT: 0, grabCd: 0 };
-    this.enemies = def.enemies.map(e => this.mkEnemy(e.kind, e.x, e.y));
-    this.items = [];
-    this.breadGot = def.breadSpots.map(() => false);
-    this.buff = { noFury: 0, bagel: 0, mega: 0 };
     this.pack = { enabled: !!def.refills?.length, water: 1, holes: 0, patches: 0, lastWater: { ...s }, refilling: false };
-    this.rope = new Rope(s);
+    this.buff = { noFury: 0, bagel: 0, mega: 0 };
     this.time = 0; this.won = false; this.clearT = 0; this.handled = 0;
-    this.spawnT = 4; this.knightT = 0; this.clapperCd = 0; this.rang = false; this.bucketCd = 0;
+    this.entryDoor = null;
+    this.setupRoom(def, s);
     this.events.push({ type: 'reset' });
     this.say(this.pack.enabled ? `${def.name}. Keep the koi wet. Biscuit is already mad.` : `${def.name}. The goose is already mad.`);
   }
 
+  /**
+   * Travel into a room through one of its doors (or its start when `doorId` is null).
+   * Hearts, pack, kit and buffs carry over. `revive` refills hearts and tops the pack up (after dying or a restart).
+   * `keepMemory` false skips recording the room being left (loading a save replaces room memory wholesale).
+   */
+  enterRoom(def: RoomDef, doorId: string | null, revive = false, keepMemory = true): void {
+    if (keepMemory) this.remember();
+    const door = doorId ? def.doors?.find(d => d.id === doorId) : undefined;
+    const s = door ? door.spawn : def.playerStart;
+    const hp = revive ? C.maxHp : this.player?.hp ?? C.maxHp;
+    this.player = { x: s.x, y: s.y, r: C.playerRadius, vx: 0, vy: 0, hp, inv: 0.8, air: false, pull: null,
+      fx: door ? Math.sign(def.width / 2 - s.x) || 1 : 1, fy: 0, dead: 0 };
+    const pk = this.pack;
+    this.pack = { enabled: !!def.refills?.length, water: revive ? Math.max(pk?.water ?? 1, C.faintRefill) : pk?.water ?? 1,
+      holes: pk?.holes ?? 0, patches: pk?.patches ?? 0, lastWater: { ...s }, refilling: false };
+    this.won = false;
+    this.entryDoor = door ? door.id : null;
+    this.setupRoom(def, s);
+    this.events.push({ type: 'reset' }, { type: 'room', id: def.id });
+  }
+
+  /** Back to where Rocco entered the current room, hearts refilled. */
+  restartRoom(): void {
+    if (!this.room.def.doors) { this.reset(); return; }
+    this.enterRoom(this.room.def, this.entryDoor, true);
+  }
+
+  private useDoor(d: Door): void {
+    if (d.to === 'END') {
+      this.remember();
+      this.won = true; this.clearT = this.time; this.events.push({ type: 'won' });
+      return;
+    }
+    const next = ROOMS[d.to];
+    if (!next) { this.say(`${d.label ?? 'That way'}: not built yet.`); return; }
+    const g = this.goose;
+    if (g.feral || g.state === 'loose') this.say('Biscuit stomps after you, still cross.');
+    this.enterRoom(next, d.toDoor);
+  }
+
+  private openChest(): void {
+    const c = this.room.def.chest!, id = this.room.def.id;
+    this.world[id] = { ...(this.world[id] ?? { gateOpen: false, bread: [...this.breadGot], rang: this.rang }), chest: true };
+    this.fx('chest', c.x, c.y - 10);
+    if (this.kit.findLeash(c.leash)) {
+      this.goose.strain = 0;
+      this.say(`Found the ${leashById(c.leash).name}! Equipped. ${leashById(c.leash).effect}`);
+    } else this.say('The chest is empty. You already have this one.');
+  }
+
+  /** True once the room's chest has been opened. */
+  chestOpen(): boolean { return !!this.world[this.room.def.id]?.chest; }
+
+  /** Store the current room's gate, bread and chest state. */
+  private remember(): void {
+    if (!this.room) return;
+    const id = this.room.def.id;
+    this.world[id] = { gateOpen: !!this.room.def.gate && !this.room.gateClosed, bread: [...this.breadGot],
+      chest: this.world[id]?.chest ?? false, rang: this.rang };
+  }
+
+  private setupRoom(def: RoomDef, s: Vec): void {
+    this.room = new Room(def);
+    const mem = this.world[def.id];
+    if (mem?.gateOpen) this.room.gateClosed = false;
+    this.goose = { x: s.x - 30 * (this.player.fx || 1), y: s.y, vx: 0, vy: 0, state: 'held', feral: false, strain: 0, target: null, ox: 0, oy: 0, face: 1,
+      t: 0, fury: 0, furious: 0, tug: 0, honkCd: 0, biteT: 0, grabCd: 0 };
+    this.enemies = def.enemies.map(e => this.mkEnemy(e.kind, e.x, e.y));
+    this.items = [];
+    this.breadGot = def.breadSpots.map((_, i) => mem?.bread[i] ?? false);
+    this.rope = new Rope(s);
+    this.lastSafe = { ...s };
+    this.spawnT = 4; this.knightT = 0; this.clapperCd = 0; this.rang = mem?.rang ?? false; this.bucketCd = 0;
+  }
+
+  /** True while an enemy can fight: alive, not sinking, not woken. */
+  private active(e: Enemy): boolean { return !e.dead && !e.falling && !e.woke; }
+
   mkEnemy(kind: EnemyKind, x: number, y: number): Enemy {
     const k = HEAVY.has(kind);
     return { id: this.nextId++, kind, x, y, r: k ? 20 : 13, hp: k ? 8 : 3, max: k ? 8 : 3, heavy: k, stun: 0,
-      vx: 0, vy: 0, falling: 0, dead: false, hitT: 0, spd: k ? 42 : 78 };
+      vx: 0, vy: 0, falling: 0, dead: false, hitT: 0, spd: k ? 42 : 78, woke: 0 };
   }
 
   /** Take and clear the events produced since the last drain. */
@@ -221,7 +312,7 @@ export class Sim {
     this.fx('honk', g.x, g.y, { a: ang, cone, range });
     g.face = dx >= 0 ? 1 : -1;
     for (const e of this.enemies) {
-      if (e.dead || e.falling) continue;
+      if (!this.active(e)) continue;
       const ex = e.x - g.x, ey = e.y - g.y, d = Math.hypot(ex, ey);
       if (d < range + e.r && Math.abs(angDiff(Math.atan2(ey, ex), ang)) < cone) {
         const k = (e.heavy ? 260 : 470) * (furyB ? 1.4 : 1) * (0.8 + 0.1 * this.tuning.power);
@@ -366,7 +457,7 @@ export class Sim {
   nearestEnemy(x: number, y: number): Enemy | null {
     let best: Enemy | null = null, bd = Infinity;
     for (const e of this.enemies) {
-      if (e.dead || e.falling) continue;
+      if (!this.active(e)) continue;
       const d = Math.hypot(e.x - x, e.y - y);
       if (d < bd) { bd = d; best = e; }
     }
@@ -377,8 +468,12 @@ export class Sim {
     if (e.dead) return;
     e.hp -= amt; e.hitT = 0.15;
     if (e.hp > 0) return;
-    e.dead = true; this.handled++;
-    this.fx('poof', e.x, e.y);
+    this.handled++;
+    if (ENTRANCED.has(e.kind)) {
+      e.woke = 0.001; e.stun = 0; e.hp = 0;
+      this.fx('wake', e.x, e.y);
+      this.say(e.heavy ? 'Old Snapper blinks. The red fades from his eyes.' : this.pick('wake'));
+    } else { e.dead = true; this.fx('poof', e.x, e.y); }
     if (!e.heavy) { this.drop('fluff', e.x, e.y); if (this.rng() < 0.45) this.drop('crust', e.x, e.y); }
     else { this.drop('chain', e.x, e.y, 2); this.drop('crest', e.x, e.y); }
     if (this.goose.target === e && this.goose.state === 'latched') this.goose.state = 'held';
@@ -402,7 +497,7 @@ export class Sim {
     const p = this.player, g = this.goose, room = this.room, T = this.tuning;
     this.time += dt;
     if (this.won) return;
-    if (p.dead) { p.dead -= dt; if (p.dead <= 0) this.reset(); return; }
+    if (p.dead) { p.dead -= dt; if (p.dead <= 0) this.restartRoom(); return; }
 
     if (input) {
       const aim = { x: input.aimX, y: input.aimY };
@@ -473,7 +568,7 @@ export class Sim {
     // respawns so there is something to farm
     this.spawnT -= dt;
     const light = room.def.lightKind ?? 'bunny', heavy = room.def.heavyKind ?? 'knight';
-    const bunnies = this.enemies.filter(e => !e.dead && !e.heavy).length;
+    const bunnies = this.enemies.filter(e => this.active(e) && !e.heavy).length;
     if (this.spawnT <= 0) {
       this.spawnT = C.bunnySpawnEvery;
       const vents = room.def.vents;
@@ -483,7 +578,7 @@ export class Sim {
       }
     }
     const ks = room.def.knightSpawn;
-    if (ks && !this.enemies.some(e => !e.dead && e.heavy)) {
+    if (ks && !this.enemies.some(e => this.active(e) && e.heavy)) {
       this.knightT += dt;
       if (this.knightT > C.knightRespawn) {
         this.knightT = 0; this.enemies.push(this.mkEnemy(heavy, ks.x, ks.y));
@@ -498,7 +593,7 @@ export class Sim {
     if (p.pull) {
       const t = p.pull, [dx, dy, d] = dirTo(p, t);
       const ysp = T.yank * this.kit.stat('yank');
-      const tDead = !isPost(t) && t.dead;
+      const tDead = !isPost(t) && (t.dead || t.woke > 0);
       if (d < t.r + p.r + 4 || tDead) {
         p.pull = null; p.air = false; p.vx *= 0.2; p.vy *= 0.2; g.state = 'held';
         if (!isPost(t) && t.heavy && !t.dead) {
@@ -534,15 +629,26 @@ export class Sim {
     if (!p.air && room.inPit(p.x, p.y, 6)) {
       const pond = this.pack.enabled;
       this.hurtPlayer();
-      const sp = room.def.respawns[room.pitSide(p.x)];
+      const sp = room.def.respawns ? room.def.respawns[room.pitSide(p.x)] : this.lastSafe;
       p.x = sp.x; p.y = sp.y; p.vx = p.vy = 0;
       g.state = 'held'; g.x = p.x - 30; g.y = p.y;
       if (pond) { this.pack.water = 1; this.fx('splash', p.x, p.y - 20); }   // at least the koi enjoyed it
       this.say(this.pick(pond ? 'swim' : 'fall'));
     }
+    if (!p.air && !p.pull && !room.inPit(p.x, p.y, -22)) this.lastSafe = { x: p.x, y: p.y };
     this.stepPack(dt);
-    const exit = room.def.exit;
-    if (exit && !room.gateClosed && inRect(p.x, p.y, exit)) { this.won = true; this.clearT = this.time; this.events.push({ type: 'won' }); }
+    const chest = room.def.chest;
+    if (chest && !this.world[room.def.id]?.chest && Math.hypot(chest.x - p.x, chest.y - p.y) < 30) this.openChest();
+    if (room.def.doors) {
+      for (const d of room.def.doors) {
+        if (p.air || p.dead || !inRect(p.x, p.y, d) || (d.gated && room.gateClosed)) continue;
+        this.useDoor(d);
+        return;
+      }
+    } else {
+      const exit = room.def.exit;
+      if (exit && !room.gateClosed && inRect(p.x, p.y, exit)) { this.won = true; this.clearT = this.time; this.events.push({ type: 'won' }); }
+    }
 
     // ---- enemies
     for (const e of this.enemies) {
@@ -550,6 +656,15 @@ export class Sim {
       if (e.falling) { e.falling += dt; if (e.falling > 0.6) { e.falling = 0; e.dead = true; } continue; }
       e.stun = Math.max(0, e.stun - dt); e.hitT = Math.max(0, e.hitT - dt);
       const [dx, dy, d] = dirTo(e, p);
+      if (e.woke) {
+        // awake and grateful: hop away from Rocco (frogs are happy to swim), then gone
+        e.woke += dt;
+        e.x -= dx * e.spd * 1.2 * dt; e.y -= dy * e.spd * 1.2 * dt;
+        e.x += e.vx * dt; e.y += e.vy * dt; const dk = Math.exp(-5 * dt); e.vx *= dk; e.vy *= dk;
+        room.collide(e); this.keepInside(e);
+        if (e.woke > WAKE_TIME) e.dead = true;
+        continue;
+      }
       let ax = 0, ay = 0;
       const slow = g.state === 'latched' && g.target === e ? 0.35 : 1;
       if (!e.stun && d < (AGGRO[e.kind] ?? 300)) { ax = dx * e.spd * slow; ay = dy * e.spd * slow; }
@@ -573,7 +688,7 @@ export class Sim {
     }
     for (let i = 0; i < this.enemies.length; i++) for (let j = i + 1; j < this.enemies.length; j++) {
       const a = this.enemies[i]!, b = this.enemies[j]!;
-      if (a.dead || b.dead || a.falling || b.falling) continue;
+      if (!this.active(a) || !this.active(b)) continue;
       const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), m = a.r + b.r;
       if (d < m && d > 0) { const q = (m - d) / 2; a.x -= (dx / d) * q; a.y -= (dy / d) * q; b.x += (dx / d) * q; b.y += (dy / d) * q; }
     }
@@ -596,7 +711,7 @@ export class Sim {
     } else if (g.state === 'flying') {
       const drag = Math.exp(-1.6 * dt); g.vx *= drag; g.vy *= drag;
       for (const e of this.enemies) {
-        if (e.dead || e.falling) continue;
+        if (!this.active(e)) continue;
         if (Math.hypot(e.x - g.x, e.y - g.y) < e.r + 11) {
           g.state = 'latched'; g.target = e; g.ox = g.x - e.x; g.oy = g.y - e.y;
           this.damage(e, this.pw()); e.stun = Math.max(e.stun, 0.3); this.addFury(14);
@@ -617,7 +732,7 @@ export class Sim {
       if (g.state === 'flying' && Math.hypot(g.vx, g.vy) < 140) g.state = 'held';
     } else if (g.state === 'latched') {
       const t = g.target;
-      if (!t || (!isPost(t) && (t.dead || t.falling))) g.state = 'held';
+      if (!t || (!isPost(t) && !this.active(t))) g.state = 'held';
       else {
         const ol = Math.hypot(g.ox, g.oy) || 1, off = t.r + 9;
         g.x = t.x + (g.ox / ol) * off; g.y = t.y + (g.oy / ol) * off; g.vx = g.vy = 0;

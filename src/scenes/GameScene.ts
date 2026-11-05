@@ -6,14 +6,15 @@ import { Controls } from '../view/controls';
 import { Renderer, snapshot, type Snapshot } from '../view/render';
 import { ArtRenderer, SCREEN_H, SCREEN_W } from '../view/art';
 import { ROOM_ART, nearestFilter, preloadArt } from '../view/assets';
+import { applySave, loadStoredSave, snapshotSave, storeSave } from '../core/save';
 
 /** Max steps per frame, so a long stall (tab switch) cannot spiral. */
 const MAX_STEPS = 8;
 
-/** `?room=room-01` opens the gray-box test room; Willowmere Pond is the default. */
-export function roomFromUrl(): RoomDef {
+/** `?room=<id>` opens a room directly (`room-01` is the gray-box test room) and skips the save. */
+export function roomFromUrl(): RoomDef | null {
   const id = new URLSearchParams(location.search).get('room') ?? '';
-  return (ROOMS as Record<string, RoomDef>)[id] ?? WILLOWMERE;
+  return ROOMS[id] ?? null;
 }
 
 interface View { consume: Renderer['consume']; draw: Renderer['draw'] }
@@ -27,6 +28,10 @@ export class GameScene extends Phaser.Scene {
   private lastNow = 0;
   /** Set by the UI layer: true while the recipe book is open. */
   paused = false;
+  /** True when this session picked up from a save. */
+  resumed = false;
+  /** Saves are only written for world rooms, not the gray-box test room. */
+  private get saving(): boolean { return !!this.sim.room.def.doors; }
   onReady: (scene: GameScene) => void = () => {};
 
   constructor() { super('game'); }
@@ -35,8 +40,11 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     nearestFilter(this, Phaser.Textures.FilterMode.NEAREST);
-    const def = roomFromUrl();
-    this.sim = new Sim({ seed: (Date.now() & 0x7fffffff) || 1, room: def });
+    const forced = roomFromUrl();
+    this.sim = new Sim({ seed: (Date.now() & 0x7fffffff) || 1, room: forced ?? WILLOWMERE });
+    const saved = forced ? null : loadStoredSave();
+    if (saved) { applySave(this.sim, saved); this.resumed = true; }
+    const def = this.sim.room.def;
     if (ROOM_ART[def.id]) this.view = new ArtRenderer(this, this.sim);
     else {
       // gray-box room, scaled to fit the 16:9 canvas
@@ -45,7 +53,7 @@ export class GameScene extends Phaser.Scene {
       this.view = new Renderer(this);
     }
     this.controls = new Controls(this, this.game.canvas);
-    this.view.consume(this.sim.drainEvents());
+    this.feed(this.sim.drainEvents());
     this.onReady(this);
   }
 
@@ -67,16 +75,25 @@ export class GameScene extends Phaser.Scene {
         first = false; this.acc -= STEP; steps++;
       }
       if (steps === MAX_STEPS) this.acc = 0;
-      this.view.consume(this.sim.drainEvents());
+      this.feed(this.sim.drainEvents());
     }
     const alpha = this.paused ? 1 : this.acc / STEP;
     this.view.draw(this.sim, this.paused ? null : this.prev, alpha, this.paused ? 0 : dt, this.controls.aim(this.sim.player), true);
   }
 
+  /** R / the Reset button: back to where Rocco entered this room, hearts refilled. */
   resetRoom(): void {
-    this.sim.reset();
+    this.sim.restartRoom();
     this.prev = null;
     this.controls.dropPending();
-    this.view.consume(this.sim.drainEvents());
+    this.feed(this.sim.drainEvents());
+  }
+
+  /** Write the autosave now (also done on every room arrival). */
+  saveNow(): boolean { return this.saving && storeSave(snapshotSave(this.sim)); }
+
+  private feed(events: ReturnType<Sim['drainEvents']>): void {
+    if (events.some(e => e.type === 'room')) { this.prev = null; this.saveNow(); }
+    this.view.consume(events);
   }
 }

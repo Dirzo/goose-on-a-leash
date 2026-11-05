@@ -163,7 +163,8 @@ for p in R['posts']:                                       # mooring posts: thic
         px(rx, ry, 'B3')
 
 walls = R['walls']
-stump, log, rock, fence = walls[4], walls[5], walls[6], walls[7]
+props = [w for w in walls if w['x'] > 0 and w['y'] > 0 and w['x'] + w['w'] < W and w['y'] + w['h'] < H]
+stump, log, rock, fence = props   # border walls touch the room edge
 # stump
 cx, cy = stump['x'] + stump['w'] / 2, stump['y'] + stump['h'] / 2
 shadow(cx + 4, cy + 10, 24, 8)
@@ -197,7 +198,7 @@ for x in (g_['x'], g_['x'] + g_['w'] - 8):                 # gate posts (the gat
     img[g_['y'] - 6:g_['y'] + g_['h'] + 2, x:x + 8] = P['B1']; img[g_['y'] - 6, x:x + 8] = P['B3']
     img[g_['y'] + g_['h'] + 1, x:x + 8] = P['OUT']
 # exit: a reed-lined trail leading off the top edge
-ex = R['exit']
+d0 = R['doors'][0]; ex = {'x': d0['x'], 'y': 24, 'w': d0['w'], 'h': 84}   # the trail north to Reedmarsh
 trail = rect_mask({'x': ex['x'] + 18, 'y': 0, 'w': ex['w'] - 36, 'h': ex['h'] + 4}) & ~(np.sin(xx * 0.7 + yy) > 0.92)
 img[trail] = P['D1']; img[trail & (pn > 0.45)] = P['D2']
 for k in range(6):

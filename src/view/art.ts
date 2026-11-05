@@ -59,7 +59,7 @@ export class ArtRenderer {
     const world = <T extends Phaser.GameObjects.GameObject>(o: T): T => { this.hudCam.ignore(o); return o; };
     const screen = <T extends Phaser.GameObjects.GameObject>(o: T): T => { main.ignore(o); return o; };
 
-    world(scene.add.image(0, 0, `room_${sim.room.def.id}`).setOrigin(0, 0).setDepth(-1000));
+    this.bg = world(scene.add.image(0, 0, `room_${sim.room.def.id}`).setOrigin(0, 0).setDepth(-1000));
     this.floor = world(scene.add.graphics().setDepth(-500));
     this.line = world(scene.add.graphics().setDepth(5000));
     this.fxg = world(scene.add.graphics().setDepth(5100));
@@ -75,13 +75,28 @@ export class ArtRenderer {
     };
     this.worldIgnore = world;
 
-    // light glints on open water, away from the dock
-    const room = sim.room;
+    this.setRoom(sim);
+  }
+
+  private bg: Phaser.GameObjects.Image;
+  private roomId = '';
+
+  /** Point the background, camera bounds and water glints at the sim's current room. */
+  private setRoom(sim: Sim): void {
+    const room = sim.room, def = room.def;
+    this.roomId = def.id;
+    this.bg.setTexture(`room_${def.id}`);
+    this.scene.cameras.main.setBounds(0, 0, def.width, def.height);
+    for (const s of this.foes.values()) s.destroy();
+    this.foes.clear();
+    this.glints = [];
+    const want = Math.round((def.width * def.height) / 8000);
     let tries = 0;
-    while (this.glints.length < 70 && tries++ < 4000) {
-      const x = 20 + Math.random() * (room.def.width - 40), y = 20 + Math.random() * (room.def.height - 40);
+    while (this.glints.length < want && tries++ < 6000) {
+      const x = 20 + Math.random() * (def.width - 40), y = 20 + Math.random() * (def.height - 40);
       if (room.inPit(x, y, 18)) this.glints.push({ x: Math.round(x), y: Math.round(y), ph: Math.random() * 6.28, len: 2 + Math.floor(Math.random() * 4) });
     }
+    this.cam = null; this.banner = 3.5; this.drips = []; this.puddles = [];
   }
 
   private worldIgnore: <T extends Phaser.GameObjects.GameObject>(o: T) => T;
@@ -106,7 +121,8 @@ export class ArtRenderer {
         if (e.kind === 'tear') cam.shake(120, 0.003);
         if (e.kind === 'ring') this.bellSwing = 1;
         if (e.kind === 'faint') this.flash = 1;
-      } else if (e.type === 'reset') { this.fx = []; this.drips = []; this.puddles = []; this.banner = 3; this.cam = null; }
+      } else if (e.type === 'reset') { this.fx = []; this.drips = []; this.puddles = []; this.cam = null; }
+      else if (e.type === 'room') this.flash = Math.max(this.flash, 0.45);
     }
     this.quips = this.quips.slice(-3);
   }
@@ -120,6 +136,7 @@ export class ArtRenderer {
     this.fx = this.fx.filter(f => f.t < (f.kind === 'faint' ? 1.6 : 0.8));
     this.banner -= dt; this.flash = Math.max(0, this.flash - dt * 0.8); this.bellSwing = Math.max(0, this.bellSwing - dt * 0.7);
     this.wtext.begin(); this.beginExtra(); for (const p of Object.values(this.htext)) p.begin();
+    if (sim.room.def.id !== this.roomId) this.setRoom(sim);
     const g = this.floor, room = sim.room, def = room.def, pl = sim.player, go = sim.goose, pk = sim.pack;
     g.clear(); this.line.clear(); this.fxg.clear(); this.hud.clear();
 
@@ -146,15 +163,37 @@ export class ArtRenderer {
       g.lineStyle(1, 0x9ae0ff, 0.6 * (1 - r / 28)); g.strokeEllipse(P.x, P.y + 2, r * 2, r * 0.8);
     }
 
-    // exit and gate
-    const ex = def.exit;
+    // doors: a label and an arrow pointing out of the room
+    for (const d of def.doors ?? []) {
+      const shut = d.gated && room.gateClosed;
+      const cx = d.x + d.w / 2, cy = d.y + d.h / 2;
+      const ox = d.x === 0 ? 1 : d.x + d.w >= def.width ? -1 : 0, oy = d.y === 0 ? 1 : d.y + d.h >= def.height ? -1 : 0;
+      const ax = cx + ox * 30, ay = cy + oy * 30, a = 0.3 + 0.2 * Math.sin(time * 3);
+      if (!shut) {
+        g.fillStyle(0x9fe0a8, a);
+        if (ox) g.fillTriangle(ax - ox * 6, ay, ax + ox * 4, ay - 7, ax + ox * 4, ay + 7);
+        else g.fillTriangle(ax, ay - oy * 6, ax - 7, ay + oy * 4, ax + 7, ay + oy * 4);
+      }
+      if (d.label) this.wt(shut ? `${d.label} · shut` : d.label, cx + ox * 26, cy + oy * 40 + (ox ? -d.h / 2 - 4 : 0), 7, shut ? '#9aa3a6' : '#9fe0a8', 0.85, 'mono');
+    }
+    // legacy exit (Room 01 style)
+    const ex = def.doors ? null : def.exit;
     if (ex && !room.gateClosed) {
       const a = 0.25 + 0.15 * Math.sin(time * 3);
       g.fillStyle(0x9fe0a8, a); g.fillTriangle(ex.x + ex.w / 2, ex.y + 10, ex.x + ex.w / 2 - 8, ex.y + 20, ex.x + ex.w / 2 + 8, ex.y + 20);
       this.wt(def.exitLabel ?? 'Exit', ex.x + ex.w / 2, ex.y + ex.h - 4, 8, '#9fe0a8', 0.9);
     }
     const gate = def.gate;
-    if (gate) {
+    if (gate && gate.h > gate.w) {
+      // vertical gate across an east or west doorway
+      if (room.gateClosed) {
+        g.fillStyle(0x3a2512, 1); g.fillRect(gate.x + 2, gate.y + 6, 3, gate.h - 12); g.fillRect(gate.x + 8, gate.y + 6, 3, gate.h - 12);
+        for (let y = gate.y + 4; y < gate.y + gate.h - 4; y += 7) { g.fillStyle(0x86582f, 1); g.fillRect(gate.x - 4, y, gate.w + 8, 4); g.fillStyle(0xb48250, 1); g.fillRect(gate.x - 4, y, gate.w + 8, 1); }
+      } else {
+        g.fillStyle(0x5e3e20, 1); g.fillRect(gate.x - 30, gate.y - 2, 34, 4);
+        g.fillStyle(0x86582f, 1); for (let x = gate.x - 28; x < gate.x; x += 7) g.fillRect(x, gate.y - 4, 4, 8);
+      }
+    } else if (gate) {
       if (room.gateClosed) {
         g.fillStyle(0x3a2512, 1); g.fillRect(gate.x + 8, gate.y + 2, gate.w - 16, 3); g.fillRect(gate.x + 8, gate.y + 8, gate.w - 16, 3);
         for (let x = gate.x + 10; x < gate.x + gate.w - 10; x += 7) { g.fillStyle(0x86582f, 1); g.fillRect(x, gate.y - 6, 4, gate.h + 6); g.fillStyle(0xb48250, 1); g.fillRect(x, gate.y - 6, 4, 1); }
@@ -188,6 +227,26 @@ export class ArtRenderer {
       g.lineStyle(2, 0x8a8a90, 1); g.beginPath(); g.arc(bk.x, bk.y - 9, 6, Math.PI, 0); g.strokePath();
       if (ready && Math.floor(time * 2) % 3 === 0) { g.fillStyle(0xfff4c0, 1); g.fillRect(bk.x + 8, bk.y - 12, 1, 3); g.fillRect(bk.x + 7, bk.y - 11, 3, 1); }
       if (!ready) this.wt(`${Math.ceil(sim.bucketCd)}s`, bk.x, bk.y + 20, 7, '#9aa3a6', 1, 'mono');
+    }
+    // tackle chest
+    const chest = def.chest;
+    if (chest) {
+      const open = sim.chestOpen(), x = chest.x, y = chest.y;
+      g.fillStyle(0x000000, 0.35); g.fillEllipse(x + 2, y + 9, 30, 8);
+      g.fillStyle(0x1a1522, 1); g.fillRect(x - 13, y - 8, 26, 17);
+      g.fillStyle(0x5e3e20, 1); g.fillRect(x - 12, y - 7, 24, 15);
+      g.fillStyle(0x86582f, 1); for (let k2 = -10; k2 < 12; k2 += 6) g.fillRect(x + k2, y - 7, 1, 15);
+      g.fillStyle(0xd8a830, 1); g.fillRect(x - 12, y - 2, 24, 2); g.fillRect(x - 2, y - 3, 4, 5);
+      if (open) {
+        g.fillStyle(0x1a1522, 1); g.fillRect(x - 13, y - 17, 26, 9);
+        g.fillStyle(0x4a3020, 1); g.fillRect(x - 12, y - 16, 24, 7);
+      } else {
+        g.fillStyle(0x1a1522, 1); g.fillRect(x - 13, y - 13, 26, 6);
+        g.fillStyle(0x86582f, 1); g.fillRect(x - 12, y - 12, 24, 4);
+        const tw = 0.4 + 0.4 * Math.sin(time * 4);
+        g.fillStyle(0xfff4c0, tw); g.fillRect(x + 9, y - 18, 1, 4); g.fillRect(x + 8, y - 17, 3, 1);
+        this.wt('Tackle chest', x, y - 26, 7, '#e0c890', 0.8, 'mono');
+      }
     }
     // bread loaves
     def.breadSpots.forEach((b, i) => {
@@ -269,13 +328,27 @@ export class ArtRenderer {
       let s = this.foes.get(e.id);
       if (!s) { s = this.worldIgnore(this.scene.add.sprite(0, 0, e.kind === 'snapper' ? 'snapper' : 'frog')); this.foes.set(e.id, s); }
       const { x, y } = EP(e);
-      const kind = e.kind === 'snapper' ? 'snapper' : e.stun > 0 ? 'frog_awake' : 'frog';
+      const awake = e.woke > 0 || (e.stun > 0 && e.kind !== 'snapper');
+      const kind = e.kind === 'snapper' ? (e.woke > 0 ? 'snapper_awake' : 'snapper') : awake ? 'frog_awake' : 'frog';
       const blink = ((time * 1.1 + e.id * 0.37) % 3.2) < 0.14;
       this.show(s, kind, blink ? 1 : 0);
       const sc = e.falling ? Math.max(0.05, 1 - e.falling / 0.6) : 1;
-      const hop = kind !== 'snapper' && Math.hypot(e.vx, e.vy) > 15 ? -Math.abs(Math.sin(time * 9 + e.id)) * 4 : 0;
-      s.setPosition(Math.round(x), Math.round(y + hop)).setScale(sc).setDepth(y).setFlipX(kind === 'snapper' ? e.vx < -5 : false);
-      s.setAlpha(e.falling ? sc : 1);
+      const moving = e.woke > 0 || Math.hypot(e.vx, e.vy) > 15;
+      const hop = e.kind !== 'snapper' && moving ? -Math.abs(Math.sin(time * 9 + e.id)) * 4 : 0;
+      const pdx = sim.player.x - x;
+      s.setPosition(Math.round(x), Math.round(y + hop)).setScale(sc).setDepth(y)
+        .setFlipX(e.kind === 'snapper' ? (e.woke > 0 ? pdx > 0 : e.vx < -5 || pdx < -10) : false);
+      s.setAlpha(e.falling ? sc : e.woke > 0 ? Math.min(1, (1.6 - e.woke) / 0.5) : 1);
+      if (e.woke > 0) {
+        // little hearts float up: thank you, Rocco
+        for (let i = 0; i < 2; i++) {
+          const t = (e.woke * 1.3 + i * 0.5) % 1;
+          this.fxg.fillStyle(0xff8aa8, 1 - t);
+          const hx2 = Math.round(x + (i ? 5 : -5)), hy2 = Math.round(y - 22 - t * 16);
+          this.fxg.fillRect(hx2 - 1, hy2, 1, 1); this.fxg.fillRect(hx2 + 1, hy2, 1, 1); this.fxg.fillRect(hx2 - 1, hy2 + 1, 3, 1); this.fxg.fillRect(hx2, hy2 + 2, 1, 1);
+        }
+        continue;
+      }
       if (e.hitT > 0) s.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL); else s.clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
       if (!e.falling) {
         const w = kind === 'snapper' ? 46 : 18;
@@ -415,14 +488,14 @@ export class ArtRenderer {
     if (this.banner > 0) {
       const a = Math.min(1, this.banner / 0.8, (3.5 - this.banner) / 0.4);
       this.ht('display', sim.room.def.name.toUpperCase(), W / 2, 200, 44, '#f6f1e6', a);
-      this.ht('body', 'Act 1 · the hub', W / 2, 234, 18, '#c9a46a', a, 'center', true);
+      if (sim.room.def.subtitle) this.ht('body', sim.room.def.subtitle, W / 2, 234, 18, '#c9a46a', a, 'center', true);
     }
     if (this.flash > 0) { g.fillStyle(0x05040a, Math.min(0.85, this.flash)); g.fillRect(0, 0, W, H); }
     if (sim.won) {
       g.fillStyle(0x0b0a10, 0.78); g.fillRect(0, 0, W, H);
-      this.ht('display', 'THE PATH IS OPEN', W / 2, H / 2 - 30, 56, '#f2c230');
-      this.ht('body', `${sim.room.def.exitLabel ?? 'Onward'} · ${sim.clearT.toFixed(1)}s · ${sim.handled} critters handled · press R to replay`, W / 2, H / 2 + 24, 18, '#e9c9a0', 1, 'center', true);
-      this.ht('mono', 'Reedmarsh is the next region on the board.', W / 2, H / 2 + 56, 13, '#9aa3a6', 1, 'center', true);
+      this.ht('display', 'END OF THE PLAYTEST', W / 2, H / 2 - 30, 52, '#f2c230');
+      this.ht('body', sim.room.def.winText ?? 'The path is open.', W / 2, H / 2 + 24, 18, '#e9c9a0', 1, 'center', true);
+      this.ht('mono', `${sim.kit.leashDef.name} · ${Object.values(sim.world).filter(m => m.chest).length} chest opened · press R to go back into the room`, W / 2, H / 2 + 56, 13, '#9aa3a6', 1, 'center', true);
     }
   }
 

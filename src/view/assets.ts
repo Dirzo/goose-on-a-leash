@@ -12,8 +12,9 @@ const url = (path: string): string => {
   return u;
 };
 
-/** Rooms that have painted backgrounds. Others fall back to the gray-box renderer. */
-export const ROOM_ART: Record<string, string> = { willowmere: 'rooms/willowmere.png' };
+/** Rooms that have painted backgrounds (any src/assets/rooms/<id>.png). Others use the gray-box renderer. */
+export const ROOM_ART: Record<string, string> = Object.fromEntries(
+  Object.keys(URLS).filter(k => k.startsWith('../assets/rooms/')).map(k => [k.slice('../assets/rooms/'.length, -4), k.slice('../assets/'.length)]));
 
 export function preloadArt(scene: Phaser.Scene): void {
   for (const [name, s] of Object.entries(SPRITES)) {

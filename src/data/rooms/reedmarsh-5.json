@@ -1,0 +1,192 @@
+{
+ "id": "reedmarsh-5",
+ "name": "The Braided Line",
+ "subtitle": "Reedmarsh \u00b7 5",
+ "width": 800,
+ "height": 520,
+ "playerStart": {
+  "x": 66,
+  "y": 260
+ },
+ "walls": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 800,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 500,
+   "w": 800,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 218.0,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 302.0,
+   "w": 20,
+   "h": 218.0,
+   "kind": "border"
+  },
+  {
+   "x": 780,
+   "y": 0,
+   "w": 20,
+   "h": 218.0,
+   "kind": "border"
+  },
+  {
+   "x": 780,
+   "y": 302.0,
+   "w": 20,
+   "h": 218.0,
+   "kind": "border"
+  },
+  {
+   "x": 110,
+   "y": 80,
+   "w": 40,
+   "h": 28,
+   "kind": "stump"
+  },
+  {
+   "x": 660,
+   "y": 410,
+   "w": 40,
+   "h": 30,
+   "kind": "rock"
+  }
+ ],
+ "gate": null,
+ "pits": [
+  {
+   "x": 250,
+   "y": 110,
+   "w": 300,
+   "h": 300
+  }
+ ],
+ "bridges": [
+  {
+   "x": 345,
+   "y": 200,
+   "w": 110,
+   "h": 120,
+   "kind": "island"
+  },
+  {
+   "x": 220,
+   "y": 246,
+   "w": 128,
+   "h": 28,
+   "kind": "dock"
+  }
+ ],
+ "refills": [
+  {
+   "x": 226,
+   "y": 100,
+   "w": 26,
+   "h": 320
+  },
+  {
+   "x": 548,
+   "y": 100,
+   "w": 26,
+   "h": 320
+  }
+ ],
+ "posts": [],
+ "bell": null,
+ "exit": null,
+ "vents": [],
+ "bucket": null,
+ "breadSpots": [
+  {
+   "x": 120,
+   "y": 430
+  }
+ ],
+ "enemies": [],
+ "knightSpawn": null,
+ "lightKind": "frog",
+ "heavyKind": "snapper",
+ "doors": [
+  {
+   "id": "w",
+   "x": 0,
+   "y": 218.0,
+   "w": 26,
+   "h": 84,
+   "to": "reedmarsh-4",
+   "toDoor": "n",
+   "spawn": {
+    "x": 66,
+    "y": 260
+   },
+   "label": "Snapper Shallows"
+  },
+  {
+   "id": "e",
+   "x": 774,
+   "y": 218.0,
+   "w": 26,
+   "h": 84,
+   "to": "reedmarsh-6",
+   "toDoor": "w",
+   "spawn": {
+    "x": 734,
+    "y": 260
+   },
+   "label": "Lily Crossing"
+  }
+ ],
+ "paths": [
+  [
+   [
+    66,
+    260
+   ],
+   [
+    222,
+    260
+   ]
+  ],
+  [
+   [
+    400,
+    420
+   ],
+   [
+    400,
+    470
+   ],
+   [
+    700,
+    470
+   ],
+   [
+    734,
+    260
+   ]
+  ]
+ ],
+ "chest": {
+  "x": 400,
+  "y": 262,
+  "leash": "braided"
+ },
+ "lantern": {
+  "x": 440,
+  "y": 214
+ }
+}

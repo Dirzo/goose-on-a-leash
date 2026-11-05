@@ -27,3 +27,7 @@ The M1 gate is "the Phaser build plays exactly like the prototype". Rules, numbe
   a post at the end of a dock blocks every fling out over the water. Applies to Room 01 too.
 - Frogs and Old Snapper notice Rocco from 160 / 210 units instead of 300 (entranced critters). Bunnies and
   knights in Room 01 keep 300.
+- Beaten frogs and Old Snapper wake from the trance (harmless, hop away, gone after 1.6 s) instead of
+  poofing. Bunnies and knights in Room 01 still poof.
+- Rooms with doors respawn a fall at the last safe ground instead of fixed left/right points; Room 01
+  keeps its fixed respawns. R restarts from the door you came in by.

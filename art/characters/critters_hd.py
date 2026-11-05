@@ -28,7 +28,7 @@ def frog(blink, awake=False):
     L.append(eyes)
     return composite(L)
 
-def snapper(blink, submerged=True):
+def snapper(blink, submerged=True, awake=False):
     """Old Snapper, the tutorial boss, half-submerged: mossy shell, hooked beak, red eye."""
     w, h = 64, 30
     L = []
@@ -41,7 +41,8 @@ def snapper(blink, submerged=True):
     head = Layer('head', w, h, PT)
     head.ell(52, 18, 9, 7, 'TSK')
     head.poly([(58, 18), (63, 21), (57, 23)], 'T0')                       # hooked beak
-    head.ell(52, 15, 2, 2, 'FR' if not blink else 'TSK2')
+    head.ell(52, 15, 2, 2, ('T0' if awake else 'FR') if not blink else 'TSK2')
+    if awake and not blink: head.px(51, 14, 'TSK2')
     L.append(head)
     im = composite(L)
     if not submerged:

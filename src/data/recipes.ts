@@ -7,7 +7,7 @@ export type MaterialId = 'mop' | 'fluff' | 'crust' | 'chain' | 'goo' | 'down';
 export type CatalystId = 'clapper' | 'crest' | 'egg' | 'tooth';
 export type ItemId = MaterialId | CatalystId;
 export type BuildId = 'any' | 'brawler' | 'honker' | 'flinger' | 'berserker' | 'chaos';
-export type LeashId = 'mop' | 'chain' | 'bungee' | 'bell' | 'choke' | 'golden' | 'toothed';
+export type LeashId = 'mop' | 'braided' | 'chain' | 'bungee' | 'bell' | 'choke' | 'golden' | 'toothed';
 export type BreadId = 'stale' | 'sour' | 'bagel' | 'muffin' | 'pepper' | 'bun';
 export type Cost = Partial<Record<ItemId, number>>;
 
@@ -60,11 +60,15 @@ export interface LeashStats {
 
 export interface LeashDef extends LeashStats {
   id: LeashId; name: string; build: BuildId; cost: Cost; effect: string; lore: string; ropeColor: string; heavy?: boolean;
+  /** Found in the world (a tackle chest) instead of crafted. Names where. */
+  found?: string;
 }
 
 export const LEASHES: readonly LeashDef[] = [
   { id: 'mop', name: 'Frayed Fishing Line', build: 'any', cost: {}, str: 0, ropeColor: '#c9a46a',
     effect: 'No bonuses.', lore: 'Rated for trout. Not for geese.' },
+  { id: 'braided', name: 'Braided Line', build: 'any', cost: {}, str: 1, len: 40, ropeColor: '#e0c890', found: 'A tackle chest deep in Reedmarsh',
+    effect: '+1 leash strength, +40 leash length. Reaches posts the old line cannot.', lore: 'Three lines braided by a patient raccoon. Holds a goose. Mostly.' },
   { id: 'chain', name: 'Scute-Plate Leash', build: 'brawler', cost: { chain: 3, mop: 2 }, str: 2, ropeColor: '#9aa6b2', heavy: true,
     effect: '+2 leash strength.', lore: 'Shell plates on a cord. Clacks. The goose hates the clacking.' },
   { id: 'bungee', name: 'Bungee Cord', build: 'flinger', cost: { fluff: 3, goo: 2, mop: 1 }, len: 90, fling: 1.25, yank: 1.4, tug: 0.5, ropeColor: '#5fbf6a',

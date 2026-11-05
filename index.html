@@ -13,7 +13,7 @@
 <div class="wrap">
   <header>
     <h1>Goose <span>on a</span> Leash</h1>
-    <span class="tag">Act 1 · Willowmere Pond · playtest</span>
+    <span class="tag">Act 1 · Willowmere + Reedmarsh part one · playtest</span>
   </header>
 
   <div class="stage"><div id="stage"></div></div>
@@ -32,8 +32,9 @@
         <dt><kbd>P</kbd></dt><dd><b>Patch the backpack.</b> Hits tear holes and the Moon Koi's water leaks out. 2 Reed Fiber per patch. Stand on the shoreline to refill.</dd>
         <dt><kbd>B</kbd></dt><dd><b>Recipe book.</b> Craft leashes and breads. Pauses the game.</dd>
         <dt>Walk over leash</dt><dd>Grab the trailing leash of a feral or loose goose.</dd>
-        <dt><kbd>R</kbd></dt><dd>Reset the room (your satchel and leashes carry over)</dd>
-        <dt>Test room</dt><dd>Add <code>?room=room-01</code> to the address for the old gray-box room.</dd>
+        <dt><kbd>R</kbd></dt><dd>Restart the room from the door you came in by (satchel, leashes and pack carry over)</dd>
+        <dt>Doors</dt><dd>Walk off the edge of a room through a gap in the trees. Gates open when Biscuit honks the room's bell.</dd>
+        <dt>Test rooms</dt><dd>Add <code>?room=room-01</code> (gray-box) or <code>?room=reedmarsh-4</code> to the address to jump straight there.</dd>
       </dl>
       <details class="pad">
         <summary>Gamepad controls</summary>
@@ -53,8 +54,12 @@
     <section class="card">
       <h2>Tuning bench</h2>
       <div id="sliders"></div>
-      <div class="row"><button id="b-book" type="button">Open recipe book [B]</button><button id="b-reset" type="button">Reset room</button><button id="b-defaults" type="button">Default tuning</button></div>
+      <div class="row"><button id="b-book" type="button">Open recipe book [B]</button><button id="b-reset" type="button">Restart room</button><button id="b-defaults" type="button">Default tuning</button></div>
       <div class="row"><button id="b-stock" type="button">Test: stock satchel</button><button id="b-empty" type="button">Test: empty satchel</button></div>
+      <h2 style="margin-top:18px">Save</h2>
+      <p class="note" id="save-status" style="margin:0 0 8px">The game saves each time you enter a room.</p>
+      <div class="row"><button id="b-save-copy" type="button">Copy save code</button><button id="b-save-new" type="button">New game</button></div>
+      <div class="row"><input id="save-code" type="text" placeholder="Paste a save code" autocomplete="off" spellcheck="false" aria-label="Save code" style="flex:1 1 220px;min-width:0;font:inherit;font-size:13px;background:var(--floor);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:7px 9px"><button id="b-save-load" type="button">Load code</button></div>
       <p class="note">Sliders set the base. Your equipped leash adds its bonuses on top, shown on the HUD under the strain bar.</p>
     </section>
   </div>

@@ -2,6 +2,7 @@
 import { DEFAULT_TUNING, TUNING_RANGES, type Tuning } from '../core/config';
 import { BREADS, BUILDS, CATALYSTS, ITEMS, LEASHES, MATERIALS, breadById, type BuildId, type Cost, type ItemId } from '../data/recipes';
 import type { GameScene } from '../scenes/GameScene';
+import { applySave, clearStoredSave, decodeSave, encodeSave, snapshotSave } from '../core/save';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const esc = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -32,6 +33,29 @@ export function mountUi(scene: GameScene): void {
   $('b-empty').onclick = () => { sim.kit.emptyAll(); if (open) render(); };
   $('b-book').onclick = () => openBook();
 
+  // ---- saves
+  const saveStatus = $('save-status'), codeIn = $<HTMLInputElement>('save-code');
+  const say = (t: string) => { saveStatus.textContent = t; };
+  if (scene.resumed) say(`Picked up where you left off: ${sim.room.def.name}. The game saves each time you enter a room.`);
+  $('b-save-copy').onclick = async () => {
+    const code = encodeSave(snapshotSave(sim));
+    codeIn.value = code;
+    try { await navigator.clipboard.writeText(code); say('Save code copied. Paste it here later (or on another device) and press Load code.'); }
+    catch { codeIn.select(); say('Save code is in the box below: copy it from there.'); }
+  };
+  $('b-save-load').onclick = () => {
+    const s = decodeSave(codeIn.value);
+    if (!s) { say("That code didn't work. Check it was copied whole."); return; }
+    applySave(sim, s); scene.saveNow();
+    say(`Loaded: ${sim.room.def.name}.`); scene.game.canvas.focus();
+  };
+  let armed = false;
+  $('b-save-new').onclick = () => {
+    if (!armed) { armed = true; $('b-save-new').textContent = 'Press again to start over'; setTimeout(() => { armed = false; $('b-save-new').textContent = 'New game'; }, 3000); return; }
+    clearStoredSave();
+    if (location.search) location.search = ''; else location.reload();
+  };
+
   // ---- recipe book
   let open = false, tab: 'leash' | 'bread' | 'satchel' = 'leash';
   const book = $('book'), body = $('book-body'), status = $('book-status');
@@ -51,8 +75,9 @@ export function mountUi(scene: GameScene): void {
         const own = k.owned.has(r.id), eq = k.leash === r.id;
         const act = eq ? '<button type="button" disabled>Equipped</button>'
           : own ? `<button type="button" class="primary" data-equip="${r.id}">Equip</button>`
+          : r.found ? '<button type="button" disabled>Not found yet</button>'
           : `<button type="button" class="primary" data-craft-leash="${r.id}" ${k.canAfford(r.cost) ? '' : 'disabled'}>Craft</button>`;
-        return `<article class="rc${eq ? ' equipped' : ''}"><div class="rc-top"><h3>${esc(r.name)}</h3>${chip(r.build)}</div><p class="rc-fx">${esc(r.effect)}</p><p class="rc-lore">${esc(r.lore)}</p>${own ? '<ul class="ing"><li class="ok">Owned</li></ul>' : ingList(r.cost)}<div class="rc-act">${act}</div></article>`;
+        return `<article class="rc${eq ? ' equipped' : ''}"><div class="rc-top"><h3>${esc(r.name)}</h3>${chip(r.build)}</div><p class="rc-fx">${esc(r.effect)}</p><p class="rc-lore">${esc(r.lore)}</p>${own ? '<ul class="ing"><li class="ok">Owned</li></ul>' : r.found ? `<ul class="ing"><li class="short">Found: ${esc(r.found)}</li></ul>` : ingList(r.cost)}<div class="rc-act">${act}</div></article>`;
       }).join('') + '</div>';
     } else if (tab === 'bread') {
       body.innerHTML = '<div class="recipes">' + BREADS.map(r => {
