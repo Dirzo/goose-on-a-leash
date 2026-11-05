@@ -2,11 +2,11 @@ import type Phaser from 'phaser';
 import type { InputFrame } from '../core/sim';
 import type { Vec } from '../core/math';
 
-type Verb = 'fling' | 'yank' | 'honk' | 'letGo' | 'feed' | 'cycle' | 'patch';
+type Verb = 'fling' | 'yank' | 'honk' | 'letGo' | 'feed' | 'cycle' | 'patch' | 'roll';
 export type UiAction = 'book' | 'reset' | 'closeBook' | 'pack' | 'close' | 'patch';
 
 const ARROWS = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright'];
-const GAME_KEYS = ['w', 'a', 's', 'd', ' ', 'e', 'q', 'f', 'r', 'b', 'c', 'p', 'i', 'tab', 'm', ...ARROWS];
+const GAME_KEYS = ['w', 'a', 's', 'd', ' ', 'e', 'q', 'f', 'r', 'b', 'c', 'p', 'i', 'tab', 'm', 'shift', ...ARROWS];
 const DEADZONE = 0.22;
 
 /**
@@ -76,6 +76,7 @@ export class Controls {
     if (e.repeat) return;
     this.held.add(k);
     if (k === ' ') this.pending.add('honk');
+    if (k === 'shift') this.pending.add('roll');
     if (k === 'e') this.pending.add('yank');
     if (k === 'q') this.pending.add('letGo');
     if (k === 'f') this.pending.add('feed');
@@ -98,7 +99,7 @@ export class Controls {
     const ls = pad.leftStick;
     if (Math.hypot(ls.x, ls.y) > DEADZONE) this.aimMode = this.aimMode === 'pad' || Math.hypot(rs.x, rs.y) > 0.5 ? 'pad' : this.aimMode;
     const now: Record<string, boolean> = {
-      fling: pad.R2 > 0.5, yank: pad.L2 > 0.5 || pad.R1 > 0.5, honk: pad.A, letGo: pad.B, feed: pad.X, cycle: pad.Y, patch: pad.L1 > 0.5,
+      fling: pad.R2 > 0.5, yank: pad.L2 > 0.5 || pad.R1 > 0.5, honk: pad.A, roll: pad.B, letGo: pad.isButtonDown(11), feed: pad.X, cycle: pad.Y, patch: pad.L1 > 0.5,
       book: pad.isButtonDown(9), pack: pad.isButtonDown(8),
     };
     for (const [k, v] of Object.entries(now)) {

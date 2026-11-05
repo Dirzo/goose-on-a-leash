@@ -63,6 +63,7 @@ export class ArtRenderer {
   private cam: Vec | null = null;
   private lead: Vec = { x: 0, y: 0 };
   /** Squash-and-stretch springs (0 = rest). */
+  private rolled = false;
   private sqB = 0; private sqR = 0; private wasAir = false; private snapFlash = 0; private power = 2;
 
   constructor(private scene: Phaser.Scene, sim: Sim) {
@@ -425,17 +426,33 @@ export class ArtRenderer {
     if (Math.abs(pl.fx) > 0.25) this.faceL = pl.fx < 0;
     const strip = `rocco_${moving ? 'walk' : 'idle'}${pk.enabled && pk.holes > 0 ? '_leak' : ''}${pk.enabled && pk.water < 0.3 ? '_dry' : ''}`;
     this.show(this.rocco, strip, Math.floor(time * (moving ? 10 : 6)));
-    const lift = pl.air ? 8 : 0;
-    this.rocco.setFlipX(this.faceL).setPosition(Math.round(P.x), Math.round(P.y - lift)).setDepth(P.y);
-    this.rocco.setAlpha(pl.inv > 0 && Math.floor(time * 16) % 2 ? 0.35 : 1);
-    this.rocco.setAngle(pl.dead > 0 ? (this.faceL ? 90 : -90) : 0);
+    const rolling = pl.roll > 0, ru = rolling ? 1 - pl.roll / C.rollTime : 0;
+    const lift = pl.air ? 8 : rolling ? Math.sin(ru * Math.PI) * 5 : 0;
+    const sd = SPRITES[strip]!;
+    if (rolling) {
+      // tumble round his middle, not his feet
+      const oy = 0.62, dy = sd.anchor[1] - oy * sd.h;
+      this.rocco.setOrigin(sd.anchor[0] / sd.w, oy);
+      this.rocco.setFlipX(this.faceL).setPosition(Math.round(P.x), Math.round(P.y - lift - dy)).setDepth(P.y);
+      this.rocco.setAngle((pl.rdx < 0 ? -1 : 1) * 360 * Math.min(1, ru * 1.25));
+      this.rolled = true;
+    } else {
+      if (this.rolled) { this.setOrigin(this.rocco, strip); this.rolled = false; this.sqR = Math.max(this.sqR, 0.6); }
+      this.rocco.setFlipX(this.faceL).setPosition(Math.round(P.x), Math.round(P.y - lift)).setDepth(P.y);
+      this.rocco.setAngle(pl.dead > 0 ? (this.faceL ? 90 : -90) : 0);
+    }
+    this.rocco.setAlpha(pl.inv > 0 && !rolling && Math.floor(time * 16) % 2 ? 0.35 : 1);
     if (this.wasAir && !pl.air) this.sqR = 1;           // landing from a yank
     this.wasAir = pl.air;
     const sr = Math.sin(this.sqR * Math.PI) * 0.18;
-    this.rocco.setScale(1 + sr, pl.air ? 1.08 : 1 - sr);
+    this.rocco.setScale(1 + sr, pl.air ? 1.08 : rolling ? 0.86 : 1 - sr);
+    if (rolling) for (let i = 1; i <= 3; i++) {          // a dust trail behind the tumble
+      const k = i / 3, a = 0.35 * (1 - k) * (1 - ru * 0.5);
+      g.fillStyle(0x8a7a5a, a); g.fillEllipse(P.x - pl.rdx * 14 * i, P.y + 2 - pl.rdy * 10 * i, 14 - i * 2, 5);
+    }
     g.fillStyle(0x000000, 0.35); g.fillEllipse(P.x + 1, P.y + 1, 24, 7);
     const tip = point(strip, 'rodTip', this.faceL), koi = point(strip, 'koi', this.faceL);
-    const tipW = { x: Math.round(P.x) + tip.x, y: Math.round(P.y - lift) + tip.y };
+    const tipW = rolling ? { x: Math.round(P.x), y: Math.round(P.y - 22) } : { x: Math.round(P.x) + tip.x, y: Math.round(P.y - lift) + tip.y };
     // leak: drips fall from the pack, puddles where they land
     if (pk.enabled && pk.holes > 0 && pl.dead <= 0) {
       this.dripAcc += dt * pk.holes * 7;
@@ -449,12 +466,13 @@ export class ArtRenderer {
     for (const d of this.drips) { this.fxg.fillStyle(0x9ae0ff, 1); this.fxg.fillRect(Math.round(d.x), Math.round(d.y - d.z), 1, 2); }
 
     // ---- Biscuit
-    const flying = go.state === 'flying' || go.state === 'latched';
+    const hauled = go.state === 'held' && go.drag > 0;     // dragged along after a roll: flapping
+    const flying = go.state === 'flying' || go.state === 'latched' || hauled;
     const bstrip = flying ? 'biscuit_fling' : 'biscuit_idle';
     const bflip = go.face < 0;
     const waddle = go.state === 'loose' || go.state === 'returning';
     this.show(this.biscuit, bstrip, Math.floor(time * (flying ? 16 : waddle ? 12 : 6)));
-    const glift = go.state === 'flying' ? 10 : 0;
+    const glift = go.state === 'flying' ? 10 : hauled ? 3 + Math.abs(Math.sin(time * 20)) * 3 : 0;
     this.biscuit.setFlipX(bflip).setPosition(Math.round(G.x), Math.round(G.y - glift)).setDepth(G.y);
     const sb = Math.sin(this.sqB * Math.PI) * 0.22, stretch = go.state === 'flying' ? 0.1 : 0;
     this.biscuit.setScale(1 + sb + stretch, 1 - sb - stretch * 0.6);

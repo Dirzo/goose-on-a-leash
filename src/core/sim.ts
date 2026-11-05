@@ -36,6 +36,8 @@ export interface RoomMemory { gateOpen: boolean; bread: boolean[]; chest: boolea
 export interface Player {
   x: number; y: number; r: number; vx: number; vy: number;
   hp: number; inv: number; air: boolean; pull: Target | null;
+  /** Dodge roll: seconds left (0 = not rolling), cooldown, and its direction. */
+  roll: number; rollCd: number; rdx: number; rdy: number;
   /** Last movement direction; the goose trails behind it. */
   fx: number; fy: number;
   dead: number; // seconds left of the death pause, 0 when alive
@@ -86,6 +88,8 @@ export interface Goose {
   x: number; y: number; vx: number; vy: number; state: GooseState; feral: boolean;
   strain: number; target: Target | null; ox: number; oy: number; face: 1 | -1;
   t: number; fury: number; furious: number; tug: number; honkCd: number; biteT: number; grabCd: number;
+  /** Seconds left of being hauled along by the leash (after Rocco rolls away): he scrambles and flaps. */
+  drag: number;
 }
 
 export interface Item { mat: ItemId; x: number; y: number; vx: number; vy: number; t: number; got?: boolean }
@@ -107,7 +111,7 @@ export interface Pack {
 export interface InputFrame {
   moveX: number; moveY: number;
   aimX: number; aimY: number;
-  fling?: boolean; yank?: boolean; honk?: boolean; letGo?: boolean; feed?: boolean; cycle?: boolean; patch?: boolean;
+  fling?: boolean; yank?: boolean; honk?: boolean; letGo?: boolean; feed?: boolean; cycle?: boolean; patch?: boolean; roll?: boolean;
 }
 
 export type FxKind = 'honk' | 'chomp' | 'boing' | 'poof' | 'ring' | 'snap' | 'bread' | 'pick' | 'tear' | 'splash' | 'faint' | 'patch' | 'wake' | 'chest' | 'gust' | 'slam'
@@ -207,7 +211,7 @@ export class Sim {
   /** Start fresh in a room: full hearts, a full pack, room memory kept. */
   reset(def: RoomDef = this.room?.def ?? ROOM_01): void {
     const s = def.playerStart;
-    this.player = { x: s.x, y: s.y, r: C.playerRadius, vx: 0, vy: 0, hp: C.maxHp, inv: 0, air: false, pull: null, fx: 1, fy: 0, dead: 0 };
+    this.player = { x: s.x, y: s.y, r: C.playerRadius, vx: 0, vy: 0, hp: C.maxHp, inv: 0, air: false, pull: null, fx: 1, fy: 0, dead: 0, roll: 0, rollCd: 0, rdx: 1, rdy: 0 };
     this.pack = { enabled: !!(def.refills?.length || def.barrels?.length), water: 1, holes: 0, patches: 0, needles: C.kitNeedles, lastWater: { ...s }, refilling: false };
     this.buff = { noFury: 0, bagel: 0, mega: 0 };
     this.time = 0; this.won = false; this.clearT = 0; this.handled = 0;
@@ -229,7 +233,7 @@ export class Sim {
     const s = door ? door.spawn : def.playerStart;
     const hp = revive ? C.maxHp : this.player?.hp ?? C.maxHp;
     this.player = { x: s.x, y: s.y, r: C.playerRadius, vx: 0, vy: 0, hp, inv: 0.8, air: false, pull: null,
-      fx: door ? Math.sign(def.width / 2 - s.x) || 1 : 1, fy: 0, dead: 0 };
+      fx: door ? Math.sign(def.width / 2 - s.x) || 1 : 1, fy: 0, dead: 0, roll: 0, rollCd: 0, rdx: 1, rdy: 0 };
     const pk = this.pack;
     this.pack = { enabled: !!(def.refills?.length || def.barrels?.length), water: revive ? 1 : pk?.water ?? 1,
       holes: revive ? Math.min(pk?.holes ?? 0, C.faintHolesKept) : pk?.holes ?? 0, patches: pk?.patches ?? 0,
@@ -403,7 +407,7 @@ export class Sim {
     const mem = this.world[def.id];
     if (mem?.gateOpen) this.room.gateClosed = false;
     this.goose = { x: s.x - 30 * (this.player.fx || 1), y: s.y, vx: 0, vy: 0, state: 'held', feral: false, strain: 0, target: null, ox: 0, oy: 0, face: 1,
-      t: 0, fury: 0, furious: 0, tug: 0, honkCd: 0, biteT: 0, grabCd: 0 };
+      t: 0, fury: 0, furious: 0, tug: 0, honkCd: 0, biteT: 0, grabCd: 0, drag: 0 };
     this.enemies = def.enemies.map(e => this.mkEnemy(e.kind, e.x, e.y));
     if (mem?.boss) for (const e of this.enemies) if (BOSS.has(e.kind)) { e.woke = 0.001; e.hp = 0; }   // already beaten: friendly
     this.items = []; this.darts = []; this.puddles = []; this.puddleT = 1;
@@ -460,6 +464,57 @@ export class Sim {
     g.x = p.x + dx * 18; g.y = p.y + dy * 18; g.vx = dx * fs; g.vy = dy * fs;
     g.state = 'flying'; g.face = dx >= 0 ? 1 : -1;
     this.say(this.pick('fling'));
+  }
+
+  /** True in the safe opening of a roll. */
+  rollSafe(): boolean { return this.player.roll > C.rollTime - C.rollIframes; }
+
+  /**
+   * Dodge roll in the direction Rocco is moving (or facing). Being yanked through the air, a roll is
+   * impossible. The leash still applies: see stepGoose, where the rope can catch him mid-roll.
+   */
+  roll(input?: InputFrame): void {
+    const p = this.player, g = this.goose, pk = this.pack;
+    if (this.won || p.dead || p.pull || p.air || p.roll > 0 || p.rollCd > 0) return;
+    let dx = input?.moveX ?? 0, dy = input?.moveY ?? 0;
+    let l = Math.hypot(dx, dy);
+    if (l < 0.2) { dx = p.fx; dy = p.fy; l = Math.hypot(dx, dy) || 1; }
+    p.rdx = dx / l; p.rdy = dy / l;
+    p.roll = C.rollTime; p.rollCd = C.rollTime + C.rollCooldown;
+    p.vx = p.rdx * C.rollSpeed; p.vy = p.rdy * C.rollSpeed;
+    if (pk.enabled) {
+      const slosh = C.rollSlosh * (1 + 0.5 * pk.holes);
+      pk.water = Math.max(0.001, pk.water - slosh);
+      if (pk.holes) this.fx('splash', p.x - p.rdx * 14, p.y - 30);
+    }
+    if (g.state === 'held') g.drag = 0.5;       // he didn't see that coming
+  }
+
+  /**
+   * How much of the rope's pull Biscuit wins when it goes taut between them (0 = Rocco drags him
+   * wherever, 1 = he drags Rocco). A goose stronger than his leash, or furious, pulls harder.
+   */
+  gooseWeight(): number {
+    const g = this.goose;
+    return clamp(0.28 + 0.12 * this.gap() + (g.furious > 0 ? 0.15 : 0), 0.15, 0.65);
+  }
+
+  /** The rope is taut between Rocco and Biscuit: split the correction and the separating speed between them. */
+  private taut(dx: number, dy: number, d: number, L: number, w: number): void {
+    const p = this.player, g = this.goose, room = this.room;
+    const nx = dx / d, ny = dy / d, ex = d - L;
+    // Rocco gets pulled toward Biscuit by his share, unless that would drag him into the water: he braces
+    let pw = p.pull || p.air ? 0 : w;
+    if (pw > 0 && (room.inPit(p.x + nx * ex * pw, p.y + ny * ex * pw, 6) || room.inPit(p.x + nx * 26, p.y + ny * 26, 6))) pw = 0;
+    p.x += nx * ex * pw; p.y += ny * ex * pw; room.collide(p);
+    const gx = p.x + nx * L, gy = p.y + ny * L;
+    g.x = gx; g.y = gy;
+    // inelastic rope: remove the separating speed, shared by weight
+    const vr = (g.vx - p.vx) * nx + (g.vy - p.vy) * ny;
+    if (vr > 0) {
+      g.vx -= nx * vr * (1 - pw); g.vy -= ny * vr * (1 - pw);
+      p.vx += nx * vr * pw; p.vy += ny * vr * pw;
+    }
   }
 
   yank(): void {
@@ -699,7 +754,7 @@ export class Sim {
    */
   hurtPlayer(amt = 1, heavy = false, from?: Vec, kind?: AttackKind): void {
     const p = this.player, pk = this.pack;
-    if (p.inv > 0 || p.air || p.dead) return;
+    if (p.inv > 0 || p.air || p.dead || this.rollSafe()) return;
     p.inv = C.invulnerable;
     if (!pk.enabled) {
       p.hp -= amt;
@@ -757,6 +812,7 @@ export class Sim {
       if (input.feed) this.feedBread();
       if (input.cycle) this.cycleBread();
       if (input.patch) this.patchPack();
+      if (input.roll) this.roll(input);
     }
 
     // timers and buffs
@@ -884,8 +940,21 @@ export class Sim {
         if (al > 24) { p.fx = ax2 / al; p.fy = ay2 / al; }
       }
       const acc = 1 - Math.exp(-14 * dt);
-      const sp = C.playerSpeed * (this.puddles.length && this.inPuddle(p.x, p.y) ? 0.5 : 1);   // wading through a puddle
-      p.vx += (mx * sp - p.vx) * acc; p.vy += (my * sp - p.vy) * acc;
+      const wade = this.puddles.length && this.inPuddle(p.x, p.y) ? 0.5 : 1;   // wading through a puddle
+      if (p.roll > 0) {
+        // committed to the tumble: fast, easing out, steerable only a little
+        if (ml > 0.2) {
+          const t = Math.min(1, dt * 4), nx = p.rdx + (mx - p.rdx) * t, ny = p.rdy + (my - p.rdy) * t, nl = Math.hypot(nx, ny) || 1;
+          p.rdx = nx / nl; p.rdy = ny / nl;
+        }
+        const u = 1 - p.roll / C.rollTime, sp = C.rollSpeed * (1 - 0.65 * u) * (wade < 1 ? 0.7 : 1);
+        const k = 1 - Math.exp(-30 * dt);
+        p.vx += (p.rdx * sp - p.vx) * k; p.vy += (p.rdy * sp - p.vy) * k;
+        p.fx = p.rdx; p.fy = p.rdy;
+      } else {
+        const sp = C.playerSpeed * wade;
+        p.vx += (mx * sp - p.vx) * acc; p.vy += (my * sp - p.vy) * acc;
+      }
       // a goose stronger than his leash tugs you around
       if ((g.furious > 0 || calmTug) && g.state === 'held') {
         g.tug -= dt;
@@ -894,7 +963,7 @@ export class Sim {
           const e = this.nearestEnemy(p.x, p.y);
           let a = e ? Math.atan2(e.y - p.y, e.x - p.x) : this.rng() * Math.PI * 2;
           a += (this.rng() - 0.5) * 1.2;
-          const tug = (calmTug ? 110 * this.gap() : 300 * Math.max(0.35, 1 + 0.5 * this.gap())) * this.kit.stat('tug');
+          const tug = (calmTug ? 110 * this.gap() : 300 * Math.max(0.35, 1 + 0.5 * this.gap())) * this.kit.stat('tug') * (p.roll > 0 ? 0.5 : 1);
           p.vx += Math.cos(a) * tug; p.vy += Math.sin(a) * tug;
         }
       }
@@ -905,7 +974,10 @@ export class Sim {
       for (let i = 0; i < sub; i++) { p.x += (p.vx * dt) / sub; p.y += (p.vy * dt) / sub; room.collide(p); }
       this.keepInside(p);
     }
+    if (p.roll > 0) { p.roll = Math.max(0, p.roll - dt); if (p.roll === 0) { p.vx *= 0.45; p.vy *= 0.45; } }
+    p.rollCd = Math.max(0, p.rollCd - dt);
     if (!p.air && room.inPit(p.x, p.y, 6)) {
+      p.roll = 0;
       const pond = this.pack.enabled;
       if (!pond) this.hurtPlayer();
       const sp = room.def.respawns ? room.def.respawns[room.pitSide(p.x)] : this.lastSafe;
@@ -1464,7 +1536,9 @@ export class Sim {
     g.t -= dt;
     if (g.state === 'held' || g.state === 'returning') {
       if (g.state === 'held') {
-        const tx = p.x - p.fx * 34, ty = p.y - p.fy * 34, k = 1 - Math.exp(-9 * dt);
+        g.drag = Math.max(0, g.drag - dt);
+        // hauled along after a roll he scrambles to catch up, lagging behind; otherwise he trots at heel
+        const tx = p.x - p.fx * 34, ty = p.y - p.fy * 34, k = 1 - Math.exp(-(g.drag > 0 ? 3.5 : 9) * dt);
         g.vx = ((tx - g.x) / Math.max(dt, 1e-3)) * k; g.vy = ((ty - g.y) / Math.max(dt, 1e-3)) * k;
       } else {
         const [dx, dy, d] = dirTo(g, p);
@@ -1519,11 +1593,24 @@ export class Sim {
         if (d > L && !p.pull) {
           const ex = d - L;
           if (isPost(t) || t.heavy) {
+            // the rope holds Rocco to the anchor: he can swing round it, not away from it
             p.x -= (dx / d) * ex; p.y -= (dy / d) * ex;
             const vr = (p.vx * dx + p.vy * dy) / d;
-            if (vr > 0) { p.vx -= (dx / d) * vr; p.vy -= (dy / d) * vr; }
+            if (vr > 0) {
+              p.vx -= (dx / d) * vr; p.vy -= (dy / d) * vr;
+              if (p.roll > 0 && vr > 160) {      // rolled out to the end of the rope: it catches him with a jolt
+                p.roll = 0; p.vx -= (dx / d) * vr * 0.35; p.vy -= (dy / d) * vr * 0.35;
+                this.fx('boing', p.x - (dx / d) * 20, p.y - (dy / d) * 20);
+                this.say(isPost(t) ? 'The leash catches you mid-roll.' : 'Oof. Biscuit is still hanging on to that.');
+                if (g.furious > 0) g.strain = Math.min(0.99, g.strain + 0.08);
+              }
+            }
             room.collide(p);
-          } else { t.x += (dx / d) * ex; t.y += (dy / d) * ex; room.collide(t); }
+          } else {
+            // a little critter gets dragged along, and a roll yanks it off its feet
+            t.x += (dx / d) * ex; t.y += (dy / d) * ex; room.collide(t);
+            if (p.roll > 0) { t.vx += (dx / d) * 260 * dt * 20; t.vy += (dy / d) * 260 * dt * 20; t.stun = Math.max(t.stun, 0.5); }
+          }
         }
       }
     } else if (g.state === 'loose') {
@@ -1581,8 +1668,11 @@ export class Sim {
     if (g.state === 'flying' || g.state === 'held') {
       const dx = g.x - p.x, dy = g.y - p.y, d = Math.hypot(dx, dy);
       if (d > L) {
-        g.x = p.x + (dx / d) * L; g.y = p.y + (dy / d) * L;
-        if (g.state === 'flying') { g.state = 'held'; this.say(this.pick('boing')); this.fx('boing', g.x, g.y); }
+        // the rope goes taut: they pull on each other. A fling reaching the end tugs Rocco a little;
+        // Rocco rolling or running away hauls Biscuit along.
+        const w = g.state === 'flying' ? this.gooseWeight() * 0.5 : (p.roll > 0 || g.drag > 0 ? this.gooseWeight() : 0);
+        this.taut(dx, dy, d, L, w);
+        if (g.state === 'flying') { g.state = 'held'; g.drag = 0.35; this.say(this.pick('boing')); this.fx('boing', g.x, g.y); }
       }
     }
 

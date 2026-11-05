@@ -48,6 +48,12 @@ export const C = {
   grabCooldown: 1.2,
   maxHp: 5,
   invulnerable: 1.1,
+  // dodge roll: a quick tumble with a moment of safety. The pack sloshes a little each time.
+  rollTime: 0.36,
+  rollSpeed: 470,
+  rollIframes: 0.26,
+  rollCooldown: 0.5,
+  rollSlosh: 0.004,
   bunnySpawnEvery: 6,
   maxBunnies: 4,
   knightRespawn: 25,

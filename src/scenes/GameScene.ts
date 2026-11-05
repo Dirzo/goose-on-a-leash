@@ -90,6 +90,7 @@ export class GameScene extends Phaser.Scene {
 
   private modes = new Map<number, string>();
   /** Sounds that come from state, not events: critters winding up, the leash creak, the rain. */
+  private wasRolling = false;
   private listen(): void {
     const sim = this.sim;
     for (const e of sim.enemies) {
@@ -103,6 +104,9 @@ export class GameScene extends Phaser.Scene {
         if (now === 'call') sound.play('kraa');
       }
     }
+    const rolling = sim.player.roll > 0;
+    if (rolling && !this.wasRolling) sound.play('whoosh');
+    this.wasRolling = rolling;
     const g = sim.goose, taut = Math.hypot(g.x - sim.player.x, g.y - sim.player.y) > sim.leashLen() * 0.95 && sim.leashAttached;
     sound.setStrain(this.paused ? 0 : Math.max(g.strain, taut ? 0.3 : 0));
     sound.setRain(sim.storming && !this.paused);
