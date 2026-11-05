@@ -1,0 +1,214 @@
+{
+ "rocco_idle": {
+  "w": 76,
+  "h": 80,
+  "frames": 8,
+  "anchor": [
+   40,
+   69
+  ],
+  "points": {
+   "rodTip": [
+    72,
+    20
+   ],
+   "koi": [
+    21,
+    31
+   ]
+  }
+ },
+ "rocco_idle_dry": {
+  "w": 76,
+  "h": 80,
+  "frames": 8,
+  "anchor": [
+   40,
+   69
+  ],
+  "points": {
+   "rodTip": [
+    72,
+    20
+   ],
+   "koi": [
+    21,
+    31
+   ]
+  }
+ },
+ "rocco_idle_leak": {
+  "w": 76,
+  "h": 80,
+  "frames": 8,
+  "anchor": [
+   40,
+   69
+  ],
+  "points": {
+   "rodTip": [
+    72,
+    20
+   ],
+   "koi": [
+    21,
+    31
+   ]
+  }
+ },
+ "rocco_idle_leak_dry": {
+  "w": 76,
+  "h": 80,
+  "frames": 8,
+  "anchor": [
+   40,
+   69
+  ],
+  "points": {
+   "rodTip": [
+    72,
+    20
+   ],
+   "koi": [
+    21,
+    31
+   ]
+  }
+ },
+ "rocco_walk": {
+  "w": 76,
+  "h": 80,
+  "frames": 8,
+  "anchor": [
+   40,
+   69
+  ],
+  "points": {
+   "rodTip": [
+    72,
+    20
+   ],
+   "koi": [
+    21,
+    31
+   ]
+  }
+ },
+ "rocco_walk_dry": {
+  "w": 76,
+  "h": 80,
+  "frames": 8,
+  "anchor": [
+   40,
+   69
+  ],
+  "points": {
+   "rodTip": [
+    72,
+    20
+   ],
+   "koi": [
+    21,
+    31
+   ]
+  }
+ },
+ "rocco_walk_leak": {
+  "w": 76,
+  "h": 80,
+  "frames": 8,
+  "anchor": [
+   40,
+   69
+  ],
+  "points": {
+   "rodTip": [
+    72,
+    20
+   ],
+   "koi": [
+    21,
+    31
+   ]
+  }
+ },
+ "rocco_walk_leak_dry": {
+  "w": 76,
+  "h": 80,
+  "frames": 8,
+  "anchor": [
+   40,
+   69
+  ],
+  "points": {
+   "rodTip": [
+    72,
+    20
+   ],
+   "koi": [
+    21,
+    31
+   ]
+  }
+ },
+ "biscuit_idle": {
+  "w": 48,
+  "h": 62,
+  "frames": 8,
+  "anchor": [
+   24,
+   58
+  ],
+  "points": {
+   "neck": [
+    31,
+    26
+   ]
+  }
+ },
+ "biscuit_fling": {
+  "w": 52,
+  "h": 46,
+  "frames": 8,
+  "anchor": [
+   22,
+   28
+  ],
+  "points": {
+   "neck": [
+    32,
+    16
+   ]
+  }
+ },
+ "frog": {
+  "w": 26,
+  "h": 20,
+  "frames": 2,
+  "anchor": [
+   13,
+   15
+  ],
+  "points": {}
+ },
+ "frog_awake": {
+  "w": 26,
+  "h": 20,
+  "frames": 2,
+  "anchor": [
+   13,
+   15
+  ],
+  "points": {}
+ },
+ "snapper": {
+  "w": 64,
+  "h": 30,
+  "frames": 2,
+  "anchor": [
+   30,
+   24
+  ],
+  "points": {}
+ }
+}

@@ -7,13 +7,14 @@ import { Kit } from './crafting';
 import { angDiff, clamp, dirTo, inRect, mulberry32, type Rng, type Vec } from './math';
 import { Room } from './room';
 import { Rope } from './rope';
-import { ROOM_01, type RoomDef } from '../data/rooms';
+import { ROOM_01, type EnemyKind, type RoomDef } from '../data/rooms';
 import { ITEMS, breadById, isCatalyst, leashById, type BreadId, type ItemId, type LeashId } from '../data/recipes';
 
 // ---------------------------------------------------------------- types
 
 export type GooseState = 'held' | 'flying' | 'latched' | 'loose' | 'returning';
-export type EnemyKind = 'bunny' | 'knight';
+export type { EnemyKind };
+const HEAVY: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['knight', 'snapper']);
 
 export interface Player {
   x: number; y: number; r: number; vx: number; vy: number;
@@ -43,14 +44,24 @@ export interface Item { mat: ItemId; x: number; y: number; vx: number; vy: numbe
 
 export interface Buffs { noFury: number; bagel: number; mega: number }
 
+/** The backpack that keeps the Moon Koi alive. Only active in rooms that have refill zones. */
+export interface Pack {
+  enabled: boolean;
+  water: number;          // 0-1
+  holes: number;
+  patches: number;        // sewn on so far (shown on the sprite)
+  lastWater: Vec;         // where Rocco wakes if the koi faints
+  refilling: boolean;
+}
+
 /** One step's worth of player intent. Verb flags are edges: true only on the step they were pressed. */
 export interface InputFrame {
   moveX: number; moveY: number;
   aimX: number; aimY: number;
-  fling?: boolean; yank?: boolean; honk?: boolean; letGo?: boolean; feed?: boolean; cycle?: boolean;
+  fling?: boolean; yank?: boolean; honk?: boolean; letGo?: boolean; feed?: boolean; cycle?: boolean; patch?: boolean;
 }
 
-export type FxKind = 'honk' | 'chomp' | 'boing' | 'poof' | 'ring' | 'snap' | 'bread' | 'pick';
+export type FxKind = 'honk' | 'chomp' | 'boing' | 'poof' | 'ring' | 'snap' | 'bread' | 'pick' | 'tear' | 'splash' | 'faint' | 'patch';
 export type SimEvent =
   | { type: 'say'; text: string }
   | { type: 'fx'; kind: FxKind; x: number; y: number; a?: number; cone?: number; range?: number; text?: string }
@@ -63,7 +74,9 @@ const QUIPS = {
   boing: ['BOING. Leash tight.', 'Leash limit!'],
   refuse: ['The goose refuses.', 'Goose says no.', 'Not now, janitor.'],
   pit: ['Down the hole!', 'Pit disposal complete', 'Bye bye'],
+  splash: ['SPLASH! Into the pond.', 'Glub glub.', 'Back to the water with you.'],
   fall: ['You fell in. The goose laughs.'],
+  swim: ['Rocco fell in the pond. Biscuit honks with laughter.'],
   honk: ['HONK'],
   furious: ['FURY MODE. You are not in charge.'],
 } as const;
@@ -81,6 +94,7 @@ export class Sim {
   items: Item[] = [];
   breadGot: boolean[] = [];
   buff: Buffs = { noFury: 0, bagel: 0, mega: 0 };
+  pack!: Pack;
   rope!: Rope;
   time = 0;
   won = false;
@@ -128,6 +142,7 @@ export class Sim {
     this.items = [];
     this.breadGot = def.breadSpots.map(() => false);
     this.buff = { noFury: 0, bagel: 0, mega: 0 };
+    this.pack = { enabled: !!def.refills?.length, water: 1, holes: 0, patches: 0, lastWater: { ...s }, refilling: false };
     this.rope = new Rope(s);
     this.time = 0; this.won = false; this.clearT = 0; this.handled = 0;
     this.spawnT = 4; this.knightT = 0; this.clapperCd = 0; this.rang = false; this.bucketCd = 0;
@@ -136,7 +151,7 @@ export class Sim {
   }
 
   mkEnemy(kind: EnemyKind, x: number, y: number): Enemy {
-    const k = kind === 'knight';
+    const k = HEAVY.has(kind);
     return { id: this.nextId++, kind, x, y, r: k ? 20 : 13, hp: k ? 8 : 3, max: k ? 8 : 3, heavy: k, stun: 0,
       vx: 0, vy: 0, falling: 0, dead: false, hitT: 0, spd: k ? 42 : 78 };
   }
@@ -281,6 +296,42 @@ export class Sim {
     this.say(`Bread ready: ${breadById(id).name} ×${this.kit.bread[id]}`);
   }
 
+  /** Sew a patch over one hole, using Reed Fiber. */
+  patchPack(): boolean {
+    const pk = this.pack;
+    if (!pk.enabled || this.won || this.player.dead) return false;
+    if (pk.holes <= 0) { this.say('No holes to patch. The koi thanks you anyway.'); return false; }
+    if (this.kit.mats.fluff < C.patchCost) { this.say(`Need ${C.patchCost} Reed Fiber to patch. Frogs drop it.`); return false; }
+    this.kit.mats.fluff -= C.patchCost;
+    pk.holes--; pk.patches++;
+    this.fx('patch', this.player.x - 10, this.player.y - 30);
+    this.say(pk.holes ? `Patched one. ${pk.holes} left.` : 'Pack patched. No more leaks.');
+    return true;
+  }
+
+  private stepPack(dt: number): void {
+    const pk = this.pack, p = this.player;
+    if (!pk.enabled || p.dead) return;
+    const was = pk.refilling;
+    pk.refilling = !p.air && this.room.inRefill(p.x, p.y);
+    if (pk.refilling) {
+      pk.water = Math.min(1, pk.water + C.refillRate * dt);
+      pk.lastWater = { x: p.x, y: p.y };
+      if (!was && pk.water < 0.98) { this.fx('splash', p.x - 10, p.y - 34); this.say('Refilling the pack. The koi perks up.'); }
+      return;
+    }
+    const before = pk.water;
+    pk.water = Math.max(0, pk.water - (C.packDrain + C.holeDrain * pk.holes) * dt);
+    if (before >= 0.3 && pk.water < 0.3) this.say('The Moon Koi is gasping. Find water!');
+    if (pk.water <= 0) {
+      this.fx('faint', p.x, p.y - 40);
+      this.say('The Moon Koi fainted! Rocco runs it back to the water…');
+      p.x = pk.lastWater.x; p.y = pk.lastWater.y; p.vx = p.vy = 0; p.pull = null; p.air = false; p.inv = 1.5;
+      const g = this.goose; g.state = 'held'; g.feral = false; g.x = p.x - 30; g.y = p.y;
+      pk.water = C.faintRefill;
+    }
+  }
+
   craftLeash(id: LeashId): boolean {
     const ok = this.kit.craftLeash(id);
     if (ok) { this.goose.strain = 0; this.say(`Crafted & equipped: ${leashById(id).name}`); }
@@ -325,7 +376,7 @@ export class Sim {
     if (e.hp > 0) return;
     e.dead = true; this.handled++;
     this.fx('poof', e.x, e.y);
-    if (e.kind === 'bunny') { this.drop('fluff', e.x, e.y); if (this.rng() < 0.45) this.drop('crust', e.x, e.y); }
+    if (!e.heavy) { this.drop('fluff', e.x, e.y); if (this.rng() < 0.45) this.drop('crust', e.x, e.y); }
     else { this.drop('chain', e.x, e.y, 2); this.drop('crest', e.x, e.y); }
     if (this.goose.target === e && this.goose.state === 'latched') this.goose.state = 'held';
   }
@@ -334,7 +385,12 @@ export class Sim {
     const p = this.player;
     if (p.inv > 0 || p.air || p.dead) return;
     p.hp -= amt; p.inv = C.invulnerable;
-    if (p.hp <= 0) { p.dead = 0.9; this.say('The janitor is out. Resetting…'); }
+    if (this.pack.enabled && this.pack.holes < C.maxHoles && this.rng() < C.holeChance) {
+      this.pack.holes++;
+      this.fx('tear', p.x - 10, p.y - 30);
+      this.say(this.pack.holes === 1 ? 'Your pack tore! Water is leaking. [P] to patch.' : `Another hole! ${this.pack.holes} leaks now.`);
+    }
+    if (p.hp <= 0) { p.dead = 0.9; this.say(this.pack.enabled ? 'Rocco is out. Back to the dock…' : 'The janitor is out. Resetting…'); }
   }
 
   // ------------------------------------------------ step
@@ -353,6 +409,7 @@ export class Sim {
       if (input.letGo) this.letGo();
       if (input.feed) this.feedBread();
       if (input.cycle) this.cycleBread();
+      if (input.patch) this.patchPack();
     }
 
     // timers and buffs
@@ -394,8 +451,7 @@ export class Sim {
       it.x += it.vx * dt; it.y += it.vy * dt;
       const dec = Math.exp(-4 * dt); it.vx *= dec; it.vy *= dec;
       const o = { x: it.x, y: it.y, r: 6 }; room.collide(o); it.x = o.x; it.y = o.y;
-      const pit = room.def.pit;
-      if (pit && room.inPit(it.x, it.y, 0)) { it.x = room.pitSide(it.x) === 'left' ? pit.x - 10 : pit.x + pit.w + 10; it.vx *= -0.3; }
+      if (room.inPit(it.x, it.y, 0)) { const b = room.bankPoint(it.x, it.y, 10); it.x = b.x; it.y = b.y; it.vx *= -0.3; it.vy *= -0.3; }
       if (it.t > 0.4 && d < 20) {
         it.got = true; this.kit.mats[it.mat]++;
         if (isCatalyst(it.mat)) this.say(`✦ Catalyst: ${ITEMS[it.mat].name}!`);
@@ -413,19 +469,23 @@ export class Sim {
 
     // respawns so there is something to farm
     this.spawnT -= dt;
-    const bunnies = this.enemies.filter(e => !e.dead && e.kind === 'bunny').length;
+    const light = room.def.lightKind ?? 'bunny', heavy = room.def.heavyKind ?? 'knight';
+    const bunnies = this.enemies.filter(e => !e.dead && !e.heavy).length;
     if (this.spawnT <= 0) {
       this.spawnT = C.bunnySpawnEvery;
       const vents = room.def.vents;
       if (bunnies < C.maxBunnies && vents.length) {
         const v = vents[Math.floor(this.rng() * vents.length)]!;
-        this.enemies.push(this.mkEnemy('bunny', v.x, v.y)); this.fx('ring', v.x, v.y);
+        this.enemies.push(this.mkEnemy(light, v.x, v.y)); this.fx('ring', v.x, v.y);
       }
     }
     const ks = room.def.knightSpawn;
-    if (ks && !this.enemies.some(e => !e.dead && e.kind === 'knight')) {
+    if (ks && !this.enemies.some(e => !e.dead && e.heavy)) {
       this.knightT += dt;
-      if (this.knightT > C.knightRespawn) { this.knightT = 0; this.enemies.push(this.mkEnemy('knight', ks.x, ks.y)); this.say('A new knight clanks in.'); }
+      if (this.knightT > C.knightRespawn) {
+        this.knightT = 0; this.enemies.push(this.mkEnemy(heavy, ks.x, ks.y));
+        this.say(heavy === 'snapper' ? 'Old Snapper hauls himself back out of the water.' : 'A new knight clanks in.');
+      }
     }
     this.enemies = this.enemies.filter(e => !e.dead || e.falling);
     p.inv = Math.max(0, p.inv - dt);
@@ -469,12 +529,15 @@ export class Sim {
       this.keepInside(p);
     }
     if (!p.air && room.inPit(p.x, p.y, 6)) {
+      const pond = this.pack.enabled;
       this.hurtPlayer();
       const sp = room.def.respawns[room.pitSide(p.x)];
       p.x = sp.x; p.y = sp.y; p.vx = p.vy = 0;
       g.state = 'held'; g.x = p.x - 30; g.y = p.y;
-      this.say(this.pick('fall'));
+      if (pond) { this.pack.water = 1; this.fx('splash', p.x, p.y - 20); }   // at least the koi enjoyed it
+      this.say(this.pick(pond ? 'swim' : 'fall'));
     }
+    this.stepPack(dt);
     const exit = room.def.exit;
     if (exit && !room.gateClosed && inRect(p.x, p.y, exit)) { this.won = true; this.clearT = this.time; this.events.push({ type: 'won' }); }
 
@@ -497,9 +560,9 @@ export class Sim {
       room.collide(e);
       if (room.inPit(e.x, e.y, 2) && Math.hypot(e.vx, e.vy) > 0) {
         e.falling = 0.001; this.handled++;
-        const pit = room.def.pit!;
-        this.drop('goo', room.pitSide(e.x) === 'left' ? pit.x - 14 : pit.x + pit.w + 14, e.y);
-        this.say(this.pick('pit'));
+        const bank = room.bankPoint(e.x, e.y, 14);
+        this.drop('goo', bank.x, bank.y);
+        this.say(this.pick(this.pack.enabled ? 'splash' : 'pit'));
         if (g.target === e) g.state = 'held';
         continue;
       }

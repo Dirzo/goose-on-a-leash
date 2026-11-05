@@ -20,6 +20,7 @@ sys.path.insert(0, os.path.join(HERE, '..', 'characters'))
 from hdkit import Layer, composite, hx  # noqa: E402
 import rocco_hd  # noqa: E402
 import biscuit_hd  # noqa: E402
+from critters_hd import frog, snapper  # noqa: E402
 
 W, H = 640, 360
 FRAMES = 8
@@ -181,47 +182,6 @@ def background():
     return base, emit, water, sx
 
 # ---------------------------------------------------------------- creatures
-def frog(blink):
-    w, h = 26, 20
-    L = []
-    legs = Layer('legs', w, h, PT)
-    legs.ell(5, 15, 5, 3, 'F1'); legs.ell(20, 15, 5, 3, 'F1')
-    L.append(legs)
-    body = Layer('body', w, h, PT)
-    body.ell(13, 12, 9, 6, 'F2'); body.ell(13, 14, 6, 3.5, 'F3')
-    L.append(body)
-    eyes = Layer('eyes', w, h, PT)
-    for ex in (8, 18):
-        eyes.ell(ex, 6, 3.5, 3.5, 'F2')
-        eyes.ell(ex, 6, 2, 2, 'FR' if not blink else 'F1')
-        if not blink: eyes.px(ex - 1, 5, 'FR2')
-    eyes.line([(10, 14), (13, 15), (16, 14)], 'F0')
-    L.append(eyes)
-    return composite(L)
-
-def snapper(blink):
-    """Old Snapper, the tutorial boss, half-submerged: mossy shell, hooked beak, red eye."""
-    w, h = 64, 30
-    L = []
-    shell = Layer('shell', w, h, PT)
-    shell.ell(26, 20, 24, 14, 'T1')
-    for (cx, cy) in [(14, 14), (26, 11), (38, 14), (20, 21), (32, 21)]:
-        shell.ell(cx, cy, 6, 4, 'T2'); shell.ell(cx - 1, cy - 1, 3, 2, 'T3')
-    for x in range(6, 46, 5): shell.px(x, 8 + (x % 3), 'TSK2')            # moss specks
-    L.append(shell)
-    head = Layer('head', w, h, PT)
-    head.ell(52, 18, 9, 7, 'TSK')
-    head.poly([(58, 18), (63, 21), (57, 23)], 'T0')                       # hooked beak
-    head.ell(52, 15, 2, 2, 'FR' if not blink else 'TSK2')
-    L.append(head)
-    im = composite(L)
-    # waterline: the lower third is underwater
-    px = im.load()
-    for y in range(22, h):
-        for x in range(w):
-            if px[x, y][3]: px[x, y] = (0, 0, 0, 0)
-    return im
-
 # ---------------------------------------------------------------- frame
 BG, BG_EMIT, WATER_MASK, SHORE = background()
 RX, RY = 150, 152                    # Rocco's frame origin (76x80 sprite)

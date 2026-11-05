@@ -12,17 +12,41 @@ export class Room {
     return this.gateClosed && this.def.gate ? [...this.def.walls, this.def.gate] : this.def.walls;
   }
 
-  /** True when (x, y) is inside the pit, shrunk by `inset` on each side (negative grows it). */
-  inPit(x: number, y: number, inset = 4): boolean {
-    const p = this.def.pit;
-    if (!p) return false;
-    return x > p.x + inset && x < p.x + p.w - inset && y > p.y + inset && y < p.y + p.h - inset;
+  pits(): Rect[] { return this.def.pits ?? (this.def.pit ? [this.def.pit] : []); }
+
+  /** The pit rect containing (x, y), shrunk by `inset` (negative grows it), unless a bridge covers the point. */
+  pitAt(x: number, y: number, inset = 4): Rect | null {
+    for (const b of this.def.bridges ?? []) if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return null;
+    for (const p of this.pits()) {
+      if (x > p.x + inset && x < p.x + p.w - inset && y > p.y + inset && y < p.y + p.h - inset) return p;
+    }
+    return null;
   }
 
-  /** Which side of the pit an x position is on. */
+  /** True when (x, y) is inside a pit, shrunk by `inset` on each side (negative grows it), and not on a bridge. */
+  inPit(x: number, y: number, inset = 4): boolean { return this.pitAt(x, y, inset) !== null; }
+
+  /** Which side of the first pit an x position is on. */
   pitSide(x: number): 'left' | 'right' {
-    const p = this.def.pit;
+    const p = this.pits()[0];
     return !p || x < p.x + p.w / 2 ? 'left' : 'right';
+  }
+
+  /** Nearest point just outside the pit containing (x, y), `margin` units from its edge. */
+  bankPoint(x: number, y: number, margin = 14): { x: number; y: number } {
+    const p = this.pitAt(x, y, 0) ?? this.pitAt(x, y, -margin);
+    if (!p) return { x, y };
+    const opts = [
+      { d: x - p.x, x: p.x - margin, y }, { d: p.x + p.w - x, x: p.x + p.w + margin, y },
+      { d: y - p.y, x, y: p.y - margin }, { d: p.y + p.h - y, x, y: p.y + p.h + margin },
+    ].filter(o => !this.inPit(o.x, o.y, 0));
+    opts.sort((a, b) => a.d - b.d);
+    return opts[0] ?? { x, y };
+  }
+
+  /** True when (x, y) is in a shoreline refill zone. */
+  inRefill(x: number, y: number): boolean {
+    return (this.def.refills ?? []).some(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
   }
 
   /** Push a circle out of every solid. Returns true if it touched one. */

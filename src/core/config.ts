@@ -52,4 +52,12 @@ export const C = {
   maxBunnies: 4,
   knightRespawn: 25,
   bucketCooldown: 15,
+  // backpack: water fractions per second
+  packDrain: 0.004,       // a sound pack lasts about 4 minutes away from water
+  holeDrain: 0.012,       // each hole adds this; 3 holes empty a full pack in about 25 s
+  refillRate: 0.45,
+  holeChance: 0.6,        // chance a hit tears a hole
+  maxHoles: 3,
+  patchCost: 2,           // Reed Fiber per patch
+  faintRefill: 0.5,       // water after the koi faints and Rocco wakes at the last water
 } as const;

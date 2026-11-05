@@ -1,4 +1,7 @@
 import type { Circle, Rect, Vec } from '../core/math';
+import willowmereJson from './rooms/willowmere.json';
+
+export type EnemyKind = 'bunny' | 'knight' | 'frog' | 'snapper';
 
 /** A hand-built room. Until LDtk arrives (M2), rooms are authored here in world units (960×600). */
 export interface RoomDef {
@@ -12,15 +15,27 @@ export interface RoomDef {
   walls: Rect[];
   /** Removed once the gate opens. */
   gate: Rect | null;
-  pit: Rect | null;
+  /** Single pit (Room 01). Rooms with water use `pits` instead. */
+  pit?: Rect | null;
+  /** Water or holes: several rects; touching one means falling in. */
+  pits?: Rect[];
+  /** Walkable rects laid over pits (docks, bridges). */
+  bridges?: Rect[];
+  /** Shoreline zones that refill the backpack. A room with refills turns the backpack system on. */
+  refills?: Rect[];
   posts: Circle[];
   bell: Circle | null;
   exit: Rect | null;
   vents: Vec[];
   bucket: Vec | null;
   breadSpots: Vec[];
-  enemies: { kind: 'bunny' | 'knight'; x: number; y: number }[];
+  enemies: { kind: EnemyKind; x: number; y: number }[];
   knightSpawn: Vec | null;
+  /** Which enemy the vents spawn and which heavy enemy respawns (defaults: bunny / knight). */
+  lightKind?: EnemyKind;
+  heavyKind?: EnemyKind;
+  lantern?: Vec;
+  exitLabel?: string;
 }
 
 /** Room 01: the test room from the HTML prototype, kept 1:1 for parity checks. */
@@ -51,3 +66,8 @@ export const ROOM_01: RoomDef = {
   ],
   knightSpawn: { x: 760, y: 210 },
 };
+
+/** Willowmere Pond: the Act 1 hub, authored in src/data/rooms/willowmere.json (also read by the art script). */
+export const WILLOWMERE: RoomDef = willowmereJson as unknown as RoomDef;
+
+export const ROOMS: Record<string, RoomDef> = { 'room-01': ROOM_01, willowmere: WILLOWMERE };

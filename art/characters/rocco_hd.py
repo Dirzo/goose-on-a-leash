@@ -88,9 +88,11 @@ def composite(layers, outline_skip=()):
     for (x, y) in sil: dst[x, y] = C['out'] + (255,)
     return out
 
-def build(frame, leak=True, water_level=0.8):
+def build(frame, leak=True, water_level=0.8, walk=False):
     t = frame / FRAMES * math.tau
     bob = 1 if math.sin(t) > 0.3 else 0                  # 1 px idle bob
+    if walk: bob = frame % 2                              # quicker bounce while walking
+    step = (1 if frame % 4 < 2 else -1) if walk else 0    # legs alternate when walking
     kb = 1 if math.sin(t + 1.6) > 0 else 0               # koi bobs a little behind him
     flap = frame % 2
     ox, oy = 8, 2 + bob                                  # character origin inside the frame
@@ -129,10 +131,17 @@ def build(frame, leak=True, water_level=0.8):
     koi.ell(kx, ky, 5.5, 5, 'koiw')
     koi.ell(kx + 1, ky + 2, 4, 2.5, 'koiw2')                                # belly shade
     koi.ell(kx, ky - 5, 2, 1.2, 'koig')                                    # gold crest
-    for ex in (kx - 3, kx + 1):                                            # glossy eyes
-        koi.rect(ex, ky - 2, ex + 1, ky + 0, 'koie'); koi.px(ex, ky - 2, 'shine')
+    dry = water_level < 0.3
+    for ex in (kx - 3, kx + 1):
+        if dry:                                                            # droopy half-closed eyes
+            koi.line([(ex - 1, ky - 2), (ex + 2, ky - 2)], 'koie'); koi.rect(ex, ky - 1, ex + 1, ky, 'koie')
+        else:                                                              # glossy eyes
+            koi.rect(ex, ky - 2, ex + 1, ky + 0, 'koie'); koi.px(ex, ky - 2, 'shine')
     koi.px(kx - 4, ky + 1, 'koif'); koi.px(kx + 3, ky + 1, 'koif')          # blush
-    koi.px(kx - 1, ky + 2, 'koif'); koi.px(kx, ky + 2, 'mouth')             # pouty lips
+    if dry:                                                                # gasping mouth + sweat drop
+        koi.rect(kx - 1, ky + 2, kx, ky + 3, 'mouth'); koi.px(kx + 5, ky - 5, 'water2'); koi.px(kx + 5, ky - 4, 'water1')
+    else:
+        koi.px(kx - 1, ky + 2, 'koif'); koi.px(kx, ky + 2, 'mouth')         # pouty lips
     fy = ky + (0 if flap else 2)
     koi.poly([(kx - 5, ky + 2), (kx - 9, fy - 1), (kx - 8, fy + 2)], 'koif')     # flapping fins
     koi.poly([(kx + 5, ky + 2), (kx + 8, fy - 2), (kx + 8, fy + 1)], 'koif')
@@ -143,8 +152,9 @@ def build(frame, leak=True, water_level=0.8):
     barm.ell(ox + 22, oy + 47, 3, 6, 'fur1')
     L.append(barm)
     legs = Layer('legs')
-    legs.rect(ox + 23, oy + 55, ox + 30, oy + 62, 'pant1'); legs.rect(ox + 33, oy + 55, ox + 40, oy + 62, 'pant0')
-    legs.ell(ox + 26, oy + 65, 5, 3, 'boot1'); legs.ell(ox + 38, oy + 65, 5, 3, 'boot0')
+    legs.rect(ox + 23 + step, oy + 55, ox + 30 + step, oy + 62 - max(0, step), 'pant1')
+    legs.rect(ox + 33 - step, oy + 55, ox + 40 - step, oy + 62 - max(0, -step), 'pant0')
+    legs.ell(ox + 26 + step * 2, oy + 65 - max(0, step), 5, 3, 'boot1'); legs.ell(ox + 38 - step * 2, oy + 65 - max(0, -step), 5, 3, 'boot0')
     L.append(legs)
 
     # --- torso: shirt + fishing vest with pockets
