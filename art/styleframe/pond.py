@@ -11,8 +11,13 @@ import math
 import random
 import sys
 
+import os
+
 import numpy as np
 from PIL import Image
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+import sprites  # noqa: E402
 
 W, H, SCALE = 320, 180, 4
 rng = random.Random(11)
@@ -53,6 +58,9 @@ P = {k: hx(v) for k, v in {
     'FF': 'd8ff8a', 'FOG': '6a6080',
     'HEART': 'e05a47', 'HEART2': 'ff8a72', 'UI0': '0b0a10', 'UI1': '2a2838', 'WATER': '4ab0e0', 'WATER2': '9ae0ff',
 }.items()}
+
+for _k, _v in sprites.PALETTE.items():
+    P.setdefault(_k, hx(_v))
 
 base = np.zeros((H, W, 3), dtype=np.float32)
 emissive = np.zeros((H, W), dtype=bool)
@@ -243,35 +251,6 @@ GOOSE_FLY = [
 ]
 GK = {'O': 'OUT', 'W': 'GW', 'S': 'GS', 'D': 'GD', 'B': 'GB', 'K': 'GK', 'E': 'EYE'}
 
-ROCCO = [
-    "......OOOOOOOO......",
-    ".....OhhhhhhhhO.....",
-    "...OOHhhhhhhhhHOO...",
-    "..OHHHHHHHHHHHHHHO..",
-    "...OOgggggggggggOO..",
-    "..OgggggggggggggO...",
-    ".OmmmmmmmmmmmmmmO...",
-    ".OmwwmmmgmmwwmmhO...",
-    ".OghhhhhhhhhhhhhnO..",
-    "..OghhhhhhhhhhhhO...",
-    "...OOgggggggggOO....",
-    "....OvvvvvvvvvvO....",
-    "...OgOVvpvvpvVOggkO.",
-    "...OgOvvvvvvvvOOOO..",
-    "...OkOVvvvvvvVO.....",
-    "....OOttttttttO.....",
-    "....OtttttttttO.....",
-    "....OtttOOttttO.....",
-    "....OtttO.OtttO.....",
-    "....ObbbO.ObbbO.....",
-    "...ObbbbO.ObbbbO....",
-    "...OOOOOO.OOOOOO....",
-]
-RK = {'O': 'OUT', 'h': 'H1', 'H': 'H0', 'g': 'R2', 'm': 'RM', 'w': 'WHITE', 'n': 'RM', 'k': 'R0',
-      'v': 'V1', 'V': 'V0', 'p': 'V2', 't': 'T1', 'b': 'BT'}
-# fix the muzzle row (h means hat elsewhere): draw rows 8-9 with fur-light instead
-ROCCO_MUZZLE = {8: ".OgrrrrrrrrrrrrrnO..", 9: "..OgrrrrrrrrrrrrO..."}
-
 FROG = [
     "..OOO..OOO..",
     ".OgRgOOgRgO.",
@@ -284,40 +263,28 @@ FROG = [
 ]
 FK = {'O': 'OUT', 'g': 'F1', 'l': 'F2', 'R': 'FR'}
 
-RX, RY = 74, 92             # Rocco, at the foot of the dock
+RX, RY = 80, 83             # Rocco, at the foot of the dock
 GX, GY = 120, 54            # Biscuit mid-fling over the water
 frogs = [(168, 140), (172, 70), (226, 142), (40, 150)]
 
-shadow(RX + 10, RY + 21, 11, 3, 0.5)
+shadow(RX + 4, RY + 30, 18, 3, 0.5)
 shadow(GX + 12, GY + 34, 10, 2, 0.65)
 for (fx, fy) in frogs: shadow(fx + 6, fy + 8, 6, 2, 0.55)
 
-# striped tail and the koi backpack behind Rocco
-for i in range(7):
-    ty = RY + 18 - i; tx = RX + 2 - i // 2
-    for k in range(5): put(tx - k, ty, 'RM' if (i // 2) % 2 else 'R2', spr=True)
-    put(tx - 5, ty, 'OUT', spr=True)
-for y in range(RY + 8, RY + 20):
-    for x in range(RX - 4, RX + 5):
-        edge = x in (RX - 4, RX + 4) or y in (RY + 8, RY + 19)
-        if edge: put(x, y, 'OUT', spr=True)
-        elif x == RX - 3 or y == RY + 9: put(x, y, 'PK1', spr=True)
-        else:
-            # glass window with water and the glowing Moon Koi
-            put(x, y, 'GL0' if (x + y) % 3 else 'GL1', spr=True)
-for (dx, dy, c) in [(-1, 13, 'KOI'), (0, 13, 'KOI'), (1, 13, 'KOI2'), (2, 14, 'KOI3'), (-2, 14, 'KOI2'), (0, 14, 'KOI'), (1, 12, 'KOI')]:
-    put(RX + dx, RY + dy, c, emit=True, spr=True)
-put(RX - 2, RY + 7, 'PK0', spr=True); put(RX + 2, RY + 7, 'PK0', spr=True)
-
-rows = [ROCCO_MUZZLE.get(i, r) for i, r in enumerate(ROCCO)]
-RK2 = dict(RK, r='R3')
-blit(rows, RX, RY, RK2, emit_keys='w')
+# the fish-jar backpack with the Moon Koi, behind Rocco's left shoulder
+sprites.draw_jar(lambda x, y, c, emit=False: put(x, y, c, emit=emit, spr=True), RX - 14, RY + 8)
+# striped tail curling out below the jar
+for i in range(6):
+    ty = RY + 29 - i; tx = RX + 4 - i
+    for k in range(4): put(tx - k, ty, 'MASK' if (i // 2) % 2 else 'FUR2', spr=True)
+    put(tx - 4, ty, 'OUT', spr=True); put(tx + 1, ty, 'OUT', spr=True)
+blit(sprites.ROCCO, RX, RY, {k: v for k, v in sprites.ROCCO_KEYS.items()}, emit_keys=sprites.ROCCO_EMIT)
 blit(GOOSE_FLY, GX, GY, GK, emit_keys='E')
 for (fx, fy) in frogs:
     blit(FROG, fx, fy, FK, emit_keys='R', flip=fx > 150)
 
 # fishing rod from Rocco's paw, then the fishing line to Biscuit's neck
-paw = (RX + 18, RY + 12); tip = (RX + 34, RY - 14)
+paw = (RX + sprites.ROCCO_PAW[0], RY + sprites.ROCCO_PAW[1]); tip = (RX + 40, RY - 8)
 for i in range(31):
     t = i / 30
     x = round(paw[0] + (tip[0] - paw[0]) * t); y = round(paw[1] + (tip[1] - paw[1]) * t)
@@ -346,7 +313,7 @@ def add_light(cx, cy, radius, color, power, bands=7):
 
 add_light(MX, MY, 280, (0.95, 0.18, 0.24), 0.7)               # blood-moon key light
 add_light(201, 100, 66, (1.0, 0.66, 0.32), 1.25)                 # dock lantern
-add_light(RX, RY + 13, 22, (0.7, 0.9, 1.0), 0.8)               # the koi's glow
+add_light(RX - 5, RY + 18, 26, (0.7, 0.9, 1.0), 0.8)          # the koi's glow
 for (fx, fy) in fireflies: add_light(fx, fy, 7, (0.8, 1.0, 0.5), 0.6, bands=3)
 
 lit = base * np.clip(light, 0, 1.6)
