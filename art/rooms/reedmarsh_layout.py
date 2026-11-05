@@ -360,7 +360,9 @@ ROOMS.append(room(
     gate=rect(1074, 304, 12, 92),
     pits=[rect(380, 120, 450, 460)],
     bridges=[rect(560, 310, 90, 80, kind='island')],
-    refills=[rect(356, 96, 498, 26), rect(356, 578, 498, 26), rect(356, 96, 26, 508), rect(828, 96, 26, 508)],
+    # only two small, slow refill spots on the far banks: you need them, and the Heron knows it
+    refills=[rect(560, 96, 90, 26), rect(560, 578, 90, 26)],
+    weather='rain', stormRefill=0.35, stormDrain=3,
     posts=[post(340, 350), post(870, 350), post(605, 80), post(605, 620)],
     props=[rect(150, 200, 40, 30, kind='rock'), rect(950, 470, 56, 24, kind='log')],
     vents=[{'x': 200, 'y': 150}, {'x': 200, 'y': 560}, {'x': 960, 'y': 150}, {'x': 960, 'y': 560}],

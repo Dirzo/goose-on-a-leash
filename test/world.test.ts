@@ -267,21 +267,73 @@ describe('the Heron Ferryman', () => {
     return sim;
   }
 
-  it('stands his ground in deep water and attacks with spear, darts, gusts and frog calls', () => {
+  it('fights from his rock and from the air: darts, gusts or calls, then flies up, slams down by Bimbo, and flies home', () => {
     const sim = pool();
     const h = sim.enemies.find(e => e.kind === 'heron')!;
     const seen = new Set<string>();
+    let landedOnBank = false, maxAir = 0;
     sim.player.x = 360; sim.player.y = 350;
-    for (let i = 0; i < 60 * 40; i++) {
+    for (let i = 0; i < 60 * 45; i++) {
       sim.pack.water = 1; sim.pack.holes = 0; sim.player.dead = 0;   // keep Rocco up so we can watch
       sim.step(STEP, { moveX: 0, moveY: 0, aimX: 605, aimY: 360 });
-      seen.add(h.mode);
-      if (i > 60 * 20) { sim.player.x = 570; sim.player.y = 345; sim.player.vx = sim.player.vy = 0; }   // stand on his rock (as if yanked over)
+      seen.add(h.mode); maxAir = Math.max(maxAir, h.air);
+      if (h.mode === 'grounded' && !sim.room.inPit(h.x, h.y, 2) && Math.hypot(h.x - 605, h.y - 360) > 100) landedOnBank = true;
     }
-    expect(h.x).toBe(605); expect(h.falling).toBe(0);
+    expect(h.falling).toBe(0); expect(h.dead).toBe(false);
     expect(seen.has('darts')).toBe(true);
-    expect(seen.has('spear')).toBe(true);
-    expect(seen.has('gust') || seen.has('call')).toBe(true);
+    expect(seen.has('fly')).toBe(true);
+    expect(maxAir).toBeGreaterThan(100);
+    expect(landedOnBank).toBe(true);
+    expect(seen.has('return')).toBe(true);
+  });
+
+  it('cannot be bitten while he is up in the air', () => {
+    const sim = pool();
+    const h = sim.enemies.find(e => e.kind === 'heron')!;
+    h.mode = 'fly'; h.air = 120; h.x = 420; h.y = 350; h.tx = 420; h.ty = 350;
+    expect(sim.nearestEnemy(420, 350)).toBeNull();
+  });
+
+  it('his slam lands hard if Bimbo is under it', () => {
+    const sim = pool(); fixRng(sim, 0.99);
+    const h = sim.enemies.find(e => e.kind === 'heron')!;
+    sim.player.x = 300; sim.player.y = 350; sim.player.inv = 0;
+    sim.step(STEP, { moveX: 0, moveY: 0, aimX: 600, aimY: 350 });
+    const b = sim.packPoint(10);
+    h.mode = 'slam'; h.air = 10; h.tx = b.x; h.ty = b.y; h.hit = false; sim.player.inv = 0;
+    sim.step(STEP, { moveX: 0, moveY: 0, aimX: 600, aimY: 350 });
+    expect(sim.pack.water).toBeLessThan(1 - C.heavySpill + 0.03);
+    expect(h.mode).toBe('grounded');
+  });
+
+  it('rain puddles slow Rocco down', () => {
+    const fast = pool(), slow = pool();
+    for (const s of [fast, slow]) { s.enemies = []; s.puddles = []; s.player.x = 200; s.player.y = 350; }
+    slow.puddles.push({ x: 260, y: 350, r: 80, life: 99, max: 80 });
+    const go = { moveX: 1, moveY: 0, aimX: 900, aimY: 350 };
+    run(fast, 0.5, go); run(slow, 0.5, go);
+    expect(slow.player.x - 200).toBeLessThan((fast.player.x - 200) * 0.7);
+  });
+
+  it('in the storm the pack refills slowly and drains faster', () => {
+    const sim = pool();
+    sim.enemies.find(e => e.kind === 'heron')!.cd = 999;
+    const spot = ROOMS['reedmarsh-12']!.refills![0]!;
+    sim.player.x = spot.x + spot.w / 2; sim.player.y = spot.y + spot.h / 2; sim.pack.water = 0.2;
+    run(sim, 1);
+    expect(sim.pack.water).toBeLessThan(0.2 + C.refillRate * 0.5);
+    expect(sim.storming).toBe(true);
+  });
+
+  it('beaten, his gifts go straight into the satchel', () => {
+    const sim = pool();
+    const h = sim.enemies.find(e => e.kind === 'heron')!;
+    const crest = sim.kit.mats.crest, needles = sim.pack.needles;
+    sim.damage(h, 999);
+    expect(sim.kit.mats.crest).toBe(crest + 1);
+    expect(sim.pack.needles).toBe(needles + C.kitNeedles);
+    expect(sim.pack.water).toBe(1);
+    expect(sim.storming).toBe(false);
   });
 
   it('a feather dart landing on Bimbo hurts; one landing elsewhere does not', () => {

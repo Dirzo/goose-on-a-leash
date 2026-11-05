@@ -35,6 +35,8 @@ export class ArtRenderer {
   private line: Phaser.GameObjects.Graphics;       // the leash, over the sprites
   private fxg: Phaser.GameObjects.Graphics;
   private hud: Phaser.GameObjects.Graphics;
+  /** Screen-space rain for storm rooms. */
+  private rain: Phaser.GameObjects.Graphics;
   private rocco: Phaser.GameObjects.Sprite;
   private biscuit: Phaser.GameObjects.Sprite;
   private foes = new Map<number, Phaser.GameObjects.Sprite>();
@@ -67,6 +69,7 @@ export class ArtRenderer {
     this.line = world(scene.add.graphics().setDepth(5000));
     this.fxg = world(scene.add.graphics().setDepth(5100));
     this.hud = screen(scene.add.graphics().setDepth(9000));
+    this.rain = screen(scene.add.graphics().setDepth(8000));
     this.rocco = world(scene.add.sprite(0, 0, 'rocco_idle'));
     this.biscuit = world(scene.add.sprite(0, 0, 'biscuit_idle'));
     this.setOrigin(this.rocco, 'rocco_idle'); this.setOrigin(this.biscuit, 'biscuit_idle');
@@ -130,6 +133,7 @@ export class ArtRenderer {
         if (e.kind === 'tear') cam.shake(120, 0.003);
         if (e.kind === 'ring') this.bellSwing = 1;
         if (e.kind === 'faint') this.flash = 1;
+        if (e.kind === 'slam') cam.shake(300, 0.008);
       } else if (e.type === 'reset') { this.fx = []; this.drips = []; this.puddles = []; this.cam = null; }
       else if (e.type === 'room') this.flash = Math.max(this.flash, 0.45);
     }
@@ -236,6 +240,16 @@ export class ArtRenderer {
       g.lineStyle(2, 0x8a8a90, 1); g.beginPath(); g.arc(bk.x, bk.y - 9, 6, Math.PI, 0); g.strokePath();
       if (ready && Math.floor(time * 2) % 3 === 0) { g.fillStyle(0xfff4c0, 1); g.fillRect(bk.x + 8, bk.y - 12, 1, 3); g.fillRect(bk.x + 7, bk.y - 11, 3, 1); }
       if (!ready) this.wt(`${Math.ceil(sim.bucketCd)}s`, bk.x, bk.y + 20, 7, '#9aa3a6', 1, 'mono');
+    }
+    // rain puddles: dark water that slows Rocco, pocked by drops
+    for (const q of sim.puddles) {
+      if (q.r < 2) continue;
+      g.fillStyle(0x0e2230, 0.75); g.fillEllipse(q.x, q.y, q.r * 2, q.r * 1.25);
+      g.fillStyle(0x2c5560, 0.6); g.fillEllipse(q.x - q.r * 0.2, q.y - q.r * 0.15, q.r * 1.1, q.r * 0.5);
+      if (sim.storming) for (let k2 = 0; k2 < 2; k2++) {
+        const t2 = (time * 1.7 + q.x * 0.013 + k2 * 0.5) % 1, ox = Math.sin(q.x + k2 * 7 + Math.floor(time * 1.7)) * q.r * 0.6;
+        g.lineStyle(1, 0x9ae0ff, 0.6 * (1 - t2)); g.strokeEllipse(q.x + ox, q.y, 3 + t2 * 10, 1.5 + t2 * 5);
+      }
     }
     // tackle chest
     const chest = def.chest;
@@ -365,16 +379,36 @@ export class ArtRenderer {
         : e.kind === 'snapper' ? (e.woke > 0 ? 'snapper_awake' : 'snapper') : awake ? 'frog_awake' : 'frog';
       const blink = ((time * 1.1 + e.id * 0.37) % 3.2) < 0.14;
       if (e.kind === 'heron') {
-        const pose = e.woke > 0 ? (blink ? 1 : 0) : e.mode === 'spear' ? 3 : e.mode === 'gust' ? 4
-          : e.mode === 'wind' ? (e.attack === 'gust' ? 4 : 2) : blink ? 1 : 0;
+        const flying = e.air > 0 && !e.woke;
+        const pecking = e.mode === 'grounded' && e.hit && e.attack === 'peck';
+        const pose = e.woke > 0 ? (blink ? 1 : 0) : flying ? (Math.floor(time * 10) % 2 ? 4 : 2) : e.mode === 'spear' ? 3 : e.mode === 'gust' ? 4
+          : pecking ? (e.grip2 < 0.35 ? 2 : 3) : e.mode === 'wind' ? (e.attack === 'gust' ? 4 : 2) : blink ? 1 : 0;
         this.show(s, kind, pose);
-        s.setPosition(Math.round(x), Math.round(y + 8)).setDepth(y).setFlipX(sim.player.x < x).setAlpha(1);
+        s.setPosition(Math.round(x), Math.round(y + 8 - e.air)).setDepth(flying ? y + 2000 : y).setFlipX(sim.player.x < x).setAlpha(1)
+          .setScale(1 + e.air / 600);
+        if (flying) {
+          // his shadow on the ground, and the landing mark hunting Bimbo
+          g.fillStyle(0x000000, 0.25 + 0.15 * (1 - e.air / 120)); g.fillEllipse(x, y + 8, 50 - e.air * 0.15, 12 - e.air * 0.04);
+          if (e.mode === 'fly' || e.mode === 'slam') {
+            const k = Math.min(1, e.modeT / 1.2), r = 40 - k * 18;
+            g.lineStyle(3, 0xff4a4a, 0.5 + 0.4 * Math.sin(time * 16)); g.strokeEllipse(e.tx, e.ty, r * 2.2, r * 1.1);
+            g.lineStyle(1, 0xff4a4a, 0.6); g.lineBetween(e.tx - r, e.ty, e.tx + r, e.ty); g.lineBetween(e.tx, e.ty - r * 0.5, e.tx, e.ty + r * 0.5);
+            this.wt('!', e.tx, e.ty - 30, 14, '#ff4a4a', 1);
+          }
+        }
+        if (pecking && e.grip2 < 0.35) {
+          g.lineStyle(2, 0xff4a4a, 0.5 + e.grip2); const l = Math.hypot(e.tx - x, e.ty - y) || 1;
+          g.lineBetween(x, y - 4, x + ((e.tx - x) / l) * 100, y - 4 + ((e.ty - y) / l) * 100);
+          this.wt('!', x, y - 100, 14, '#ff4a4a', 1);
+        }
         const tell2 = e.mode === 'wind' && Math.floor(e.modeT * 14) % 2 === 0 && !e.woke;
         if (e.hitT > 0 || tell2) s.setTint(e.hitT > 0 ? 0xffffff : 0xffd0d0).setTintMode(Phaser.TintModes.FILL); else s.clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
-        g.fillStyle(0x000000, 0.35); g.fillEllipse(x, y + 8, 40, 9);
-        g.lineStyle(1, 0x9ae0ff, 0.5); g.strokeEllipse(x, y + 8, 46 + Math.sin(time * 3) * 4, 10);   // ripples round his legs
+        if (!flying) {
+          g.fillStyle(0x000000, 0.35); g.fillEllipse(x, y + 8, 40, 9);
+          if (sim.room.inPit(x, y, 2)) { g.lineStyle(1, 0x9ae0ff, 0.5); g.strokeEllipse(x, y + 8, 46 + Math.sin(time * 3) * 4, 10); }   // ripples round his legs
+        }
         if (e.stun > 0) for (let i = 0; i < 3; i++) { const a = time * 5 + i * 2.1; this.fxg.fillStyle(0xf2c230, 1); this.star(this.fxg, x + Math.cos(a) * 18, y - 84 + Math.sin(a) * 3, 3); }
-        if (!e.woke && e.stun <= 0) this.drawAttack(e, x, y, time);
+        if (!e.woke && e.stun <= 0 && !flying) this.drawAttack(e, x, y, time);
         if (e.woke > 0 && e.woke < 6) this.wt('The Ferryman', x, y - 96, 9, '#9ae0ff', Math.min(1, 6 - e.woke));
         continue;
       }
@@ -466,6 +500,11 @@ export class ArtRenderer {
       f2.lineStyle(2, 0xe8eef2, 1); f2.lineBetween(fx2 - 3, fy2 - 6, fx2 + 3, fy2 + 6);
       f2.fillStyle(0x7890aa, 1); f2.fillRect(fx2 - 2, fy2 - 6, 3, 6);
     }
+    for (const fx3 of this.fx) if (fx3.kind === 'slam') {
+      const kk = fx3.t / 0.8;
+      f2.lineStyle(3, 0xe8eef2, 0.8 * (1 - kk)); f2.strokeEllipse(fx3.x, fx3.y + 6, 30 + kk * 160, 12 + kk * 60);
+      f2.lineStyle(2, 0x9ae0ff, 0.6 * (1 - kk)); f2.strokeEllipse(fx3.x, fx3.y + 6, 20 + kk * 110, 8 + kk * 40);
+    }
     for (const fx3 of this.fx) if (fx3.kind === 'gust' && fx3.a !== undefined) {
       const kk = fx3.t / 0.8;
       for (let i = 0; i < 6; i++) {
@@ -487,7 +526,30 @@ export class ArtRenderer {
   }
 
   // ------------------------------------------------------------------ HUD (screen pixels, 1280x720)
+  private drawRain(sim: Sim): void {
+    const r = this.rain; r.clear();
+    if (!sim.storming) return;
+    const t = performance.now() / 1000, cam = this.scene.cameras.main;
+    r.fillStyle(0x0a1424, 0.22); r.fillRect(0, 0, SCREEN_W, SCREEN_H);
+    // flashes of lightning now and then
+    const bolt = Math.sin(t * 0.7) > 0.995 || Math.sin(t * 1.3 + 2) > 0.997;
+    if (bolt) { r.fillStyle(0xe8eef2, 0.25); r.fillRect(0, 0, SCREEN_W, SCREEN_H); }
+    r.lineStyle(2, 0x9ab8d0, 0.45);
+    for (let i = 0; i < 220; i++) {
+      const sx = (i * 97.13 + cam.scrollX * ZOOM * 0.3) % SCREEN_W, speed = 900 + (i % 7) * 90;
+      const sy = ((i * 53.7 + t * speed) % (SCREEN_H + 60)) - 30;
+      const x = (sx + sy * 0.25 + SCREEN_W) % SCREEN_W;
+      r.lineBetween(x, sy, x - 5, sy - 22);
+    }
+    r.fillStyle(0x9ae0ff, 0.5);
+    for (let i = 0; i < 26; i++) {             // drops splashing on the ground
+      const k = (t * 3 + i * 0.37) % 1, x = (i * 211.7) % SCREEN_W, y = (i * 131.3 + Math.floor(t * 3 + i * 0.37) * 77) % SCREEN_H;
+      r.fillRect(x - k * 6, y, 2, 1); r.fillRect(x + k * 6, y, 2, 1);
+    }
+  }
+
   private drawHud(sim: Sim): void {
+    this.drawRain(sim);
     const g = this.hud, time = this.time, go = sim.goose, pk = sim.pack, W = SCREEN_W, H = SCREEN_H;
     const panel = (x: number, y: number, w: number, h: number) => { g.fillStyle(0x0b0a10, 0.72); g.fillRect(x, y, w, h); g.lineStyle(2, 0x2a2838, 1); g.strokeRect(x, y, w, h); };
 

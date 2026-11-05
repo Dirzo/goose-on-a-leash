@@ -54,6 +54,10 @@ export interface RoomDef {
   spools?: Vec[];
   /** A tackle chest holding a leash, opened once. */
   chest?: { x: number; y: number; leash: LeashId };
+  /** 'rain': a storm while the boss is up: puddles slow Rocco, refills are slow and the pack drains faster. */
+  weather?: 'rain';
+  stormRefill?: number;
+  stormDrain?: number;
   /** False: the burrows don't spawn on their own (a boss calls frogs instead). */
   ventSpawns?: boolean;
   /** A boss fight: beating the boss (waking him) opens the room's gate. */

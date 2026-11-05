@@ -23,7 +23,7 @@ const HEAVY: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['knight', 'snapper', '
 const ENTRANCED: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['frog', 'snapper', 'heron']);
 /** Bosses stand their ground: no knockback, they never fall in, and they stay once woken. */
 const BOSS: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['heron']);
-export const HERON_HP = 24;
+export const HERON_HP = 40;
 /** Seconds a woken critter takes to hop away. */
 const WAKE_TIME = 1.6;
 
@@ -55,6 +55,12 @@ export interface Enemy {
   grip: number;
   /** Has been in the water once already (the first splash shakes loose some Pond Muck). */
   wet: boolean;
+  /** Height in the air (the Heron flies); above 30 he can't be bitten or honked. */
+  air: number;
+  /** Where a boss returns to (the Heron's rock). */
+  hx: number; hy: number;
+  /** A boss's second timer (peck wind-up). */
+  grip2: number;
 }
 
 /**
@@ -62,8 +68,9 @@ export interface Enemy {
  * leap: a frog's flying jump at the pack. lash: a frog's tongue, out and back. charge: Old Snapper's rush.
  * recover: a beat of vulnerability after an attack.
  */
-export type CritterMode = 'stalk' | 'wind' | 'leap' | 'lash' | 'charge' | 'recover' | 'spear' | 'gust' | 'darts' | 'call' | 'swim';
-export type AttackKind = 'leap' | 'lash' | 'charge' | 'bite' | 'spear' | 'gust' | 'dart';
+export type CritterMode = 'stalk' | 'wind' | 'leap' | 'lash' | 'charge' | 'recover' | 'spear' | 'gust' | 'darts' | 'call' | 'swim'
+  | 'takeoff' | 'fly' | 'slam' | 'grounded' | 'return' | 'perch';
+export type AttackKind = 'leap' | 'lash' | 'charge' | 'bite' | 'spear' | 'gust' | 'dart' | 'slam' | 'peck';
 
 /** A feather dart lobbed at Bimbo: it lands on the marked spot when t reaches T. */
 export interface Dart { x0: number; y0: number; tx: number; ty: number; t: number; T: number }
@@ -100,7 +107,7 @@ export interface InputFrame {
   fling?: boolean; yank?: boolean; honk?: boolean; letGo?: boolean; feed?: boolean; cycle?: boolean; patch?: boolean;
 }
 
-export type FxKind = 'honk' | 'chomp' | 'boing' | 'poof' | 'ring' | 'snap' | 'bread' | 'pick' | 'tear' | 'splash' | 'faint' | 'patch' | 'wake' | 'chest' | 'gust';
+export type FxKind = 'honk' | 'chomp' | 'boing' | 'poof' | 'ring' | 'snap' | 'bread' | 'pick' | 'tear' | 'splash' | 'faint' | 'patch' | 'wake' | 'chest' | 'gust' | 'slam';
 export type SimEvent =
   | { type: 'say'; text: string }
   | { type: 'fx'; kind: FxKind; x: number; y: number; a?: number; cone?: number; range?: number; text?: string }
@@ -220,6 +227,7 @@ export class Sim {
     this.entryDoor = door ? door.id : null;
     this.setupRoom(def, s);
     this.events.push({ type: 'reset' }, { type: 'room', id: def.id });
+    if (this.storming) this.say('A storm breaks over the pool. Puddles will slow you, and the water is hard to reach.');
   }
 
   /** Back to where Rocco entered the current room, hearts refilled. */
@@ -370,7 +378,7 @@ export class Sim {
       t: 0, fury: 0, furious: 0, tug: 0, honkCd: 0, biteT: 0, grabCd: 0 };
     this.enemies = def.enemies.map(e => this.mkEnemy(e.kind, e.x, e.y));
     if (mem?.boss) for (const e of this.enemies) if (BOSS.has(e.kind)) { e.woke = 0.001; e.hp = 0; }   // already beaten: friendly
-    this.items = []; this.darts = [];
+    this.items = []; this.darts = []; this.puddles = []; this.puddleT = 1;
     this.breadGot = def.breadSpots.map((_, i) => mem?.bread[i] ?? false);
     this.kitsGot = (def.kits ?? []).map((_, i) => mem?.kits?.[i] ?? false);
     this.spoolsGot = (def.spools ?? []).map((_, i) => mem?.spools?.[i] ?? false);
@@ -380,14 +388,14 @@ export class Sim {
   }
 
   /** True while an enemy can fight: alive, not sinking, not woken. */
-  private active(e: Enemy): boolean { return !e.dead && !e.falling && !e.woke; }
+  private active(e: Enemy): boolean { return !e.dead && !e.falling && !e.woke && e.air <= 30; }
 
   mkEnemy(kind: EnemyKind, x: number, y: number): Enemy {
     const k = HEAVY.has(kind), boss = kind === 'heron';
     const hp = boss ? HERON_HP : k ? 8 : 3;
     return { id: this.nextId++, kind, x, y, r: boss ? 24 : k ? 20 : 13, hp, max: hp, heavy: k, stun: 0,
       vx: 0, vy: 0, falling: 0, dead: false, hitT: 0, spd: boss ? 0 : k ? 42 : 78, woke: 0,
-      mode: 'stalk', modeT: 0, cd: boss ? 2 : 0.8 + this.rng() * 1.2, tx: x, ty: y, hit: false, attack: 'leap', grip: 0, wet: false };
+      mode: 'stalk', modeT: 0, cd: boss ? 2 : 0.8 + this.rng() * 1.2, tx: x, ty: y, hit: false, attack: 'leap', grip: 0, wet: false, air: 0, hx: x, hy: y, grip2: 0 };
   }
 
   /** Take and clear the events produced since the last drain. */
@@ -556,13 +564,13 @@ export class Sim {
     const was = pk.refilling;
     pk.refilling = !p.air && this.room.inRefill(p.x, p.y);
     if (pk.refilling) {
-      pk.water = Math.min(1, pk.water + C.refillRate * dt);
+      pk.water = Math.min(1, pk.water + C.refillRate * (this.storming ? this.room.def.stormRefill ?? 1 : 1) * dt);
       pk.lastWater = { x: p.x, y: p.y };
       if (!was && pk.water < 0.98) { this.fx('splash', p.x - 10, p.y - 34); this.say('Refilling the pack. Bimbo perks up.'); }
       return;
     }
     const before = pk.water;
-    pk.water = Math.max(0, pk.water - this.leakRate() * dt);
+    pk.water = Math.max(0, pk.water - this.leakRate() * (this.storming ? this.room.def.stormDrain ?? 1 : 1) * dt);
     this.waterWarnings(before);
   }
 
@@ -628,9 +636,13 @@ export class Sim {
         this.room.gateClosed = false;
         this.world[this.room.def.id] = { ...(this.world[this.room.def.id] ?? { gateOpen: true, bread: [...this.breadGot], chest: false, rang: this.rang }), boss: true, gateOpen: true };
         this.say('The red drains from the Heron\'s eyes. "...Raccoon. I am the Ferryman. The way on is open."');
-        // he flings his gifts to Rocco's bank: his rock is out of reach now he is friendly
-        const gx = this.player.x, gy = this.player.y;
-        this.drop('crest', gx, gy); this.drop('chain', gx, gy, 2); this.drop('fluff', gx, gy, 3);
+        // his gifts go straight into the satchel (wherever the fight ended), and he refills Bimbo
+        this.kit.mats.crest++; this.kit.mats.chain += 3; this.kit.mats.fluff += 4; this.kit.mats.egg++;
+        this.pack.needles += C.kitNeedles; this.pack.water = 1;
+        e.air = 0; e.x = e.hx; e.y = e.hy;
+        this.puddles = [];
+        this.fx('pick', this.player.x, this.player.y - 46, { text: "Snapper's Crest, Golden Egg, 3 Shell Scute, 4 Twine, a sewing kit" });
+        this.fx('chest', this.player.x, this.player.y - 20);
       } else this.say(e.heavy ? 'Old Snapper blinks. The red fades from his eyes.' : this.pick('wake'));
     } else { e.dead = true; this.fx('poof', e.x, e.y); }
     if (!e.heavy) { this.drop('fluff', e.x, e.y); if (this.rng() < 0.45) this.drop('crust', e.x, e.y); }
@@ -670,7 +682,9 @@ export class Sim {
     } else {
       pk.water = Math.max(0, pk.water - (heavy ? C.heavySpill : C.hitSpill) * amt * (side < 1 ? 0.6 : 1));
       this.fx('splash', bk.x, bk.y - 34);
-      if (pk.water > 0.3) this.say(heavy ? 'WHAM. Old Snapper rams the pack.' : side > 1 ? 'It leapt at Bimbo! Water everywhere.' : 'Splash! Rocco blocks most of it.');
+      const heavyLine = kind === 'slam' ? 'THOOM! The Heron lands right on the pack!' : kind === 'dart' ? 'A feather dart smacks into the pack!'
+        : kind === 'spear' || kind === 'peck' ? 'The beak jabs at Bimbo!' : 'WHAM. Old Snapper rams the pack.';
+      if (pk.water > 0.3) this.say(heavy ? heavyLine : side > 1 ? 'It leapt at Bimbo! Water everywhere.' : 'Splash! Rocco blocks most of it.');
     }
     if (from && pk.enabled) {                        // knocked back, away from the hit, but never off a dock into the water
       const [ux, uy] = dirTo(from, p), k = heavy ? 340 : 200, reach = k * 0.12;
@@ -810,7 +824,8 @@ export class Sim {
         if (al > 24) { p.fx = ax2 / al; p.fy = ay2 / al; }
       }
       const acc = 1 - Math.exp(-14 * dt);
-      p.vx += (mx * C.playerSpeed - p.vx) * acc; p.vy += (my * C.playerSpeed - p.vy) * acc;
+      const sp = C.playerSpeed * (this.puddles.length && this.inPuddle(p.x, p.y) ? 0.5 : 1);   // wading through a puddle
+      p.vx += (mx * sp - p.vx) * acc; p.vy += (my * sp - p.vy) * acc;
       // a goose stronger than his leash tugs you around
       if ((g.furious > 0 || calmTug) && g.state === 'held') {
         g.tug -= dt;
@@ -921,6 +936,7 @@ export class Sim {
     }
 
     this.stepDarts(dt);
+    this.stepStorm(dt);
     this.stepGoose(dt);
   }
 
@@ -930,48 +946,146 @@ export class Sim {
       d.t += dt;
       if (d.t >= d.T) {
         this.fx('splash', d.tx, d.ty - 6);
+        this.addPuddle(d.tx, d.ty, 20);
         const b = this.packPoint(10);
-        if (Math.hypot(b.x - d.tx, b.y - d.ty) < 20 && !p.air) this.hurtPlayer(1, false, { x: d.x0, y: d.y0 }, 'dart');
+        if (Math.hypot(b.x - d.tx, b.y - d.ty) < 28 && !p.air) this.hurtPlayer(1, true, { x: d.x0, y: d.y0 }, 'dart');
       }
     }
     this.darts = this.darts.filter(d => d.t < d.T);
   }
 
+  // ------------------------------------------------ storm (rooms with weather: 'rain')
+
+  /** Rain puddles: Rocco wades through them at half speed. They grow in, linger, and dry up. */
+  puddles: { x: number; y: number; r: number; life: number; max: number }[] = [];
+  private puddleT = 0;
+
+  addPuddle(x: number, y: number, r: number): void {
+    if (this.room.inPit(x, y, -r * 0.5) || this.puddles.length > 22) return;
+    this.puddles.push({ x, y, r: 4, life: 10 + this.rng() * 6, max: r });
+  }
+
+  inPuddle(x: number, y: number): boolean { return this.puddles.some(q => Math.hypot(q.x - x, (q.y - y) * 1.6) < q.r); }
+
+  /** While the boss is up in a storm room: the rain keeps pooling around Rocco. */
+  get storming(): boolean { return this.room.def.weather === 'rain' && !this.enemies.some(e => BOSS.has(e.kind) && e.woke > 0); }
+
+  private stepStorm(dt: number): void {
+    for (const q of this.puddles) { q.life -= dt; q.r = q.life < 2 ? q.max * Math.max(0, q.life / 2) : Math.min(q.max, q.r + dt * 20); }
+    this.puddles = this.puddles.filter(q => q.life > 0);
+    if (!this.storming) return;
+    this.puddleT -= dt;
+    if (this.puddleT <= 0) {
+      this.puddleT = 1.1 + this.rng() * 0.9;
+      const p = this.player, a = this.rng() * Math.PI * 2, d = 40 + this.rng() * 220;
+      this.addPuddle(p.x + Math.cos(a) * d, p.y + Math.sin(a) * d, 22 + this.rng() * 22);
+    }
+  }
+
+  // ------------------------------------------------ the Heron Ferryman
+
   /**
-   * The Heron Ferryman, entranced. He stands on his rock in deep water and goes for Bimbo:
-   * spear (a long beak stab, close), darts (feathers lobbed onto marked spots), gust (wing blast that shoves
-   * Rocco away and splashes the pack), call (frogs out of the burrows). Below half health he gets faster and
-   * throws more darts. Biscuit can hang on for a while before he is shaken off.
+   * The Heron Ferryman, entranced. From his rock in deep water he stabs (spear), lobs feather darts onto
+   * marked spots, blasts a wing gust and calls frogs. Then he takes to the air: a landing mark hunts Bimbo,
+   * he dives onto it (slam), and fights on the bank for a few seconds, pecking at the pack, before flying home.
+   * Grounded is when he is easiest to bite. Below half health everything comes faster and harder.
    */
   private heronAI(e: Enemy, dt: number, d: number): [number, number] {
     const p = this.player, g = this.goose, angry = e.hp < e.max / 2;
     e.modeT += dt; e.cd -= dt;
-    if (g.state === 'latched' && g.target === e) {
+    const latched = g.state === 'latched' && g.target === e;
+    if (latched) {
       e.grip += dt;
-      if (e.grip > (angry ? 1.2 : 1.7)) {
+      if (e.grip > (angry ? 1.4 : 2.0)) {
         e.grip = 0; g.state = 'held'; const [ux, uy] = dirTo(e, g); g.vx = ux * 500; g.vy = uy * 500;
         this.say('The Heron flicks Biscuit off with one wing.');
-        e.mode = 'gust'; e.modeT = 0; e.hit = false;
+        if (e.mode !== 'grounded') { e.mode = 'gust'; e.modeT = 0; e.hit = false; }
       }
     } else e.grip = 0;
-    if (e.stun > 0) { if (e.mode !== 'stalk') { e.mode = 'recover'; e.modeT = 0; } return [0, 0]; }
+    if (e.stun > 0 && e.air <= 0) { if (e.mode !== 'stalk' && e.mode !== 'grounded') { e.mode = 'recover'; e.modeT = 0; } return [0, 0]; }
     if (p.dead) return [0, 0];
     const bimbo = this.packPoint(10);
     const db = Math.hypot(bimbo.x - e.x, bimbo.y - e.y);
+    const home = { x: e.hx, y: e.hy }, onRock = Math.hypot(e.x - home.x, e.y - home.y) < 4;
+    const takeOff = (next: CritterMode) => { e.mode = next; e.modeT = 0; e.hit = false; if (latched) { g.state = 'held'; } };
     switch (e.mode) {
       case 'stalk': case 'recover': {
-        if (e.mode === 'recover' && e.modeT < (angry ? 0.5 : 0.9)) return [0, 0];
+        if (e.mode === 'recover' && e.modeT < (angry ? 0.4 : 0.7)) return [0, 0];
         if (e.cd > 0) return [0, 0];
         e.modeT = 0; e.hit = false;
         const frogs = this.enemies.filter(o => o.kind === 'frog' && this.active(o)).length;
         const roll = this.rng();
         if (db < 150) { e.mode = 'wind'; e.attack = 'spear'; e.tx = bimbo.x; e.ty = bimbo.y; }
-        else if (frogs < (angry ? 3 : 2) && this.room.def.vents.length && roll < 0.25) { e.mode = 'call'; }
-        else if (roll < 0.4 && db < 320) { e.mode = 'wind'; e.attack = 'gust'; }
+        else if (roll < (angry ? 0.45 : 0.38)) { takeOff('takeoff'); this.say(angry ? 'The Heron rises, furious!' : 'The Heron takes to the air. It wants Bimbo!'); }
+        else if (frogs < (angry ? 3 : 2) && this.room.def.vents.length && roll < 0.52) e.mode = 'call';
+        else if (roll < 0.62 && db < 320) { e.mode = 'wind'; e.attack = 'gust'; }
         else { e.mode = 'wind'; e.attack = 'dart'; }
         return [0, 0];
       }
+      case 'takeoff': {
+        e.air = Math.min(120, e.air + dt * 240);
+        if (e.air >= 120) { e.mode = 'fly'; e.modeT = 0; }
+        return [0, 0];
+      }
+      case 'fly': {
+        // the landing mark hunts Bimbo; the Heron glides above it. Then it commits and dives.
+        const hunt = angry ? 0.95 : 1.3;
+        if (e.modeT < hunt * 0.75) {
+          const spot = this.room.inPit(bimbo.x, bimbo.y, -24) ? this.nearestLand(bimbo.x, bimbo.y, 24) : bimbo;
+          const k = 1 - Math.exp(-dt * 5); e.tx += (spot.x - e.tx) * k; e.ty += (spot.y - e.ty) * k;
+        }
+        const k2 = 1 - Math.exp(-dt * 4); e.x += (e.tx - e.x) * k2; e.y += (e.ty - e.y) * k2;
+        if (e.modeT > hunt) { e.mode = 'slam'; e.modeT = 0; e.hit = false; }
+        return [0, 0];
+      }
+      case 'slam': {
+        e.air = Math.max(0, e.air - dt * 600); e.x = e.tx; e.y = e.ty;
+        if (e.air <= 0 && !e.hit) {
+          e.hit = true;
+          this.fx('slam', e.x, e.y);
+          for (let i = 0; i < 3; i++) this.addPuddle(e.x + (this.rng() - 0.5) * 80, e.y + (this.rng() - 0.5) * 50, 24);
+          const bb = this.packPoint(10);
+          if (Math.hypot(bb.x - e.x, bb.y - e.y) < 50) this.hurtPlayer(1, true, e, 'slam');
+          else if (Math.hypot(p.x - e.x, p.y - e.y) < 90) { const [ux, uy] = dirTo(e, p); p.vx += ux * 260; p.vy += uy * 260; }
+          e.mode = 'grounded'; e.modeT = 0; e.cd = 0.5;
+          this.say('THOOM. The Heron lands on the bank. Bite him now!');
+        }
+        return [0, 0];
+      }
+      case 'grounded': {
+        // on the bank: pecks at the pack, then flies home
+        const stay = angry ? 2.6 : 3.4;
+        if (e.stun > 0) return [0, 0];
+        if (e.modeT > stay) { takeOff('return'); return [0, 0]; }
+        if (e.cd <= 0 && !e.hit && db < 110) { e.hit = true; e.attack = 'peck'; e.tx = bimbo.x; e.ty = bimbo.y; e.grip2 = 0; }
+        if (e.hit && e.attack === 'peck') {
+          e.grip2 += dt;
+          if (e.grip2 < 0.35) { e.tx = bimbo.x; e.ty = bimbo.y; }       // aiming (telegraphed)
+          else if (e.grip2 >= 0.42) {
+            const [ux, uy] = dirTo(e, { x: e.tx, y: e.ty });
+            const bx = bimbo.x - e.x, by = bimbo.y - e.y, along = bx * ux + by * uy, off = Math.abs(bx * uy - by * ux);
+            if (along > 0 && along < 100 && off < 18) this.hurtPlayer(1, true, e, 'spear');
+            e.hit = false; e.attack = 'leap'; e.cd = angry ? 0.5 : 0.8;
+          }
+        } else if (db > 60) {                        // stalks after Bimbo on foot, slowly, avoiding the water
+          const [ux, uy] = dirTo(e, bimbo), nx = e.x + ux * 55 * dt, ny = e.y + uy * 55 * dt;
+          if (!this.room.inPit(nx, ny, -e.r)) { e.x = nx; e.y = ny; }
+        }
+        return [0, 0];
+      }
+      case 'return': {
+        e.air = Math.min(120, e.air + dt * 260);
+        const k = 1 - Math.exp(-dt * 5); e.x += (home.x - e.x) * k; e.y += (home.y - e.y) * k;
+        if (Math.hypot(home.x - e.x, home.y - e.y) < 6 && e.air >= 100) { e.x = home.x; e.y = home.y; e.mode = 'perch'; e.modeT = 0; }
+        return [0, 0];
+      }
+      case 'perch': {
+        e.air = Math.max(0, e.air - dt * 300);
+        if (e.air <= 0) { e.mode = 'recover'; e.modeT = 0; e.cd = (angry ? 0.5 : 0.9) + this.rng() * 0.5; }
+        return [0, 0];
+      }
       case 'wind': {
+        if (!onRock && e.attack !== 'spear') { e.mode = 'recover'; return [0, 0]; }
         const wind = e.attack === 'spear' ? (angry ? 0.45 : 0.6) : e.attack === 'gust' ? 0.8 : (angry ? 0.5 : 0.7);
         if (e.attack === 'spear' && e.modeT < wind * 0.6) { e.tx = bimbo.x; e.ty = bimbo.y; }   // tracks, then commits
         if (e.modeT < wind) return [0, 0];
@@ -980,42 +1094,42 @@ export class Sim {
         else if (e.attack === 'gust') e.mode = 'gust';
         else {
           e.mode = 'darts';
-          const n = angry ? 5 : 3;
+          const n = angry ? 8 : 5;
           for (let i = 0; i < n; i++) {
-            // aim at Bimbo, where he is headed, and scattered around him
-            const lead = i === 0 ? 0 : 0.5, sx = (this.rng() - 0.5) * 120 * (i ? 1 : 0), sy = (this.rng() - 0.5) * 90 * (i ? 1 : 0);
-            this.darts.push({ x0: e.x, y0: e.y - 40, tx: bimbo.x + p.vx * lead + sx, ty: bimbo.y + p.vy * lead + sy, t: 0, T: 0.75 + i * 0.12 });
+            // the first lands on Bimbo, the next where he is headed, the rest bracket him
+            const lead = i === 0 ? 0 : 0.6, spread = i < 2 ? 0 : 1;
+            const sx = (this.rng() - 0.5) * 140 * spread, sy = (this.rng() - 0.5) * 100 * spread;
+            this.darts.push({ x0: e.x, y0: e.y - 40, tx: bimbo.x + p.vx * lead + sx, ty: bimbo.y + p.vy * lead + sy, t: 0, T: 0.8 + i * 0.1 });
           }
           this.say(angry ? 'A storm of feathers!' : 'Feather darts! Watch the marks.');
         }
         return [0, 0];
       }
       case 'spear': {
-        // the beak shoots out along the committed line, 150 long
         const [ux, uy] = dirTo(e, { x: e.tx, y: e.ty });
         const bx = bimbo.x - e.x, by = bimbo.y - e.y, along = bx * ux + by * uy, off = Math.abs(bx * uy - by * ux);
-        if (!e.hit && e.modeT > 0.08) { e.hit = true; if (along > 0 && along < 150 && off < 16) this.hurtPlayer(1, true, e, 'spear'); }
-        if (e.modeT > 0.3) { e.mode = 'recover'; e.modeT = 0; e.cd = (angry ? 0.6 : 1.1) + this.rng() * 0.6; }
+        if (!e.hit && e.modeT > 0.08) { e.hit = true; if (along > 0 && along < 150 && off < 18) this.hurtPlayer(1, true, e, 'spear'); }
+        if (e.modeT > 0.3) { e.mode = 'recover'; e.modeT = 0; e.cd = (angry ? 0.5 : 0.9) + this.rng() * 0.5; }
         return [0, 0];
       }
       case 'gust': {
         if (!e.hit) {
           e.hit = true;
           const [ux, uy, l] = dirTo(e, p);
-          if (l < 340) {
-            const push = 620 * (1 - l / 420);
+          if (l < 360) {
+            const push = 640 * (1 - l / 440);
             p.vx += ux * push; p.vy += uy * push;
             if (g.state !== 'latched') { g.vx += ux * push; g.vy += uy * push; }
-            if (this.pack.enabled) { this.pack.water = Math.max(0, this.pack.water - 0.03); this.fx('splash', p.x, p.y - 30); }
+            if (this.pack.enabled) { this.pack.water = Math.max(0, this.pack.water - 0.05); this.fx('splash', p.x, p.y - 30); }
           }
           this.fx('gust', e.x, e.y, { a: Math.atan2(p.y - e.y, p.x - e.x) });
-          this.say('WHOOSH. A wing gust across the water.');
+          this.say('WHOOSH. A wing gust sprays the pack.');
         }
-        if (e.modeT > 0.4) { e.mode = 'recover'; e.modeT = 0; e.cd = 0.8 + this.rng() * 0.8; }
+        if (e.modeT > 0.4) { e.mode = 'recover'; e.modeT = 0; e.cd = 0.6 + this.rng() * 0.6; }
         return [0, 0];
       }
       case 'darts': {
-        if (e.modeT > 0.4) { e.mode = 'recover'; e.modeT = 0; e.cd = (angry ? 0.9 : 1.5) + this.rng() * 0.8; }
+        if (e.modeT > 0.4) { e.mode = 'recover'; e.modeT = 0; e.cd = (angry ? 0.7 : 1.1) + this.rng() * 0.6; }
         return [0, 0];
       }
       case 'call': {
@@ -1028,7 +1142,7 @@ export class Sim {
           }
           this.say('KRAAAK! The Heron calls up frogs from the burrows.');
         }
-        if (e.modeT > 0.6) { e.mode = 'recover'; e.modeT = 0; e.cd = 1 + this.rng(); }
+        if (e.modeT > 0.6) { e.mode = 'recover'; e.modeT = 0; e.cd = 0.8 + this.rng() * 0.8; }
         return [0, 0];
       }
       default: e.mode = 'recover'; e.modeT = 0; return [0, 0];
