@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.join(HERE, '..'))
 sys.path.insert(0, os.path.join(HERE, '..', 'characters'))
 from hdkit import Layer, composite, hx  # noqa: E402
 import rocco_hd  # noqa: E402
+import biscuit_hd  # noqa: E402
 
 W, H = 640, 360
 FRAMES = 8
@@ -180,46 +181,6 @@ def background():
     return base, emit, water, sx
 
 # ---------------------------------------------------------------- creatures
-def biscuit(frame):
-    """Biscuit mid-fling: wings beating, neck stretched, beak open in a honk. 56x46."""
-    w, h = 56, 46
-    up = frame % 4 < 2
-    L = []
-    wing_b = Layer('wingb', w, h, PT)                     # far wing
-    tip = (8, 2) if up else (4, 16)
-    wing_b.poly([(20, 22), tip, (12, 6 if up else 18), (26, 18)], 'GD')
-    L.append(wing_b)
-    body = Layer('body', w, h, PT)
-    body.ell(24, 28, 16, 10, 'GW')
-    body.ell(22, 32, 13, 6, 'GS')                         # belly shade
-    body.poly([(8, 26), (2, 22), (6, 30)], 'GW')          # tail tuft
-    body.poly([(36, 24), (42, 14), (45, 16), (40, 28)], 'GW')   # neck base
-    L.append(body)
-    legs = Layer('legs', w, h, PT)
-    legs.poly([(20, 37), (18, 42), (23, 41)], 'GB'); legs.poly([(27, 37), (26, 43), (31, 41)], 'GB')
-    L.append(legs)
-    neck = Layer('neck', w, h, PT)
-    for i in range(6):
-        neck.ell(41 + i * 0.6, 18 - i * 2.2, 3.4, 3.4, 'GW')
-    L.append(neck)
-    head = Layer('head', w, h, PT)
-    head.ell(44, 7, 6, 5, 'GW')
-    head.poly([(48, 5), (55, 5), (55, 7), (49, 8)], 'GB')        # upper beak
-    head.poly([(48, 9), (54, 10), (49, 11)], 'GK')               # lower beak, open: HONK
-    head.poly([(48, 5), (55, 5), (54, 6), (49, 6)], 'GB2')
-    head.rect(45, 5, 46, 7, 'EYE'); head.px(45, 5, 'SHINE')
-    head.line([(42, 3), (47, 4)], 'EYE')                          # angry brow
-    L.append(head)
-    wing_f = Layer('wingf', w, h, PT)                      # near wing, feathered
-    if up:
-        wing_f.poly([(18, 26), (14, 0), (22, 4), (30, 22)], 'GW')
-        for k in range(3): wing_f.line([(16 + k * 3, 4 + k * 2), (20 + k * 3, 20)], 'GS')
-    else:
-        wing_f.poly([(18, 24), (6, 34), (14, 36), (30, 26)], 'GW')
-        for k in range(3): wing_f.line([(10 + k * 4, 33), (20 + k * 3, 26)], 'GS')
-    L.append(wing_f)
-    return composite(L)
-
 def frog(blink):
     w, h = 26, 20
     L = []
@@ -309,12 +270,12 @@ def render(frame):
         paste(base, spr, im, fx, fy + (1 if (frame + i) % 4 < 2 else 0), emit, red_eye)
     paste(base, spr, snapper(blink), *SNAP, emit, red_eye)
     paste(base, spr, rocco_hd.build(frame), RX, RY, emit, lambda a: (a[..., 2] > 200) & (a[..., 0] < 200))   # water drops glow
-    gim = biscuit(frame)
+    gim = biscuit_hd.build_fling(frame)
     gy = GY + (0 if frame % 4 < 2 else 2)
     paste(base, spr, gim, GX, gy)
     # fishing line: rod tip to Biscuit's neck, with a little sag
     bob = 1 if math.sin(frame / FRAMES * math.tau) > 0.3 else 0
-    tip = (RX + 8 + 64, RY + 2 + bob + 18); neck = (GX + 41, gy + 16)
+    tip = (RX + 8 + 64, RY + 2 + bob + 18); neck = (GX + 32, gy + 16)
     for i in range(121):
         u = i / 120
         x = tip[0] + (neck[0] - tip[0]) * u; y = tip[1] + (neck[1] - tip[1]) * u + math.sin(math.pi * u) * 10
