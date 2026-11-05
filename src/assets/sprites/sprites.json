@@ -246,6 +246,76 @@
   ],
   "points": {}
  },
+ "squirrel": {
+  "w": 30,
+  "h": 30,
+  "frames": 3,
+  "anchor": [
+   15,
+   27
+  ],
+  "points": {}
+ },
+ "squirrel_awake": {
+  "w": 30,
+  "h": 30,
+  "frames": 2,
+  "anchor": [
+   15,
+   27
+  ],
+  "points": {}
+ },
+ "badger": {
+  "w": 60,
+  "h": 38,
+  "frames": 3,
+  "anchor": [
+   28,
+   33
+  ],
+  "points": {}
+ },
+ "badger_awake": {
+  "w": 60,
+  "h": 38,
+  "frames": 2,
+  "anchor": [
+   28,
+   33
+  ],
+  "points": {}
+ },
+ "king": {
+  "w": 112,
+  "h": 76,
+  "frames": 5,
+  "anchor": [
+   52,
+   70
+  ],
+  "points": {}
+ },
+ "king_awake": {
+  "w": 112,
+  "h": 76,
+  "frames": 2,
+  "anchor": [
+   52,
+   70
+  ],
+  "points": {}
+ },
+ "tree": {
+  "w": 96,
+  "h": 140,
+  "frames": 3,
+  "anchor": [
+   48,
+   128
+  ],
+  "points": {}
+ },
  "bimbo": {
   "w": 64,
   "h": 56,

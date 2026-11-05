@@ -13,6 +13,8 @@ const HONK_REACH = 155 * (0.85 + 0.15 * 2) + 30;   // base honk range at Goose P
 
 function reachable(def: RoomDef, leash: number, fromDoor: string | null): { doors: Set<string>; gateOpened: boolean } {
   const room = new Room(def);
+  room.bushAlive = room.bushAlive.map(() => false);   // Biscuit can chew through any bush he can be flung at
+  room.dirty();
   const W = Math.ceil(def.width / CELL), H = Math.ceil(def.height / CELL);
   const seen = new Uint8Array(W * H);
   const walk = (x: number, y: number) => {
@@ -46,6 +48,7 @@ function reachable(def: RoomDef, leash: number, fromDoor: string | null): { door
   };
   push(start.x, start.y);
   flood();
+  if (def.boss) gateOpened = true;                 // beating the boss opens the way
   if (gateOpened && room.gateClosed) {
     room.gateClosed = false;
     // re-flood from everything reached so far, now the gate is open
@@ -79,6 +82,15 @@ const PATH: [string, string | null, string, boolean][] = [
   ['reedmarsh-9', 'w', 'e', true],
   ['reedmarsh-10', 'w', 'e', true],
   ['reedmarsh-11', 'w', 'e', true],
+  ['reedmarsh-12', 'w', 'e', true],
+  ['hollowbark-1', 'w', 'e', true],
+  ['hollowbark-2', 'w', 'e', true],
+  ['hollowbark-3', 'w', 'e', true],
+  ['hollowbark-4', 'w', 'n', true],
+  ['hollowbark-5', 'w', 'e', true],
+  ['hollowbark-6', 'w', 'e', true],
+  ['hollowbark-7', 'w', 'e', true],
+  ['hollowbark-8', 'w', 'e', true],
 ];
 
 describe('every room can be finished', () => {

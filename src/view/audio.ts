@@ -109,6 +109,12 @@ export class Sound {
       case 'kraa': this.tone(520, 0.4, 'sawtooth', 0.12, 340); this.noise(0.3, 1600, 0.08, 'bandpass', 900, 0, 3); break;
       case 'whoosh': this.noise(0.35, 300, 0.15, 'bandpass', 1500); break;
       case 'door': this.noise(0.4, 400, 0.12, 'bandpass', 1200); this.tone(330, 0.2, 'sine', 0.06, 440); break;
+      case 'thud': this.tone(160, 0.12, 'triangle', 0.18, 80); this.noise(0.1, 600, 0.12, 'lowpass', 200); break;
+      case 'dust': this.noise(0.5, 300, 0.25, 'lowpass', 90); this.tone(70, 0.3, 'sine', 0.25, 40); break;
+      case 'spores': this.noise(0.6, 3000, 0.08, 'bandpass', 1200, 0, 2); [784, 659, 523].forEach((f, i) => this.tone(f, 0.5, 'sine', 0.06, undefined, i * 0.1)); break;
+      case 'bush': this.noise(0.25, 1800, 0.25, 'bandpass', 700, 0, 1.5); this.tone(120, 0.1, 'triangle', 0.2, 70); break;
+      case 'chatter': this.tone(1400, 0.04, 'square', 0.05, 1800); this.tone(1500, 0.04, 'square', 0.05, 1900, 0.06); break;
+      case 'growl': this.tone(80, 0.5, 'sawtooth', 0.12, 60); this.noise(0.4, 400, 0.1, 'lowpass', 200); break;
       case 'learn': [392, 494, 587, 784, 988].forEach((f, i) => this.tone(f, 0.4, 'sine', 0.13, undefined, i * 0.09)); break;
     }
   }

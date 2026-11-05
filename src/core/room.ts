@@ -4,12 +4,31 @@ import type { Circle, Rect } from './math';
 /** Live room state: the static definition plus what changes (gate, bell). */
 export class Room {
   gateClosed: boolean;
+  /** Bramble bushes still standing (Biscuit chews through them). */
+  bushAlive: boolean[];
+  private solidCache: Rect[] | null = null;
   constructor(readonly def: RoomDef) {
     this.gateClosed = def.gate !== null;
+    this.bushAlive = (def.bushes ?? []).map(() => true);
   }
 
+  /** Call after the gate or a bush changes. */
+  dirty(): void { this.solidCache = null; }
+
   solids(): Rect[] {
-    return this.gateClosed && this.def.gate ? [...this.def.walls, this.def.gate] : this.def.walls;
+    const key = this.gateClosed;
+    if (this.solidCache && this.cacheGate === key) return this.solidCache;
+    const out = [...this.def.walls];
+    if (this.gateClosed && this.def.gate) out.push(this.def.gate);
+    (this.def.bushes ?? []).forEach((b, i) => { if (this.bushAlive[i]) out.push({ x: b.x - b.r, y: b.y - b.r, w: b.r * 2, h: b.r * 2 }); });
+    this.cacheGate = key;
+    return (this.solidCache = out);
+  }
+  private cacheGate = false;
+
+  /** Inside a thorn bramble patch. */
+  inBramble(x: number, y: number): boolean {
+    return (this.def.brambles ?? []).some(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
   }
 
   pits(): Rect[] { return this.def.pits ?? (this.def.pit ? [this.def.pit] : []); }

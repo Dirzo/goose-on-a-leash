@@ -359,7 +359,7 @@ for pt in [(340, 350), (870, 350), (605, 80), (605, 620)]:
 ROOMS.append(room(
     'reedmarsh-12', "The Ferryman's Pool", 1120, 700,
     [dict(id='w', side='W', at=350, to='reedmarsh-11', toDoor='e', label="Heron's Approach"),
-     dict(id='e', side='E', at=350, to='END', toDoor='', gated=True, label='Hollowbark Woods')],
+     dict(id='e', side='E', at=350, to='hollowbark-1', toDoor='w', gated=True, label='Hollowbark Woods')],
     'w', subtitle='Reedmarsh · the Ferryman',
     gate=rect(1074, 304, 12, 92),
     pits=[rect(380, 120, 450, 460)],

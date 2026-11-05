@@ -1,0 +1,223 @@
+{
+ "id": "hollowbark-7",
+ "name": "Badger Sett",
+ "subtitle": "Hollowbark Woods \u00b7 7",
+ "width": 1200,
+ "height": 680,
+ "playerStart": {
+  "x": 66,
+  "y": 340
+ },
+ "walls": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1200,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 660,
+   "w": 1200,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 298.0,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 382.0,
+   "w": 20,
+   "h": 298.0,
+   "kind": "border"
+  },
+  {
+   "x": 1180,
+   "y": 0,
+   "w": 20,
+   "h": 298.0,
+   "kind": "border"
+  },
+  {
+   "x": 1180,
+   "y": 382.0,
+   "w": 20,
+   "h": 298.0,
+   "kind": "border"
+  },
+  {
+   "x": 228,
+   "y": 418,
+   "w": 44,
+   "h": 44,
+   "kind": "tree"
+  },
+  {
+   "x": 578,
+   "y": 498,
+   "w": 44,
+   "h": 44,
+   "kind": "tree"
+  },
+  {
+   "x": 858,
+   "y": 558,
+   "w": 44,
+   "h": 44,
+   "kind": "tree"
+  },
+  {
+   "x": 1028,
+   "y": 158,
+   "w": 44,
+   "h": 44,
+   "kind": "tree"
+  }
+ ],
+ "gate": null,
+ "pits": [
+  {
+   "x": 640,
+   "y": 20,
+   "w": 60,
+   "h": 240,
+   "kind": "ravine"
+  },
+  {
+   "x": 200,
+   "y": 150,
+   "w": 70,
+   "h": 50,
+   "kind": "water"
+  }
+ ],
+ "bridges": [],
+ "refills": [
+  {
+   "x": 180,
+   "y": 130,
+   "w": 110,
+   "h": 90
+  }
+ ],
+ "posts": [],
+ "bell": null,
+ "exit": null,
+ "vents": [
+  {
+   "x": 300,
+   "y": 580
+  },
+  {
+   "x": 820,
+   "y": 120
+  }
+ ],
+ "bucket": null,
+ "breadSpots": [],
+ "enemies": [
+  {
+   "kind": "badger",
+   "x": 420,
+   "y": 200
+  },
+  {
+   "kind": "badger",
+   "x": 720,
+   "y": 470
+  },
+  {
+   "kind": "badger",
+   "x": 960,
+   "y": 260
+  }
+ ],
+ "knightSpawn": null,
+ "doors": [
+  {
+   "id": "w",
+   "x": 0,
+   "y": 298.0,
+   "w": 26,
+   "h": 84,
+   "to": "hollowbark-6",
+   "toDoor": "e",
+   "spawn": {
+    "x": 66,
+    "y": 340
+   },
+   "label": "Hollow Stump"
+  },
+  {
+   "id": "e",
+   "x": 1174,
+   "y": 298.0,
+   "w": 26,
+   "h": 84,
+   "to": "hollowbark-8",
+   "toDoor": "w",
+   "spawn": {
+    "x": 1134,
+    "y": 340
+   },
+   "label": "The Hollow"
+  }
+ ],
+ "paths": [
+  [
+   [
+    66,
+    340
+   ],
+   [
+    1134,
+    340
+   ]
+  ]
+ ],
+ "biome": "woods",
+ "lightKind": "squirrel",
+ "heavyKind": "badger",
+ "brambles": [
+  {
+   "x": 520,
+   "y": 300,
+   "w": 120,
+   "h": 70
+  },
+  {
+   "x": 820,
+   "y": 420,
+   "w": 100,
+   "h": 80
+  }
+ ],
+ "barrels": [
+  {
+   "x": 560,
+   "y": 620
+  },
+  {
+   "x": 1100,
+   "y": 580
+  }
+ ],
+ "kits": [
+  {
+   "x": 1120,
+   "y": 440
+  }
+ ],
+ "spools": [
+  {
+   "x": 480,
+   "y": 120
+  }
+ ]
+}

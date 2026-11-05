@@ -1,0 +1,188 @@
+{
+ "id": "hollowbark-6",
+ "name": "Hollow Stump",
+ "subtitle": "Hollowbark Woods \u00b7 6",
+ "width": 880,
+ "height": 560,
+ "playerStart": {
+  "x": 66,
+  "y": 280
+ },
+ "walls": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 880,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 540,
+   "w": 880,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 238.0,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 322.0,
+   "w": 20,
+   "h": 238.0,
+   "kind": "border"
+  },
+  {
+   "x": 860,
+   "y": 0,
+   "w": 20,
+   "h": 238.0,
+   "kind": "border"
+  },
+  {
+   "x": 860,
+   "y": 322.0,
+   "w": 20,
+   "h": 238.0,
+   "kind": "border"
+  },
+  {
+   "x": 680,
+   "y": 20,
+   "w": 24,
+   "h": 70,
+   "kind": "hedge"
+  },
+  {
+   "x": 680,
+   "y": 150,
+   "w": 180,
+   "h": 24,
+   "kind": "hedge"
+  },
+  {
+   "x": 178,
+   "y": 118,
+   "w": 44,
+   "h": 44,
+   "kind": "tree"
+  },
+  {
+   "x": 238,
+   "y": 448,
+   "w": 44,
+   "h": 44,
+   "kind": "tree"
+  }
+ ],
+ "gate": null,
+ "pits": [
+  {
+   "x": 600,
+   "y": 380,
+   "w": 80,
+   "h": 60,
+   "kind": "water"
+  }
+ ],
+ "bridges": [],
+ "refills": [
+  {
+   "x": 580,
+   "y": 360,
+   "w": 120,
+   "h": 100
+  }
+ ],
+ "posts": [],
+ "bell": null,
+ "exit": null,
+ "vents": [],
+ "bucket": null,
+ "breadSpots": [
+  {
+   "x": 150,
+   "y": 450
+  }
+ ],
+ "enemies": [],
+ "knightSpawn": null,
+ "doors": [
+  {
+   "id": "w",
+   "x": 0,
+   "y": 238.0,
+   "w": 26,
+   "h": 84,
+   "to": "hollowbark-5",
+   "toDoor": "e",
+   "spawn": {
+    "x": 66,
+    "y": 280
+   },
+   "label": "Spore Ring"
+  },
+  {
+   "id": "e",
+   "x": 854,
+   "y": 238.0,
+   "w": 26,
+   "h": 84,
+   "to": "hollowbark-7",
+   "toDoor": "w",
+   "spawn": {
+    "x": 814,
+    "y": 280
+   },
+   "label": "Badger Sett"
+  }
+ ],
+ "paths": [
+  [
+   [
+    66,
+    280
+   ],
+   [
+    814,
+    280
+   ]
+  ]
+ ],
+ "biome": "woods",
+ "lightKind": "squirrel",
+ "heavyKind": "badger",
+ "bushes": [
+  {
+   "x": 692,
+   "y": 118,
+   "r": 26
+  }
+ ],
+ "chest": {
+  "x": 440,
+  "y": 200,
+  "leash": "vine"
+ },
+ "kits": [
+  {
+   "x": 300,
+   "y": 400
+  }
+ ],
+ "feathers": [
+  {
+   "x": 790,
+   "y": 80
+  }
+ ],
+ "lantern": {
+  "x": 480,
+  "y": 180
+ }
+}

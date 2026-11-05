@@ -20,6 +20,7 @@ sys.path.insert(0, os.path.join(HERE, 'characters'))
 import biscuit_hd  # noqa: E402
 import critters_hd  # noqa: E402
 import rocco_hd  # noqa: E402
+import props_hd  # noqa: E402
 sys.path.insert(0, os.path.join(HERE, 'ui'))
 import backpack_ui as bui  # noqa: E402
 
@@ -55,6 +56,17 @@ strip('snapper_awake', [critters_hd.snapper(False, submerged=False, awake=True),
 strip('heron', [critters_hd.heron('idle'), critters_hd.heron('idle', blink=True), critters_hd.heron('wind'),
                 critters_hd.heron('stab'), critters_hd.heron('gust')], critters_hd.HERON_ANCHOR, {'beakStab': [71, 34]})
 strip('heron_awake', [critters_hd.heron('idle', awake=True), critters_hd.heron('idle', blink=True, awake=True)], critters_hd.HERON_ANCHOR)
+
+# Hollowbark Woods: squirrel (idle, blink, throw), badger (idle, blink, dig), the Burrow King (idle, blink, wind, charge, dazed)
+strip('squirrel', [critters_hd.squirrel(), critters_hd.squirrel(blink=True), critters_hd.squirrel(pose='throw')], (15, 27))
+strip('squirrel_awake', [critters_hd.squirrel(awake=True), critters_hd.squirrel(blink=True, awake=True)], (15, 27))
+strip('badger', [critters_hd.badger(), critters_hd.badger(blink=True), critters_hd.badger(pose='dig')], (28, 33))
+strip('badger_awake', [critters_hd.badger(awake=True), critters_hd.badger(blink=True, awake=True)], (28, 33))
+strip('king', [critters_hd.burrow_king(), critters_hd.burrow_king(blink=True), critters_hd.burrow_king(pose='wind'),
+               critters_hd.burrow_king(pose='charge'), critters_hd.burrow_king(pose='dazed')], (52, 70))
+strip('king_awake', [critters_hd.burrow_king(awake=True), critters_hd.burrow_king(blink=True, awake=True)], (52, 70))
+
+strip('tree', [props_hd.tree(v) for v in range(3)], props_hd.TREE_ANCHOR)
 
 # backpack screen: Bimbo (happy, worried, gasping x open/blink), the pack, patches, tears
 strip('bimbo', [bui.bimbo(m, b) for m in ('happy', 'worried', 'gasping') for b in (False, True)], bui.BIMBO_ANCHOR)

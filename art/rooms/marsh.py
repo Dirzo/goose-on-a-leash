@@ -25,7 +25,7 @@ OUT = os.path.join(ROOT, 'src', 'assets', 'rooms')
 
 
 def hx(s): return np.array([int(s[i:i + 2], 16) for i in (0, 2, 4)], np.float32)
-P = {k: hx(v) for k, v in {
+BASE_P = {k: hx(v) for k, v in {
     'Q0': '19221a', 'Q1': '222f22', 'Q2': '2d3d2a', 'Q3': '3e5636', 'Q4': '5a7346', 'Q5': '6e8048',
     'D0': '261e17', 'D1': '362b20', 'D2': '483a2a', 'MUD': '2a2219',
     'W0': '0b1a22', 'W1': '11252f', 'W2': '19343f', 'W3': '2c5560', 'WR1': '8a1c2c', 'WR2': 'd83a4a',
@@ -39,8 +39,21 @@ P = {k: hx(v) for k, v in {
 }.items()}
 
 
+# Hollowbark Woods: leaf litter and moss instead of marsh grass, darker canopy, rocky ravines
+WOODS_P = {k: hx(v) for k, v in {
+    'Q0': '1a1610', 'Q1': '231e15', 'Q2': '2d261a', 'Q3': '3a4628', 'Q4': '506038', 'Q5': '66703e',
+    'LF1': '6e3e1c', 'LF2': '8e5a26', 'LF3': 'a87a34',
+    'RV0': '060504', 'RV1': '0e0b08', 'RV2': '1a1510', 'ROCK0': '3a342a', 'ROCK1': '56503f', 'ROCK2': '766e58',
+    'ROOT': '3e2a18', 'TR0': '22160e', 'TR1': '3a2616', 'TR2': '563a20', 'TR3': '74502c',
+    'HD0': '0e180e', 'HD1': '18281a', 'HD2': '24402a', 'TH0': '2a1420', 'TH1': '442030', 'TH2': '6a3a48',
+}.items()}
+
+
 def render(R):
     W, H = R['width'], R['height']
+    woods = R.get('biome') == 'woods'
+    P = dict(BASE_P)
+    if woods: P.update(WOODS_P)
     rng = random.Random(hash(R['id']) & 0xffff)
     yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
     img = np.zeros((H, W, 3), np.float32)
@@ -63,9 +76,27 @@ def render(R):
     img[:] = P['Q1']; img[g < -1.35] = P['Q0']; img[g >= 0.9] = P['Q2']
     soggy = (g < -1.6)
     img[soggy] = P['MUD'] * 0.3 + P['Q0'] * 0.7
+    if woods:                                             # moss patches breaking up the leaf litter
+        moss = np.zeros((H, W), np.float32)
+        for _ in range(int(W * H / 22000)):              # soft round moss beds
+            cx, cy, r = rng.uniform(0, W), rng.uniform(0, H), rng.uniform(26, 70)
+            moss = np.maximum(moss, 1 - np.hypot(xx - cx, (yy - cy) * 1.3) / r)
+        dith = ((xx.astype(int) + yy.astype(int)) % 2) * 0.08
+        img[moss + dith > 0.25] = P['Q3'] * 0.6 + P['Q1'] * 0.4
+        img[moss + dith > 0.55] = P['Q3'] * 0.85 + P['Q1'] * 0.15
+        img[moss + dith > 0.8] = P['Q4'] * 0.75 + P['Q1'] * 0.25
+    if woods:                                             # fallen leaves
+        for _ in range(int(W * H / 90)):
+            x, y = rng.randrange(2, W - 3), rng.randrange(2, H - 3)
+            c = P[rng.choice(['LF1', 'LF1', 'LF2', 'LF3'])]
+            img[y, x] = c; img[y, x + 1] = c * 0.8
+            if rng.random() < 0.4: img[y + 1, x] = c * 0.7
 
     # ---- water from the pit rects; islands carved back out. Edge noise is small so the shore matches collision.
-    pits = R.get('pits', [])
+    allpits = R.get('pits', [])
+    pits = [p for p in allpits if p.get('kind', 'water') == 'water']
+    ravines = [p for p in allpits if p.get('kind') == 'ravine']
+    pillars = [b for b in R.get('bridges', []) if b.get('kind') == 'pillar']
     islands = [b for b in R.get('bridges', []) if b.get('kind') == 'island']
     docks = [b for b in R.get('bridges', []) if b.get('kind', 'dock') == 'dock']
     noise = 4.0 * np.sin(xx * 0.05 + yy * 0.033 + seed) + 2.5 * np.sin(yy * 0.071 - xx * 0.043) + 1.2 * np.sin(yy * 0.19 - xx * 0.13)
@@ -94,6 +125,39 @@ def render(R):
                 m = water & (np.hypot(xx - mx, (yy - my) / 0.55) < rr) & ((yy.astype(int) % 3) != 0)
                 img[m] = img[m] * 0.45 + P[c] * 0.55
 
+    # ---- ravines: a dark drop with a rocky lip and roots hanging in; rock pillars stand out of them
+    if ravines:
+        ds2 = np.stack([sdf_rect(p, 14) for p in ravines])
+        sdr = ds2.min(axis=0) - noise * 0.35
+        for pl in pillars:
+            sdr = np.maximum(sdr, -(sdf_rect(pl, 12) - noise * 0.3))
+        rav = sdr < 0
+        depth = np.clip(-sdr / 60, 0, 1)
+        img[rav] = P['RV2']; img[rav & (depth > 0.3)] = P['RV1']; img[rav & (depth > 0.7)] = P['RV0']
+        lip = (sdr >= 0) & (sdr < 5)
+        img[lip] = P['ROCK1']; img[lip & (sdr < 2)] = P['ROCK0']; img[(sdr >= 3.5) & (sdr < 5)] = P['ROCK2']
+        ys, xs = np.nonzero(lip); grad_y, grad_x = np.gradient(sdr)
+        for _ in range(int(lip.sum() / 40)):                # roots dangling over the edge
+            i = rng.randrange(len(xs)); x0, y0 = int(xs[i]), int(ys[i])
+            gx, gy = grad_x[y0, x0], grad_y[y0, x0]
+            n = math.hypot(gx, gy) or 1; dx, dy = -gx / n, -gy / n
+            for k in range(rng.randrange(6, 18)):
+                px(x0 + dx * k + math.sin(k * 0.7) * 1.2, y0 + dy * k, 'ROOT')
+        for pl in pillars:                                   # pillar tops: weathered rock with a moss cap
+            sp = sdf_rect(pl, 12) - noise * 0.3
+            top = sp < 0
+            img[top] = P['ROCK1']
+            for _ in range(int(pl['w'] * pl['h'] / 60)):     # pebbly texture
+                x, y = rng.uniform(pl['x'], pl['x'] + pl['w']), rng.uniform(pl['y'], pl['y'] + pl['h'])
+                m = top & (np.hypot(xx - x, (yy - y) * 1.3) < rng.uniform(2, 5)); img[m] = P[rng.choice(['ROCK0', 'ROCK2'])]
+            mx, my = pl['x'] + pl['w'] * rng.uniform(0.3, 0.7), pl['y'] + pl['h'] * rng.uniform(0.2, 0.5)
+            img[top & (np.hypot(xx - mx, (yy - my) * 1.2) < pl['w'] * 0.32)] = P['Q4'] * 0.8 + P['ROCK1'] * 0.2
+            img[top & (sp > -3)] = P['ROCK0']
+            img[(sp >= 0) & (sp < 10) & rav] = P['RV1'] * 0.5 + P['ROCK0'] * 0.5   # the pillar's side falling away
+        water &= ~rav; bank &= ~rav
+    else:
+        rav = np.zeros((H, W), bool)
+
     # ---- dirt trails
     path = np.zeros((H, W), bool)
     for seq in R.get('paths', []):
@@ -104,11 +168,11 @@ def render(R):
                 cx, cy = a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u
                 r = 13 + 2 * math.sin(cx * 0.2 + cy * 0.1)
                 path |= np.hypot(xx - cx, yy - cy) < r + 2 * np.sin(xx * 0.9 + yy * 1.3 + i)
-    path &= ~water & ~bank
+    path &= ~water & ~bank & ~rav
     pn = np.sin(xx * 0.31 + yy * 0.17) * np.sin(yy * 0.43 - xx * 0.12)
     img[path] = P['D1']; img[path & (pn > 0.45)] = P['D2']; img[path & (pn < -0.55)] = P['D0']
 
-    land = ~water & ~bank & ~path
+    land = ~water & ~bank & ~path & ~rav
     for _ in range(int(W * H / 300)):                     # grass blades and a few flowers
         x, y = rng.randrange(4, W - 4), rng.randrange(4, H - 4)
         if land[y, x]:
@@ -187,8 +251,46 @@ def render(R):
             px(p['x'] + math.cos(math.radians(a)) * (p['r'] - 0.5), p['y'] + math.sin(math.radians(a)) * (p['r'] - 0.5), 'B3')
 
     # ---- props
+    trees = []
+    # thorn brambles (static hazards): a tangle of dark vines with pale thorns
+    for b in R.get('brambles', []):
+        x0, y0, x1, y1 = b['x'], b['y'], b['x'] + b['w'], b['y'] + b['h']
+        img[int(y0):int(y1), int(x0):int(x1)] = img[int(y0):int(y1), int(x0):int(x1)] * 0.6 + P['TH0'] * 0.2
+        for _ in range(int(b['w'] * b['h'] / 18)):
+            x, y = rng.uniform(x0, x1), rng.uniform(y0, y1)
+            a = rng.uniform(0, math.tau)
+            for k in range(rng.randrange(6, 14)):
+                xx_, yy_ = x + math.cos(a) * k, y + math.sin(a) * k * 0.7
+                if x0 <= xx_ < x1 and y0 <= yy_ < y1: px(xx_, yy_, rng.choice(['TH0', 'TH1']))
+                a += rng.uniform(-0.5, 0.5)
+            px(x, y - 1, 'TH2'); px(x + 1, y - 2, 'TH2')
+        for _ in range(int(b['w'] * b['h'] / 60)):               # pale thorns
+            px(rng.uniform(x0, x1), rng.uniform(y0, y1), 'TH2')
     for w in R['walls']:
         kind = w.get('kind')
+        if kind == 'tree':
+            cx, cy, r = w['x'] + w['w'] / 2, w['y'] + w['h'] / 2, w['w'] / 2
+            trees.append((cx, cy, r))
+            shadow(cx + 6, cy + 10, r + 18, r * 0.6 + 8, 0.6)
+            for a in range(0, 360, 40):                       # roots
+                ang = math.radians(a + rng.uniform(-12, 12))
+                for k in range(int(r), int(r + 16 + rng.uniform(0, 8))):
+                    px(cx + math.cos(ang) * k, cy + math.sin(ang) * k * 0.8, 'TR1'); px(cx + math.cos(ang) * k + 1, cy + math.sin(ang) * k * 0.8, 'TR0')
+            disk(cx, cy + 4, r * 0.9, 'TR0', 0.5)               # the trunk itself is a y-sorted sprite in the game
+            continue
+        if kind == 'hedge':
+            x0, y0, x1, y1 = w['x'], w['y'], w['x'] + w['w'], w['y'] + w['h']
+            shadow((x0 + x1) / 2 + 5, y1 + 4, w['w'] / 2 + 8, 8, 0.6)
+            img[y0:y1, x0:x1] = P['HD0']
+            for _ in range(int(w['w'] * w['h'] / 40)):        # leaf clumps
+                x, y = rng.uniform(x0 + 3, x1 - 3), rng.uniform(y0 + 3, y1 - 3)
+                r = rng.uniform(4, 9)
+                m = (np.hypot(xx - x, (yy - y) * 1.2) < r) & (xx >= x0) & (xx < x1) & (yy >= y0) & (yy < y1)
+                img[m] = P['HD1']
+                m2 = (np.hypot(xx - x + 1.5, (yy - y + 2) * 1.2) < r * 0.55) & m
+                img[m2] = P['HD2']
+            img[y0, x0:x1] = P['HD2']; img[y1 - 1, x0:x1] = P['OUT']
+            continue
         if kind == 'stump':
             cx, cy = w['x'] + w['w'] / 2, w['y'] + w['h'] / 2
             shadow(cx + 4, cy + 10, 24, 8)
@@ -283,6 +385,12 @@ def render(R):
             lum[dl < rr] += k
         glow = np.floor(np.clip(1 - dl / 170, 0, 1) * 4) / 4
     warm = np.array([1.0, 0.82, 0.55], np.float32)
+    if woods:
+        for (cx, cy, r) in trees:                             # canopy shade around each tree
+            d = np.hypot(xx - cx, (yy - cy) * 1.1)
+            lum[d < r + 70] -= 0.12; lum[d < r + 40] -= 0.08
+        beams = (np.sin((xx + yy * 0.6) * 0.012 + seed) > 0.93)   # moonlight through the leaves
+        lum[beams] += 0.1
     img = img * lum[..., None]
     img = img * (1 - glow[..., None] * 0.35) + img * warm * glow[..., None] * 0.35 + P['L2'] * glow[..., None] * 0.12
     fog = np.sin(xx * 0.006 + yy * 0.02 + seed) + 0.6 * np.sin(xx * 0.017 - yy * 0.011)
@@ -302,7 +410,7 @@ def render(R):
 def main(ids):
     os.makedirs(OUT, exist_ok=True)
     files = [os.path.join(ROOT, 'src', 'data', 'rooms', f'{i}.json') for i in ids] if ids else \
-        sorted(glob.glob(os.path.join(ROOT, 'src', 'data', 'rooms', 'reedmarsh-*.json')))
+        sorted(glob.glob(os.path.join(ROOT, 'src', 'data', 'rooms', 'reedmarsh-*.json')) + glob.glob(os.path.join(ROOT, 'src', 'data', 'rooms', 'hollowbark-*.json')))
     for f in files:
         R = json.load(open(f))
         render(R).save(os.path.join(OUT, f"{R['id']}.png"))

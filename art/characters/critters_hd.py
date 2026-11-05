@@ -120,3 +120,90 @@ def heron(pose='idle', blink=False, awake=False):
         for k in range(3): wf.line([(18 + k * 4, 50 + k), (24 + k * 4, 58)], 'H0')
         L.append(wf)
     return composite(L)
+
+
+WPAL = {k: hx(v) for k, v in {
+    'S0': '6e2e14', 'S1': 'a8502a', 'S2': 'd87a3e', 'S3': 'f0b070', 'SB': 'f4e2c4',
+    'B0': '2a2830', 'B1': '4a4852', 'B2': '7a7884', 'BW': 'e8e4dc', 'BK': '15111c', 'NOSE': '2a1a1a',
+    'R0': '3a2a1a', 'R1': '5e4026', 'R2': '86603a', 'GEM': 'ff3a3a', 'GEM2': 'ffb0a0', 'MOSS': '5a7a3a',
+    'FR': 'ff3a3a', 'FR2': 'ffb0a0', 'AC': '8a5a2a', 'AC2': 'c08a4a', 'DIRT': '5a4630', 'DIRT2': '7a6040',
+}.items()}
+
+def squirrel(blink=False, awake=False, pose='idle'):
+    """A Hollowbark squirrel: rusty, big curled tail, quick. Entranced: red eyes. Throw pose holds an acorn up."""
+    w, h = 30, 30
+    L = []
+    tail = Layer('tail', w, h, WPAL)
+    tail.ell(7, 13, 6, 9, 'S1'); tail.ell(9, 7, 5, 5, 'S2'); tail.ell(6, 15, 3, 5, 'S2')
+    L.append(tail)
+    body = Layer('body', w, h, WPAL)
+    body.ell(16, 20, 6, 6, 'S2'); body.ell(17, 22, 3.5, 3.5, 'SB')
+    body.ell(19, 12, 5, 4.5, 'S2'); body.poly([(17, 8), (18, 4), (20, 8)], 'S1'); body.poly([(21, 8), (23, 4), (23, 9)], 'S1')
+    body.px(24, 13, 'NOSE')
+    body.line([(14, 26), (13, 28)], 'S0'); body.line([(19, 26), (20, 28)], 'S0')
+    L.append(body)
+    if pose == 'throw':
+        arm = Layer('arm', w, h, WPAL); arm.line([(19, 17), (22, 9)], 'S1', 2); arm.ell(23, 7, 2.5, 2.5, 'AC'); arm.px(23, 5, 'AC2'); L.append(arm)
+    else:
+        arm = Layer('arm', w, h, WPAL); arm.ell(20, 18, 2, 1.5, 'S1'); L.append(arm)
+    eye = Layer('eye', w, h, WPAL)
+    if blink: eye.line([(20, 11), (22, 11)], 'BK')
+    else: eye.rect(20, 10, 21, 11, 'BK' if awake else 'FR'); eye.px(20, 10, 'BW' if awake else 'FR2')
+    L.append(eye)
+    return composite(L)
+
+def badger(blink=False, awake=False, pose='idle'):
+    """A badger: low and broad, striped face, digging claws. Dig pose: nose down, dirt flying."""
+    w, h = 60, 38
+    L = []
+    body = Layer('body', w, h, WPAL)
+    dy = 3 if pose == 'dig' else 0
+    body.ell(26, 24, 20, 11, 'B1'); body.ell(25, 20, 16, 6, 'B2')
+    for x in (12, 20, 34, 40): body.rect(x, 30, x + 4, 34, 'B0')
+    body.ell(46, 22 + dy, 10, 8, 'BW')                                # white face
+    body.poly([(38, 17 + dy), (52, 20 + dy), (54, 22 + dy), (38, 23 + dy)], 'BK')    # the dark stripe through the eye
+    body.ell(55, 25 + dy, 2.5, 2, 'NOSE')
+    body.ell(40, 14 + dy, 3, 2.5, 'BW')                               # ear
+    L.append(body)
+    eye = Layer('eye', w, h, WPAL)
+    if blink: eye.line([(45, 20 + dy), (47, 20 + dy)], 'B2')
+    else: eye.rect(45, 19 + dy, 46, 20 + dy, 'B2' if awake else 'FR'); eye.px(45, 19 + dy, 'BW' if awake else 'FR2')
+    L.append(eye)
+    if pose == 'dig':
+        fx = Layer('fx', w, h, WPAL)
+        for (x, y) in [(8, 22), (4, 16), (10, 12), (2, 26), (14, 8)]: fx.ell(x, y, 2, 1.5, 'DIRT2')
+        L.append(fx)
+    return composite(L)
+
+def burrow_king(blink=False, awake=False, pose='idle'):
+    """The Burrow King: a huge badger wearing a crown of twisted roots set with a red stone (the trance).
+    Poses: idle, wind (hunched, claws raised), charge (low and long), dazed (crown askew, stars drawn in-game)."""
+    w, h = 112, 76
+    L = []
+    low = pose == 'charge'
+    body = Layer('body', w, h, WPAL)
+    by = 46 if not low else 50
+    body.ell(50, by, 38, 20 if not low else 16, 'B1'); body.ell(48, by - 8, 30, 10, 'B2')
+    for x in (20, 34, 62, 74): body.rect(x, by + 14, x + 8, by + 22, 'B0')
+    hx_, hy = (88, 38) if not low else (94, 44)
+    if pose == 'wind': hy -= 6
+    body.ell(hx_, hy, 18, 15, 'BW')
+    body.poly([(hx_ - 16, hy - 7), (hx_ + 12, hy - 3), (hx_ + 15, hy + 1), (hx_ - 16, hy + 3)], 'BK')   # the dark stripe through the eye
+    body.ell(hx_ + 17, hy + 4, 4, 3, 'NOSE')
+    if pose == 'wind':
+        body.poly([(70, 30), (64, 14), (72, 22)], 'B0'); body.poly([(76, 30), (74, 12), (80, 22)], 'B0')   # claws up
+    L.append(body)
+    crown = Layer('crown', w, h, WPAL)
+    cx, cy = hx_ - 6, hy - 16
+    tilt = 4 if pose == 'dazed' else 0
+    for i, dx in enumerate((-10, -4, 2, 8)):
+        crown.poly([(cx + dx, cy + 4 + tilt * (i - 1) // 2), (cx + dx + 2, cy - 8 - (i % 2) * 4 + tilt * (i - 1) // 2), (cx + dx + 4, cy + 4 + tilt * (i - 1) // 2)], 'R1')
+    crown.rect(cx - 11, cy + 2 + tilt // 2, cx + 13, cy + 6 + tilt // 2, 'R0')
+    crown.ell(cx + 1, cy + 3 + tilt // 2, 3, 2.5, 'MOSS' if awake else 'GEM'); crown.px(cx, cy + 2, 'GEM2' if not awake else 'MOSS')
+    L.append(crown)
+    eye = Layer('eye', w, h, WPAL)
+    ex, ey = hx_ + 2, hy - 2
+    if blink or pose == 'dazed': eye.line([(ex - 2, ey), (ex + 2, ey)], 'B2')
+    else: eye.rect(ex - 1, ey - 1, ex + 1, ey + 1, 'B2' if awake else 'FR'); eye.px(ex - 1, ey - 1, 'BW' if awake else 'FR2')
+    L.append(eye)
+    return composite(L)

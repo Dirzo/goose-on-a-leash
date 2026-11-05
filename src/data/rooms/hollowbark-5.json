@@ -1,0 +1,225 @@
+{
+ "id": "hollowbark-5",
+ "name": "Spore Ring",
+ "subtitle": "Hollowbark Woods \u00b7 5",
+ "width": 1120,
+ "height": 640,
+ "playerStart": {
+  "x": 66,
+  "y": 320
+ },
+ "walls": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1120,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 620,
+   "w": 1120,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 278.0,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 362.0,
+   "w": 20,
+   "h": 278.0,
+   "kind": "border"
+  },
+  {
+   "x": 1100,
+   "y": 0,
+   "w": 20,
+   "h": 278.0,
+   "kind": "border"
+  },
+  {
+   "x": 1100,
+   "y": 362.0,
+   "w": 20,
+   "h": 278.0,
+   "kind": "border"
+  },
+  {
+   "x": 228,
+   "y": 408,
+   "w": 44,
+   "h": 44,
+   "kind": "tree"
+  },
+  {
+   "x": 658,
+   "y": 308,
+   "w": 44,
+   "h": 44,
+   "kind": "tree"
+  },
+  {
+   "x": 858,
+   "y": 448,
+   "w": 44,
+   "h": 44,
+   "kind": "tree"
+  },
+  {
+   "x": 418,
+   "y": 308,
+   "w": 44,
+   "h": 44,
+   "kind": "tree"
+  }
+ ],
+ "gate": {
+  "x": 1074,
+  "y": 274,
+  "w": 12,
+  "h": 92
+ },
+ "pits": [
+  {
+   "x": 520,
+   "y": 140,
+   "w": 70,
+   "h": 50,
+   "kind": "water"
+  }
+ ],
+ "bridges": [],
+ "refills": [
+  {
+   "x": 500,
+   "y": 120,
+   "w": 110,
+   "h": 90
+  }
+ ],
+ "posts": [],
+ "bell": {
+  "x": 980,
+  "y": 140,
+  "r": 14
+ },
+ "exit": null,
+ "vents": [
+  {
+   "x": 200,
+   "y": 560
+  },
+  {
+   "x": 900,
+   "y": 570
+  }
+ ],
+ "bucket": null,
+ "breadSpots": [
+  {
+   "x": 160,
+   "y": 160
+  }
+ ],
+ "enemies": [
+  {
+   "kind": "squirrel",
+   "x": 400,
+   "y": 150
+  },
+  {
+   "kind": "squirrel",
+   "x": 600,
+   "y": 520
+  },
+  {
+   "kind": "squirrel",
+   "x": 820,
+   "y": 180
+  },
+  {
+   "kind": "squirrel",
+   "x": 700,
+   "y": 420
+  },
+  {
+   "kind": "badger",
+   "x": 900,
+   "y": 300
+  }
+ ],
+ "knightSpawn": null,
+ "doors": [
+  {
+   "id": "w",
+   "x": 0,
+   "y": 278.0,
+   "w": 26,
+   "h": 84,
+   "to": "hollowbark-4",
+   "toDoor": "n",
+   "spawn": {
+    "x": 66,
+    "y": 320
+   },
+   "label": "Rain Barrels"
+  },
+  {
+   "id": "e",
+   "x": 1094,
+   "y": 278.0,
+   "w": 26,
+   "h": 84,
+   "to": "hollowbark-6",
+   "toDoor": "w",
+   "spawn": {
+    "x": 1054,
+    "y": 320
+   },
+   "gated": true,
+   "label": "Hollow Stump"
+  }
+ ],
+ "paths": [
+  [
+   [
+    66,
+    320
+   ],
+   [
+    1054,
+    320
+   ]
+  ]
+ ],
+ "biome": "woods",
+ "lightKind": "squirrel",
+ "heavyKind": "badger",
+ "shrooms": [
+  {
+   "x": 350,
+   "y": 200
+  },
+  {
+   "x": 560,
+   "y": 460
+  },
+  {
+   "x": 790,
+   "y": 230
+  }
+ ],
+ "spools": [
+  {
+   "x": 1000,
+   "y": 560
+  }
+ ]
+}

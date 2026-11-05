@@ -55,7 +55,8 @@ export function validateSave(raw: unknown): SaveData | null {
   for (const [id, m] of Object.entries(d.world ?? {})) {
     if (!ROOMS[id] || !m || typeof m !== 'object') continue;
     const bools = (a: unknown) => (Array.isArray(a) ? a.map(Boolean) : []);
-    world[id] = { gateOpen: !!m.gateOpen, chest: !!m.chest, rang: !!m.rang, bread: bools(m.bread), kits: bools(m.kits), spools: bools(m.spools), feathers: bools(m.feathers), boss: !!m.boss };
+    world[id] = { gateOpen: !!m.gateOpen, chest: !!m.chest, rang: !!m.rang, bread: bools(m.bread), kits: bools(m.kits), spools: bools(m.spools), feathers: bools(m.feathers), boss: !!m.boss, bushes: bools(m.bushes),
+      barrels: Array.isArray(m.barrels) ? m.barrels.map(v => num(v, 0, 1, 0)) : [] };
   }
   return {
     v: 1, room: d.room, door, hp: Math.round(num(d.hp, 1, C.maxHp, C.maxHp)),

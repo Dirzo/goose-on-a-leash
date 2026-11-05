@@ -93,6 +93,7 @@ export class ArtRenderer {
   }
 
   private bg: Phaser.GameObjects.Image;
+  private trees: Phaser.GameObjects.Sprite[] = [];
   private roomId = '';
 
   /** Point the background, camera bounds and water glints at the sim's current room. */
@@ -111,6 +112,12 @@ export class ArtRenderer {
       if (room.inPit(x, y, 18)) this.glints.push({ x: Math.round(x), y: Math.round(y), ph: Math.random() * 6.28, len: 2 + Math.floor(Math.random() * 4) });
     }
     this.cam = null; this.banner = 3.5; this.drips = []; this.puddles = [];
+    for (const t of this.trees) t.destroy();
+    this.trees = def.walls.filter(w => (w as { kind?: string }).kind === 'tree').map((w, i) => {
+      const t = this.worldIgnore(this.scene.add.sprite(w.x + w.w / 2, w.y + w.h - 4, 'tree', i % 3));
+      this.setOrigin(t, 'tree'); t.setDepth(w.y + w.h - 4);
+      return t;
+    });
   }
 
   private worldIgnore: <T extends Phaser.GameObjects.GameObject>(o: T) => T;
@@ -300,6 +307,45 @@ export class ArtRenderer {
       g.fillStyle(0xd9c08a, 1); g.fillRect(x - 4, y - 4, 8, 8);
       g.fillStyle(0xb09460, 1); for (let yy2 = y - 3; yy2 < y + 4; yy2 += 2) g.fillRect(x - 4, yy2, 8, 1);
     });
+    // bramble bushes (chew through with Biscuit), rain barrels, mushroom rings
+    (def.bushes ?? []).forEach((b, i) => {
+      if (!room.bushAlive[i]) { g.fillStyle(0x2a1a14, 0.7); g.fillEllipse(b.x, b.y + 6, b.r * 1.6, b.r * 0.6); return; }
+      g.fillStyle(0x000000, 0.35); g.fillEllipse(b.x + 3, b.y + b.r * 0.7, b.r * 2.2, b.r * 0.8);
+      g.fillStyle(0x0e180e, 1); g.fillCircle(b.x, b.y, b.r + 1);
+      g.fillStyle(0x1e3020, 1); g.fillCircle(b.x, b.y, b.r);
+      for (let k2 = 0; k2 < 9; k2++) {
+        const a = k2 * 0.7 + b.x, rr = b.r * (0.3 + (k2 % 3) * 0.22);
+        g.fillStyle(k2 % 2 ? 0x2c4a2e : 0x442030, 1); g.fillCircle(b.x + Math.cos(a) * rr, b.y + Math.sin(a) * rr * 0.8, 5);
+      }
+      for (let k2 = 0; k2 < 12; k2++) { const a = k2 * 0.52; g.fillStyle(0xd8c8b8, 1); g.fillRect(b.x + Math.cos(a) * b.r, b.y + Math.sin(a) * b.r * 0.85, 1, 2); }
+      if (Math.hypot(sim.player.x - b.x, sim.player.y - b.y) < 160) this.wt('Fling Biscuit to chew through', b.x, b.y - b.r - 10, 6, '#c8e0a0', 0.75, 'mono');
+    });
+    (def.barrels ?? []).forEach((b, i) => {
+      const left = sim.barrelWater[i] ?? 0;
+      g.fillStyle(0x000000, 0.35); g.fillEllipse(b.x + 2, b.y + 12, 26, 8);
+      g.fillStyle(0x1a1522, 1); g.fillRect(b.x - 11, b.y - 16, 22, 28);
+      g.fillStyle(0x6a4a2c, 1); g.fillRect(b.x - 10, b.y - 15, 20, 26);
+      g.fillStyle(0x86603a, 1); g.fillRect(b.x - 10, b.y - 15, 4, 26);
+      g.fillStyle(0x3a3a46, 1); g.fillRect(b.x - 11, b.y - 9, 22, 2); g.fillRect(b.x - 11, b.y + 5, 22, 2);
+      g.fillStyle(0x1a1522, 1); g.fillEllipse(b.x, b.y - 15, 20, 7);
+      g.fillStyle(left > 0 ? 0x2f7fb0 : 0x2a2219, 1); g.fillEllipse(b.x, b.y - 15, 17, 5);
+      if (left > 0) { g.fillStyle(0x9ae0ff, 0.8); g.fillRect(b.x - 4, b.y - 16, 4, 1); }
+      g.fillStyle(0x1a1522, 0.9); g.fillRect(b.x + 12, b.y - 14, 3, 24);          // gauge
+      g.fillStyle(0x4ab0e0, 1); g.fillRect(b.x + 12, b.y + 10 - 24 * (left / 0.6), 3, 24 * (left / 0.6));
+      if (left > 0 && sim.pack.water < 0.9 && Math.hypot(sim.player.x - b.x, sim.player.y - b.y) < 140) this.wt('Rain barrel', b.x, b.y - 26, 7, '#9ae0ff', 0.8, 'mono');
+    });
+    (def.shrooms ?? []).forEach((m, i) => {
+      const ready = sim.shroomCd[i] ? 0.35 : 1;
+      const pulse = 0.5 + 0.5 * Math.sin(time * 2.2 + i);
+      g.fillStyle(0x9affc8, 0.08 + 0.1 * pulse * ready); g.fillCircle(m.x, m.y, 40);
+      for (let k2 = 0; k2 < 7; k2++) {
+        const a = k2 * 0.9 + i, rr = 10 + (k2 % 3) * 7, x = m.x + Math.cos(a) * rr, y = m.y + Math.sin(a) * rr * 0.6;
+        g.fillStyle(0xe8e0d0, 1); g.fillRect(x - 1, y - 2, 2, 5);
+        g.fillStyle(k2 % 2 ? 0x8a6aff : 0x5ad8a8, ready); g.fillEllipse(x, y - 3, 8, 5);
+        g.fillStyle(0xffffff, 0.7 * ready); g.fillRect(x - 2, y - 4, 1, 1);
+      }
+      if (ready === 1 && Math.hypot(sim.player.x - m.x, sim.player.y - m.y) < 220) this.wt('Honk for sleep spores', m.x, m.y - 26, 6, '#9affc8', 0.7, 'mono');
+    });
     // Golden Feathers: hidden, glinting
     const feather = (gfx: Phaser.GameObjects.Graphics, x: number, y: number) => {
       gfx.fillStyle(0x1a1522, 1); gfx.fillTriangle(x - 4, y + 7, x, y - 9, x + 4, y + 7);
@@ -406,18 +452,26 @@ export class ArtRenderer {
       this.wt(go.state === 'loose' ? (go.feral ? 'FERAL' : 'RAMPAGE') : '...', G.x, G.y - 72, go.feral ? 10 : 8, go.feral ? '#ff2a1a' : '#f08a24');
     }
 
+    for (const t of this.trees) {
+      const behind = P.y < t.y && P.y > t.y - 120 && Math.abs(P.x - t.x) < 40;
+      t.setAlpha(behind ? 0.45 : 1);
+    }
     // ---- enemies
     const alive = new Set<number>();
     for (const e of sim.enemies) {
       if (e.dead) continue;
       alive.add(e.id);
       let s = this.foes.get(e.id);
-      if (!s) { s = this.worldIgnore(this.scene.add.sprite(0, 0, e.kind === 'snapper' ? 'snapper' : e.kind === 'heron' ? 'heron' : 'frog')); this.foes.set(e.id, s); }
+      if (!s) { s = this.worldIgnore(this.scene.add.sprite(0, 0, ({ snapper: 'snapper', heron: 'heron', squirrel: 'squirrel', badger: 'badger', king: 'king' } as Record<string, string>)[e.kind] ?? 'frog')); this.foes.set(e.id, s); }
       const { x, y } = EP(e);
       const awake = e.woke > 0 || (e.stun > 0 && e.kind !== 'snapper');
       const kind = e.kind === 'heron' ? (e.woke > 0 ? 'heron_awake' : 'heron')
         : e.kind === 'snapper' ? (e.woke > 0 ? 'snapper_awake' : 'snapper') : awake ? 'frog_awake' : 'frog';
       const blink = ((time * 1.1 + e.id * 0.37) % 3.2) < 0.14;
+      if (e.kind === 'squirrel' || e.kind === 'badger' || e.kind === 'king') {
+        this.drawWoodsCritter(sim, e, s, x, y, time);
+        continue;
+      }
       if (e.kind === 'heron') {
         const flying = e.air > 0 && !e.woke;
         const pecking = e.mode === 'grounded' && e.hit && e.attack === 'peck';
@@ -533,12 +587,28 @@ export class ArtRenderer {
 
     // feather darts: a red mark where each will land, the feather arcing down onto it
     for (const d of sim.darts) {
-      const u = Math.min(1, d.t / d.T), r = 6 + u * 10;
+      const kind = d.kind ?? 'feather', u = Math.min(1, d.t / d.T), r = (kind === 'acorn' ? 4 : 6) + u * (kind === 'acorn' ? 6 : 10);
       this.floor.lineStyle(2, 0xff4a4a, 0.3 + 0.6 * u); this.floor.strokeEllipse(d.tx, d.ty, r * 2.2, r * 1.1);
       this.floor.fillStyle(0xff4a4a, 0.15 * u); this.floor.fillEllipse(d.tx, d.ty, r * 2.2, r * 1.1);
-      const fx2 = d.x0 + (d.tx - d.x0) * u, fy2 = d.y0 + (d.ty - d.y0) * u - Math.sin(u * Math.PI) * 90;
-      f2.lineStyle(2, 0xe8eef2, 1); f2.lineBetween(fx2 - 3, fy2 - 6, fx2 + 3, fy2 + 6);
-      f2.fillStyle(0x7890aa, 1); f2.fillRect(fx2 - 2, fy2 - 6, 3, 6);
+      const fx2 = d.x0 + (d.tx - d.x0) * u, fy2 = d.y0 + (d.ty - d.y0) * u - Math.sin(u * Math.PI) * (kind === 'acorn' ? 50 : 90);
+      if (kind === 'feather') { f2.lineStyle(2, 0xe8eef2, 1); f2.lineBetween(fx2 - 3, fy2 - 6, fx2 + 3, fy2 + 6); f2.fillStyle(0x7890aa, 1); f2.fillRect(fx2 - 2, fy2 - 6, 3, 6); }
+      else if (kind === 'acorn') { f2.fillStyle(0x1a1522, 1); f2.fillEllipse(fx2, fy2, 7, 8); f2.fillStyle(0x8a5a2a, 1); f2.fillEllipse(fx2, fy2 + 1, 5, 5); f2.fillStyle(0x5e3e20, 1); f2.fillRect(fx2 - 3, fy2 - 3, 6, 2); }
+      else { f2.fillStyle(0x1a1522, 1); f2.fillCircle(fx2, fy2, 6); f2.fillStyle(0x6a6458, 1); f2.fillCircle(fx2, fy2, 5); f2.fillStyle(0x8a8474, 1); f2.fillCircle(fx2 - 1.5, fy2 - 1.5, 2); }
+    }
+    for (const fx3 of this.fx) {
+      const kk = fx3.t / 0.8;
+      if (fx3.kind === 'dust' || fx3.kind === 'thud') for (let i = 0; i < 8; i++) {
+        const a = i * 0.785 + kk, rr = 6 + kk * (fx3.kind === 'dust' ? 40 : 18);
+        f2.fillStyle(0x7a6040, 0.7 * (1 - kk)); f2.fillCircle(fx3.x + Math.cos(a) * rr, fx3.y + Math.sin(a) * rr * 0.5, 3 * (1 - kk) + 1);
+      }
+      if (fx3.kind === 'spores') for (let i = 0; i < 18; i++) {
+        const a = i * 0.35 + kk * 2, rr = 10 + kk * 110 * ((i % 3) + 1) / 3;
+        f2.fillStyle(i % 2 ? 0xc8a0ff : 0x9affc8, 0.7 * (1 - kk)); f2.fillCircle(fx3.x + Math.cos(a) * rr, fx3.y - 10 + Math.sin(a) * rr * 0.6 - kk * 20, 2.5);
+      }
+      if (fx3.kind === 'bush') for (let i = 0; i < 10; i++) {
+        const a = i * 0.63, rr = 8 + kk * 34;
+        f2.fillStyle(i % 2 ? 0x24402a : 0x6a3a48, 1 - kk); f2.fillRect(fx3.x + Math.cos(a) * rr, fx3.y + Math.sin(a) * rr * 0.7 - kk * 10, 3, 2);
+      }
     }
     for (const fx3 of this.fx) if (fx3.kind === 'slam') {
       const kk = fx3.t / 0.8;
@@ -646,11 +716,11 @@ export class ArtRenderer {
     });
 
     // boss health
-    const boss = sim.enemies.find(e => e.kind === 'heron' && !e.woke);
+    const boss = sim.enemies.find(e => (e.kind === 'heron' || e.kind === 'king') && !e.woke);
     if (boss) {
       const bw2 = 520, bx2 = W / 2 - bw2 / 2, by2 = 150, angry = boss.hp < boss.max / 2;
       g.fillStyle(0x0b0a10, 0.8); g.fillRect(bx2 - 12, by2 - 30, bw2 + 24, 52);
-      this.ht('display', 'THE HERON FERRYMAN', W / 2, by2 - 8, 16, angry ? '#ff8a8a' : '#e9e4d6');
+      this.ht('display', boss.kind === 'king' ? 'THE BURROW KING' : 'THE HERON FERRYMAN', W / 2, by2 - 8, 16, angry ? '#ff8a8a' : '#e9e4d6');
       g.fillStyle(0x1a1522, 1); g.fillRect(bx2, by2, bw2, 12);
       g.fillStyle(angry ? 0xe05a47 : 0xc94b3a, 1); g.fillRect(bx2 + 2, by2 + 2, (bw2 - 4) * Math.max(0, boss.hp / boss.max), 8);
       g.fillStyle(0xe9e4d6, 0.5); g.fillRect(bx2 + bw2 / 2, by2, 1, 12);
@@ -797,6 +867,57 @@ export class ArtRenderer {
     this.ut('mono', canPatch ? '[P] PATCH A TEAR' : pk.holes ? (pk.needles ? 'NEED TWINE TO PATCH' : 'NEED A SEWING KIT TO PATCH') : 'NO TEARS TO PATCH', X, 570, 15,
       canPatch ? '#f2c230' : pk.holes ? '#ff8a8a' : '#7cc48a', 1, 'left', true);
     this.ut('mono', '[I] / [ESC] CLOSE', X, 600, 12, '#9aa3a6', 1, 'left', true);
+  }
+
+  /** Squirrels, badgers and the Burrow King: poses, tunnelling mounds, telegraphs, dazed stars. */
+  private drawWoodsCritter(sim: Sim, e: Enemy, s: Phaser.GameObjects.Sprite, x: number, y: number, time: number): void {
+    const g = this.floor, f = this.fxg, awake = e.woke > 0, king = e.kind === 'king';
+    const strip = `${e.kind}${awake ? '_awake' : ''}`;
+    const blink = ((time * 1.1 + e.id * 0.37) % 3.2) < 0.14;
+    const under = e.mode === 'tunnel';
+    let frame = blink ? 1 : 0;
+    if (!awake) {
+      if (e.kind === 'squirrel' && e.mode === 'wind') frame = 2;
+      if (e.kind === 'badger' && (e.mode === 'wind' || e.mode === 'surface')) frame = 2;
+      if (king) frame = e.mode === 'wind' ? (e.attack === 'charge' ? 3 : 2) : e.mode === 'charge' ? 3 : e.mode === 'dazed' ? 4 : frame;
+    }
+    this.show(s, strip, frame);
+    const hop = e.kind === 'squirrel' && Math.hypot(e.vx, e.vy) + (e.mode === 'stalk' ? 30 : 0) > 20 ? -Math.abs(Math.sin(time * 12 + e.id)) * 3 : 0;
+    const flip = e.mode === 'charge' ? e.hx < 0 : sim.player.x < x;
+    s.setVisible(!under).setPosition(Math.round(x), Math.round(y + hop)).setDepth(y).setFlipX(flip)
+      .setAlpha(awake && !king ? Math.min(1, (1.6 - e.woke) / 0.5) : 1);
+    const tell = e.mode === 'wind' && Math.floor(e.modeT * 16) % 2 === 0;
+    if (e.hitT > 0 || tell) s.setTint(e.hitT > 0 ? 0xffffff : 0xffd0d0).setTintMode(Phaser.TintModes.FILL); else s.clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
+    if (under) {                                       // a moving mound of earth
+      const w = king ? 60 : 34;
+      g.fillStyle(0x3a2a1a, 1); g.fillEllipse(x, y, w, w * 0.4);
+      g.fillStyle(0x5a4630, 1); g.fillEllipse(x - 2, y - 2, w * 0.7, w * 0.25);
+      if (Math.floor(time * 20) % 2) { f.fillStyle(0x7a6040, 0.8); f.fillCircle(x + (Math.random() - 0.5) * w, y - 4, 2); }
+      return;
+    }
+    g.fillStyle(0x000000, 0.35); g.fillEllipse(x, y + 2, king ? 90 : e.kind === 'badger' ? 44 : 18, king ? 18 : 8);
+    if (awake) {
+      if (king && e.woke < 6) this.wt('The Burrow King', x, y - 84, 9, '#c8e0a0', Math.min(1, 6 - e.woke));
+      if (!king) for (let i = 0; i < 2; i++) { const t = (e.woke * 1.3 + i * 0.5) % 1; f.fillStyle(0xff8aa8, 1 - t); f.fillRect(Math.round(x + (i ? 5 : -5)), Math.round(y - 30 - t * 14), 3, 2); }
+      return;
+    }
+    if (e.stun > 0 || e.mode === 'dazed') for (let i = 0; i < 3; i++) {
+      const a = time * 5 + i * 2.1, top = king ? 80 : e.kind === 'badger' ? 34 : 28;
+      f.fillStyle(0xf2c230, 1); this.star(f, x + Math.cos(a) * (king ? 26 : 12), y - top + Math.sin(a) * 3, king ? 4 : 2.5);
+    }
+    if (e.mode === 'wind') this.wt('!', x, y - (king ? 92 : e.kind === 'badger' ? 40 : 32), king ? 16 : 11, '#ff4a4a', 1);
+    if (e.mode === 'surface') {                        // where he'll burst out
+      const k = Math.min(1, e.modeT / (king ? 0.6 : 0.45)), r = (king ? 64 : 46) * (1.1 - k * 0.3);
+      g.lineStyle(3, 0xff4a4a, 0.5 + 0.4 * Math.sin(time * 18)); g.strokeEllipse(x, y, r * 2, r);
+      g.fillStyle(0x5a4630, 1); g.fillEllipse(x + Math.sin(time * 40) * 2, y, king ? 60 : 34, king ? 22 : 12);
+      this.wt('!', x, y - 30, 14, '#ff4a4a', 1);
+    }
+    if (king && e.mode === 'wind' && e.attack === 'charge') {
+      const l = Math.hypot(e.tx - x, e.ty - y) || 1;
+      g.lineStyle(4, 0xff4a4a, 0.3 + 0.4 * Math.sin(time * 14)); g.lineBetween(x, y, x + ((e.tx - x) / l) * 420, y + ((e.ty - y) / l) * 420);
+    }
+    if (king && e.mode === 'charge' && Math.floor(time * 30) % 2 === 0) { g.fillStyle(0x7a6040, 0.6); g.fillCircle(x - e.hx * 30, y + 6, 5); }
+    if (!king && e.hp < e.max) { f.fillStyle(0x0b0a10, 1); f.fillRect(x - e.r, y + 6, e.r * 2, 3); f.fillStyle(0xe05a47, 1); f.fillRect(x - e.r, y + 6, e.r * 2 * Math.max(0, e.hp / e.max), 3); }
   }
 
   /** Telegraphs and strikes: a target marker on the ground while winding up, the tongue, charge dust. */

@@ -1,7 +1,7 @@
 import type { Circle, Rect, Vec } from '../core/math';
 import type { LeashId } from './recipes';
 
-export type EnemyKind = 'bunny' | 'knight' | 'frog' | 'snapper' | 'heron';
+export type EnemyKind = 'bunny' | 'knight' | 'frog' | 'snapper' | 'heron' | 'squirrel' | 'badger' | 'king';
 
 /** A doorway on a room edge. Walking into it travels to `toDoor` in room `to` (or ends the slice when `to` is 'END'). */
 export interface Door {
@@ -52,6 +52,16 @@ export interface RoomDef {
   /** Sewing kits (needle uses for patching) and twine spools lying in the room, each picked up once. */
   kits?: Vec[];
   spools?: Vec[];
+  /** Thorn brambles: touching one tears the pack. */
+  brambles?: Rect[];
+  /** Bramble bushes: solid until Biscuit is flung into one and chews through it (remembered). */
+  bushes?: Circle[];
+  /** Rain barrels: each holds a little water for the pack, then it's empty (remembered). */
+  barrels?: Vec[];
+  /** Glowing mushroom rings: honk one and its spores put nearby critters to sleep. */
+  shrooms?: Vec[];
+  /** Which art set paints the room. */
+  biome?: 'pond' | 'marsh' | 'woods';
   /** Golden Feathers hidden in the room, each picked up once. */
   feathers?: Vec[];
   /** Biscuit's shrine (Willowmere): stand by it to learn traits. */

@@ -96,7 +96,8 @@ export class GameScene extends Phaser.Scene {
       const before = this.modes.get(e.id), now = e.mode;
       if (before !== now) {
         this.modes.set(e.id, now);
-        if (now === 'wind') sound.play(e.kind === 'frog' ? 'ribbit' : e.kind === 'snapper' ? 'hiss' : 'kraa');
+        if (now === 'wind') sound.play(({ frog: 'ribbit', snapper: 'hiss', squirrel: 'chatter', badger: 'growl', king: 'growl' } as Record<string, string>)[e.kind] ?? 'kraa');
+        if (now === 'tunnel' || now === 'surface') sound.play('dust');
         if (now === 'lash') sound.play('tongue');
         if (now === 'leap' || now === 'charge' || now === 'takeoff') sound.play('whoosh');
         if (now === 'call') sound.play('kraa');

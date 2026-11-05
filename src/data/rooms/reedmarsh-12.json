@@ -187,8 +187,8 @@
    "y": 308.0,
    "w": 26,
    "h": 84,
-   "to": "END",
-   "toDoor": "",
+   "to": "hollowbark-1",
+   "toDoor": "w",
    "spawn": {
     "x": 1054,
     "y": 350

@@ -1,0 +1,236 @@
+{
+ "id": "hollowbark-3",
+ "name": "Ravine Swing",
+ "subtitle": "Hollowbark Woods \u00b7 3",
+ "width": 1280,
+ "height": 640,
+ "playerStart": {
+  "x": 66,
+  "y": 300
+ },
+ "walls": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 620,
+   "w": 1280,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 258.0,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 342.0,
+   "w": 20,
+   "h": 298.0,
+   "kind": "border"
+  },
+  {
+   "x": 1260,
+   "y": 0,
+   "w": 20,
+   "h": 258.0,
+   "kind": "border"
+  },
+  {
+   "x": 1260,
+   "y": 342.0,
+   "w": 20,
+   "h": 298.0,
+   "kind": "border"
+  },
+  {
+   "x": 128,
+   "y": 128,
+   "w": 44,
+   "h": 44,
+   "kind": "tree"
+  },
+  {
+   "x": 1128,
+   "y": 428,
+   "w": 44,
+   "h": 44,
+   "kind": "tree"
+  },
+  {
+   "x": 1078,
+   "y": 108,
+   "w": 44,
+   "h": 44,
+   "kind": "tree"
+  }
+ ],
+ "gate": null,
+ "pits": [
+  {
+   "x": 300,
+   "y": 20,
+   "w": 680,
+   "h": 600,
+   "kind": "ravine"
+  },
+  {
+   "x": 120,
+   "y": 400,
+   "w": 70,
+   "h": 50,
+   "kind": "water"
+  }
+ ],
+ "bridges": [
+  {
+   "x": 430,
+   "y": 170,
+   "w": 100,
+   "h": 100,
+   "kind": "pillar"
+  },
+  {
+   "x": 610,
+   "y": 330,
+   "w": 100,
+   "h": 100,
+   "kind": "pillar"
+  },
+  {
+   "x": 790,
+   "y": 190,
+   "w": 100,
+   "h": 100,
+   "kind": "pillar"
+  }
+ ],
+ "refills": [
+  {
+   "x": 100,
+   "y": 380,
+   "w": 110,
+   "h": 90
+  }
+ ],
+ "posts": [
+  {
+   "x": 480,
+   "y": 220,
+   "r": 9
+  },
+  {
+   "x": 660,
+   "y": 380,
+   "r": 9
+  },
+  {
+   "x": 840,
+   "y": 240,
+   "r": 9
+  },
+  {
+   "x": 1020,
+   "y": 310,
+   "r": 9
+  },
+  {
+   "x": 260,
+   "y": 240,
+   "r": 9
+  }
+ ],
+ "bell": null,
+ "exit": null,
+ "vents": [],
+ "bucket": null,
+ "breadSpots": [],
+ "enemies": [
+  {
+   "kind": "squirrel",
+   "x": 1150,
+   "y": 200
+  },
+  {
+   "kind": "squirrel",
+   "x": 1160,
+   "y": 560
+  }
+ ],
+ "knightSpawn": null,
+ "doors": [
+  {
+   "id": "w",
+   "x": 0,
+   "y": 258.0,
+   "w": 26,
+   "h": 84,
+   "to": "hollowbark-2",
+   "toDoor": "e",
+   "spawn": {
+    "x": 66,
+    "y": 300
+   },
+   "label": "Bramble Path"
+  },
+  {
+   "id": "e",
+   "x": 1254,
+   "y": 258.0,
+   "w": 26,
+   "h": 84,
+   "to": "hollowbark-4",
+   "toDoor": "w",
+   "spawn": {
+    "x": 1214,
+    "y": 300
+   },
+   "label": "Rain Barrels"
+  }
+ ],
+ "paths": [
+  [
+   [
+    66,
+    300
+   ],
+   [
+    296,
+    300
+   ]
+  ],
+  [
+   [
+    984,
+    310
+   ],
+   [
+    1214,
+    300
+   ]
+  ]
+ ],
+ "biome": "woods",
+ "lightKind": "squirrel",
+ "heavyKind": "badger",
+ "spools": [
+  {
+   "x": 1180,
+   "y": 330
+  }
+ ],
+ "feathers": [
+  {
+   "x": 660,
+   "y": 412
+  }
+ ]
+}

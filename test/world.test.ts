@@ -7,6 +7,7 @@ import { Room } from '../src/core/room';
 import { fixRng, run } from './helpers';
 
 const REED = Object.values(ROOMS).filter(r => r.id.startsWith('reedmarsh-'));
+const WORLD = Object.values(ROOMS).filter(r => r.id !== 'room-01');
 
 function at(def: RoomDef, seed = 3): Sim {
   const sim = new Sim({ room: WILLOWMERE, seed });
@@ -32,7 +33,7 @@ describe('world map', () => {
   it('has twelve Reedmarsh rooms', () => { expect(REED.length).toBe(12); for (let n = 1; n <= 12; n++) expect(ROOMS[`reedmarsh-${n}`]).toBeTruthy(); });
 
   it('every door leads to a real door that leads back', () => {
-    for (const r of [WILLOWMERE, ...REED]) for (const d of r.doors ?? []) {
+    for (const r of WORLD) for (const d of r.doors ?? []) {
       if (d.to === 'END') continue;
       const there = ROOMS[d.to];
       expect(there, `${r.id}:${d.id} -> ${d.to}`).toBeTruthy();
@@ -44,7 +45,7 @@ describe('world map', () => {
   });
 
   it('every door can actually be walked into (no wall across the gap)', () => {
-    for (const r of [WILLOWMERE, ...REED]) {
+    for (const r of WORLD) {
       const room = new Room(r); room.gateClosed = false;
       for (const d of r.doors ?? []) {
         const o = { x: d.x + d.w / 2, y: d.y + d.h / 2, r: C.playerRadius };
@@ -57,7 +58,7 @@ describe('world map', () => {
   });
 
   it('every spawn point is on dry ground, clear of walls and the door trigger', () => {
-    for (const r of [WILLOWMERE, ...REED]) {
+    for (const r of WORLD) {
       const room = new Room(r);
       for (const d of r.doors ?? []) {
         expect(room.inPit(d.spawn.x, d.spawn.y, -14), `${r.id}:${d.id} spawn in water`).toBe(false);
@@ -113,7 +114,7 @@ describe('travel', () => {
   });
 
   it('no critter starts next to a grappling post', () => {
-    for (const r of [WILLOWMERE, ...REED]) for (const e of r.enemies) for (const p of r.posts) {
+    for (const r of WORLD) for (const e of r.enemies) for (const p of r.posts) {
       if (r.id === 'reedmarsh-4' && e.kind === 'snapper') continue;   // he is the grapple there
       expect(Math.hypot(e.x - p.x, e.y - p.y), `${r.id}: ${e.kind} at ${e.x},${e.y}`).toBeGreaterThanOrEqual(130);
     }
@@ -129,7 +130,7 @@ describe('travel', () => {
   });
 
   it('the END door finishes the slice', () => {
-    const sim = at(ROOMS['reedmarsh-12']!);
+    const sim = at(ROOMS['hollowbark-8']!);
     sim.room.gateClosed = false;
     const e = sim.room.def.doors!.find(d => d.id === 'e')!;
     sim.player.x = e.spawn.x; sim.player.y = e.spawn.y;
