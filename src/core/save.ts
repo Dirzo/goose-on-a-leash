@@ -15,7 +15,7 @@ export interface SaveData {
   room: string;
   door: string | null;
   hp: number;
-  pack: { water: number; holes: number; patches: number };
+  pack: { water: number; holes: number; patches: number; needles: number };
   kit: { mats: Partial<Record<ItemId, number>>; owned: LeashId[]; leash: LeashId; bread: Partial<Record<BreadId, number>>; active: BreadId; toothFirst: boolean };
   world: Record<string, RoomMemory>;
   savedAt: number;
@@ -25,7 +25,7 @@ export function snapshotSave(sim: Sim): SaveData {
   const k = sim.kit;
   return {
     v: 1, room: sim.room.def.id, door: sim.entryDoor, hp: sim.player.hp,
-    pack: { water: sim.pack.water, holes: sim.pack.holes, patches: sim.pack.patches },
+    pack: { water: sim.pack.water, holes: sim.pack.holes, patches: sim.pack.patches, needles: sim.pack.needles },
     kit: { mats: { ...k.mats }, owned: [...k.owned], leash: k.leash, bread: { ...k.bread }, active: k.active, toothFirst: k.toothFirst },
     world: structuredClone({ ...sim.world }),
     savedAt: Date.now(),
@@ -53,11 +53,12 @@ export function validateSave(raw: unknown): SaveData | null {
   const world: Record<string, RoomMemory> = {};
   for (const [id, m] of Object.entries(d.world ?? {})) {
     if (!ROOMS[id] || !m || typeof m !== 'object') continue;
-    world[id] = { gateOpen: !!m.gateOpen, chest: !!m.chest, rang: !!m.rang, bread: Array.isArray(m.bread) ? m.bread.map(Boolean) : [] };
+    const bools = (a: unknown) => (Array.isArray(a) ? a.map(Boolean) : []);
+    world[id] = { gateOpen: !!m.gateOpen, chest: !!m.chest, rang: !!m.rang, bread: bools(m.bread), kits: bools(m.kits), spools: bools(m.spools) };
   }
   return {
     v: 1, room: d.room, door, hp: Math.round(num(d.hp, 1, C.maxHp, C.maxHp)),
-    pack: { water: num(d.pack?.water, 0.05, 1, 1), holes: Math.round(num(d.pack?.holes, 0, C.maxHoles, 0)), patches: Math.round(num(d.pack?.patches, 0, 99, 0)) },
+    pack: { water: num(d.pack?.water, 0.05, 1, 1), holes: Math.round(num(d.pack?.holes, 0, C.maxHoles, 0)), patches: Math.round(num(d.pack?.patches, 0, 99, 0)), needles: Math.round(num(d.pack?.needles, 0, 99, C.kitNeedles)) },
     kit: { mats, owned, leash, bread, active, toothFirst: d.kit?.toothFirst !== false },
     world, savedAt: num(d.savedAt, 0, 8.64e15, 0),
   };
@@ -70,7 +71,7 @@ export function applySave(sim: Sim, s: SaveData): void {
   k.owned = new Set(s.kit.owned); k.leash = s.kit.leash;
   Object.assign(k.bread, s.kit.bread); k.active = s.kit.active; k.toothFirst = s.kit.toothFirst;
   sim.world = structuredClone(s.world);
-  sim.pack.water = s.pack.water; sim.pack.holes = s.pack.holes; sim.pack.patches = s.pack.patches;
+  sim.pack.water = s.pack.water; sim.pack.holes = s.pack.holes; sim.pack.patches = s.pack.patches; sim.pack.needles = s.pack.needles;
   sim.player.hp = s.hp;
   sim.enterRoom(ROOMS[s.room]!, s.door, false, false);
 }

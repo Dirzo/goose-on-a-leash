@@ -3,10 +3,10 @@ import type { InputFrame } from '../core/sim';
 import type { Vec } from '../core/math';
 
 type Verb = 'fling' | 'yank' | 'honk' | 'letGo' | 'feed' | 'cycle' | 'patch';
-export type UiAction = 'book' | 'reset' | 'closeBook';
+export type UiAction = 'book' | 'reset' | 'closeBook' | 'pack' | 'close' | 'patch';
 
 const ARROWS = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright'];
-const GAME_KEYS = ['w', 'a', 's', 'd', ' ', 'e', 'q', 'f', 'r', 'b', 'c', 'p', ...ARROWS];
+const GAME_KEYS = ['w', 'a', 's', 'd', ' ', 'e', 'q', 'f', 'r', 'b', 'c', 'p', 'i', 'tab', ...ARROWS];
 const DEADZONE = 0.22;
 
 /**
@@ -14,10 +14,11 @@ const DEADZONE = 0.22;
  * Verb presses are latched until a sim step consumes them, so a press is never lost
  * on a frame where no step runs, and never applied twice when several steps run.
  *
- * Keyboard (prototype layout): WASD/arrows move, Space honk, E yank, Q let go, F bread, C swap bread, P patch pack, B book, R reset.
+ * Keyboard (prototype layout): WASD/arrows move, Space honk, E yank, Q let go, F bread, C swap bread, P patch pack,
+ * I or Tab backpack screen, B book, R restart room.
  * Mouse: left click fling, right click yank, cursor aims.
  * Gamepad: left stick move, right stick aim, RT fling, LT or RB yank, A honk, B let go, X bread, Y swap bread,
- * LB patch pack, Start book, Back reset.
+ * LB patch pack, Start book, Back (View) backpack screen.
  */
 export class Controls {
   private held = new Set<string>();
@@ -59,7 +60,15 @@ export class Controls {
     const ae = document.activeElement as HTMLElement | null;
     const onSlider = ae instanceof HTMLInputElement && ae.type === 'range';
     const onButton = ae?.tagName === 'BUTTON';
-    if (this.paused) { if (k === 'b' || k === 'escape') { e.preventDefault(); this.onUi('closeBook'); } return; }
+    if (this.paused) {
+      // a screen is open (book or backpack): the UI layer decides what each key does
+      if (k === 'b') { e.preventDefault(); this.onUi('book'); }
+      else if (k === 'escape') { e.preventDefault(); this.onUi('close'); }
+      else if (k === 'i' || k === 'tab') { e.preventDefault(); this.onUi('pack'); }
+      else if (k === 'p' && !e.repeat) { e.preventDefault(); this.onUi('patch'); }
+      else if (k === 'r' && !e.repeat) { e.preventDefault(); this.onUi('reset'); }
+      return;
+    }
     if (onSlider && ARROWS.includes(k)) return;          // arrows adjust the focused slider
     if (onButton && (k === ' ' || k === 'enter')) return; // let buttons click
     if (ae instanceof HTMLInputElement && ae.type !== 'range') return; // typing in a field
@@ -73,6 +82,7 @@ export class Controls {
     if (k === 'c') this.pending.add('cycle');
     if (k === 'p') this.pending.add('patch');
     if (k === 'b') this.onUi('book');
+    if (k === 'i' || k === 'tab') this.onUi('pack');
     if (k === 'r') this.onUi('reset');
   };
 
@@ -89,12 +99,13 @@ export class Controls {
     if (Math.hypot(ls.x, ls.y) > DEADZONE) this.aimMode = this.aimMode === 'pad' || Math.hypot(rs.x, rs.y) > 0.5 ? 'pad' : this.aimMode;
     const now: Record<string, boolean> = {
       fling: pad.R2 > 0.5, yank: pad.L2 > 0.5 || pad.R1 > 0.5, honk: pad.A, letGo: pad.B, feed: pad.X, cycle: pad.Y, patch: pad.L1 > 0.5,
-      book: pad.isButtonDown(9), reset: pad.isButtonDown(8),
+      book: pad.isButtonDown(9), pack: pad.isButtonDown(8),
     };
     for (const [k, v] of Object.entries(now)) {
       if (v && !this.padPrev[k]) {
-        if (k === 'book') this.onUi(this.paused ? 'closeBook' : 'book');
-        else if (k === 'reset') { if (!this.paused) this.onUi('reset'); }
+        if (k === 'book') this.onUi('book');
+        else if (k === 'pack') this.onUi('pack');
+        else if (k === 'patch' && this.paused) this.onUi('patch');
         else if (!this.paused) { this.pending.add(k as Verb); if (k === 'fling') this.aimMode = 'pad'; }
       }
       this.padPrev[k] = v;

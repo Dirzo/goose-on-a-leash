@@ -49,6 +49,9 @@ export interface RoomDef {
   exitLabel?: string;
   /** Rooms linked into the world. A room with doors ignores `exit`. */
   doors?: Door[];
+  /** Sewing kits (needle uses for patching) and twine spools lying in the room, each picked up once. */
+  kits?: Vec[];
+  spools?: Vec[];
   /** A tackle chest holding a leash, opened once. */
   chest?: { x: number; y: number; leash: LeashId };
   /** Shown under the room name on arrival. */

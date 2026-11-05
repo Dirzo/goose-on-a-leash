@@ -100,16 +100,23 @@ describe('travel', () => {
     expect(sim.room.gateClosed).toBe(false);
   });
 
-  it('dying in a world room revives at the door you came in through, hearts full, holes kept', () => {
+  it('Bimbo fainting in a world room revives at the door you came in through, pack refilled', () => {
     const sim = at(ROOMS['reedmarsh-2']!);
     sim.enterRoom(ROOMS['reedmarsh-2']!, 'e');
-    sim.player.x = 1100; sim.player.y = 200; sim.pack.holes = 2;
-    sim.player.hp = 1; sim.player.inv = 0; sim.hurtPlayer();
-    run(sim, 1.2);
+    sim.player.x = 1100; sim.player.y = 200; sim.pack.holes = 1;
+    sim.pack.water = 0.0001;
+    run(sim, 1.5);
     const e = sim.room.def.doors!.find(d => d.id === 'e')!;
     expect(sim.player.x).toBe(e.spawn.x);
-    expect(sim.player.hp).toBe(C.maxHp);
-    expect(sim.pack.holes).toBe(2);
+    expect(sim.pack.water).toBeGreaterThan(0.95);
+    expect(sim.pack.holes).toBe(1);
+  });
+
+  it('no critter starts next to a grappling post', () => {
+    for (const r of [WILLOWMERE, ...REED]) for (const e of r.enemies) for (const p of r.posts) {
+      if (r.id === 'reedmarsh-4' && e.kind === 'snapper') continue;   // he is the grapple there
+      expect(Math.hypot(e.x - p.x, e.y - p.y), `${r.id}: ${e.kind} at ${e.x},${e.y}`).toBeGreaterThanOrEqual(130);
+    }
   });
 
   it('falling in respawns at the last safe ground, not a fixed point', () => {
@@ -119,7 +126,6 @@ describe('travel', () => {
     sim.player.x = 520; sim.player.y = 200; sim.player.inv = 0;
     sim.step(STEP);
     expect(sim.player.x).toBeCloseTo(425, 0);
-    expect(sim.player.hp).toBe(C.maxHp - 1);
   });
 
   it('the END door finishes the slice', () => {

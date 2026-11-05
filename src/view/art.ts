@@ -5,6 +5,7 @@
  */
 import Phaser from 'phaser';
 import { BREADS, ITEMS, MATERIALS, isCatalyst, type ItemId } from '../data/recipes';
+import { C } from '../core/config';
 import type { Enemy, Sim, SimEvent } from '../core/sim';
 import type { Vec } from '../core/math';
 import { SPRITES } from './assets';
@@ -39,6 +40,8 @@ export class ArtRenderer {
   private foes = new Map<number, Phaser.GameObjects.Sprite>();
   private wtext: TextPool;
   private htext: Record<Face, TextPool>;
+  /** Text on the backpack screen, above its dimmer. */
+  private utext!: Record<Face, TextPool>;
   private fx: ViewFx[] = [];
   private quips: Quip[] = [];
   private drips: Drip[] = [];
@@ -73,7 +76,13 @@ export class ArtRenderer {
       mono: new TextPool(scene, 'mono', 9100, t => screen(t)),
       body: new TextPool(scene, 'body', 9100, t => screen(t)),
     };
+    this.utext = {
+      display: new TextPool(scene, 'display', 9500, t => screen(t)),
+      mono: new TextPool(scene, 'mono', 9500, t => screen(t)),
+      body: new TextPool(scene, 'body', 9500, t => screen(t)),
+    };
     this.worldIgnore = world;
+    this.buildPackUi(screen);
 
     this.setRoom(sim);
   }
@@ -135,7 +144,7 @@ export class ArtRenderer {
     for (const f of this.fx) f.t += dt;
     this.fx = this.fx.filter(f => f.t < (f.kind === 'faint' ? 1.6 : 0.8));
     this.banner -= dt; this.flash = Math.max(0, this.flash - dt * 0.8); this.bellSwing = Math.max(0, this.bellSwing - dt * 0.7);
-    this.wtext.begin(); this.beginExtra(); for (const p of Object.values(this.htext)) p.begin();
+    this.wtext.begin(); this.beginExtra(); for (const p of [...Object.values(this.htext), ...Object.values(this.utext)]) p.begin();
     if (sim.room.def.id !== this.roomId) this.setRoom(sim);
     const g = this.floor, room = sim.room, def = room.def, pl = sim.player, go = sim.goose, pk = sim.pack;
     g.clear(); this.line.clear(); this.fxg.clear(); this.hud.clear();
@@ -248,6 +257,29 @@ export class ArtRenderer {
         this.wt('Tackle chest', x, y - 26, 7, '#e0c890', 0.8, 'mono');
       }
     }
+    // sewing kits (a little tin with a needle) and twine spools: the finds that keep Bimbo alive
+    (def.kits ?? []).forEach((k2, i) => {
+      if (sim.kitsGot[i]) return;
+      const x = k2.x, y = Math.round(k2.y + Math.sin(time * 3 + k2.x) * 1.5), glow = 0.25 + 0.15 * Math.sin(time * 4);
+      g.fillStyle(0xff8aa8, glow); g.fillCircle(x, y, 13);
+      g.fillStyle(0x000000, 0.3); g.fillEllipse(k2.x + 1, k2.y + 8, 20, 6);
+      g.fillStyle(0x1a1522, 1); g.fillRect(x - 9, y - 6, 18, 12);
+      g.fillStyle(0xc05a6a, 1); g.fillRect(x - 8, y - 5, 16, 10);
+      g.fillStyle(0xe88aa0, 1); g.fillRect(x - 8, y - 5, 16, 3);
+      g.fillStyle(0xf6f1e6, 1); g.fillRect(x - 3, y - 1, 6, 1); g.fillRect(x - 1, y - 3, 1, 5);   // stitch cross
+      g.lineStyle(1, 0xd8dce4, 1); g.lineBetween(x + 6, y - 10, x + 11, y - 2);                  // needle
+      g.fillStyle(0xd8dce4, 1); g.fillRect(x + 6, y - 11, 2, 2);
+      if (sim.pack.holes > 0) this.wt('Sewing kit', x, y - 18, 7, '#ff8aa8', 0.7 + 0.3 * Math.sin(time * 6), 'mono');
+    });
+    (def.spools ?? []).forEach((k2, i) => {
+      if (sim.spoolsGot[i]) return;
+      const x = k2.x, y = Math.round(k2.y + Math.sin(time * 3 + k2.y) * 1.5);
+      g.fillStyle(0x000000, 0.3); g.fillEllipse(k2.x + 1, k2.y + 7, 16, 5);
+      g.fillStyle(0x1a1522, 1); g.fillRect(x - 6, y - 7, 12, 14);
+      g.fillStyle(0x86582f, 1); g.fillRect(x - 5, y - 6, 10, 2); g.fillRect(x - 5, y + 4, 10, 2);
+      g.fillStyle(0xd9c08a, 1); g.fillRect(x - 4, y - 4, 8, 8);
+      g.fillStyle(0xb09460, 1); for (let yy2 = y - 3; yy2 < y + 4; yy2 += 2) g.fillRect(x - 4, yy2, 8, 1);
+    });
     // bread loaves
     def.breadSpots.forEach((b, i) => {
       if (sim.breadGot[i]) return;
@@ -399,7 +431,7 @@ export class ArtRenderer {
         if (f.kind === 'tear' && kk < 0.6) this.wt('RIP!', f.x, f.y - 14 - kk * 10, 9, '#9ae0ff', 1 - kk);
       }
       if (f.kind === 'patch') { for (let i = 0; i < 5; i++) { f2.fillStyle(0x8db07a, 1 - kk); f2.fillRect(Math.round(f.x - 6 + i * 3), Math.round(f.y + (i % 2 ? -2 : 2) - kk * 8), 2, 1); } if (kk < 0.7) this.wt('PATCHED', f.x, f.y - 14 - kk * 10, 8, '#cfe3c4', 1 - kk); }
-      if (f.kind === 'faint') this.wt('the koi fainted…', f.x, f.y - 10 - kk * 6, 9, '#9ae0ff', Math.min(1, 2 - kk * 1.25), 'body');
+      if (f.kind === 'faint') this.wt('Bimbo fainted…', f.x, f.y - 10 - kk * 6, 9, '#9ae0ff', Math.min(1, 2 - kk * 1.25), 'body');
     }
 
     // reticle
@@ -410,7 +442,7 @@ export class ArtRenderer {
     }
 
     this.drawHud(sim);
-    this.wtext.end(); this.endExtra(); for (const p of Object.values(this.htext)) p.end();
+    this.wtext.end(); this.endExtra(); for (const p of [...Object.values(this.htext), ...Object.values(this.utext)]) p.end();
   }
 
   // ------------------------------------------------------------------ HUD (screen pixels, 1280x720)
@@ -418,27 +450,13 @@ export class ArtRenderer {
     const g = this.hud, time = this.time, go = sim.goose, pk = sim.pack, W = SCREEN_W, H = SCREEN_H;
     const panel = (x: number, y: number, w: number, h: number) => { g.fillStyle(0x0b0a10, 0.72); g.fillRect(x, y, w, h); g.lineStyle(2, 0x2a2838, 1); g.strokeRect(x, y, w, h); };
 
-    // hearts + backpack water
-    panel(16, 16, 300, pk.enabled ? 104 : 52);
-    for (let i = 0; i < 5; i++) this.pixelHeart(30 + i * 36, 28, 4, i < sim.player.hp ? 0xe05a47 : 0x2a2838, i < sim.player.hp ? 0xff8a72 : 0x3e3a52);
-    if (pk.enabled) {
-      const dry = pk.water < 0.3, blink = dry && Math.floor(time * 4) % 2 === 0;
-      this.koiIcon(30, 72, dry);
-      const bx = 80, by = 76, bw = 220, bh = 18;
-      g.fillStyle(0x1a1522, 1); g.fillRect(bx, by, bw, bh);
-      const segs = 10, sw = (bw - 4) / segs;
-      for (let s = 0; s < segs; s++) {
-        const fill = Math.max(0, Math.min(1, pk.water * segs - s));
-        if (fill <= 0) continue;
-        g.fillStyle(dry ? (blink ? 0xe05a47 : 0x8a3a3a) : 0x4ab0e0, 1); g.fillRect(bx + 2 + s * sw + 1, by + 2 + (bh - 4) * (1 - fill), sw - 2, (bh - 4) * fill);
-        g.fillStyle(0x9ae0ff, dry ? 0 : 0.8); g.fillRect(bx + 2 + s * sw + 1, by + 2 + (bh - 4) * (1 - fill), sw - 2, 2);
-      }
-      let label = pk.refilling ? 'REFILLING' : dry ? 'KOI DRYING OUT! FIND WATER' : 'MOON KOI';
-      let col = pk.refilling ? '#9ae0ff' : dry ? '#e05a47' : '#9aa3a6';
-      if (pk.holes > 0 && !pk.refilling && !dry) { label = `LEAKING ×${pk.holes}  [P] PATCH`; col = Math.floor(time * 3) % 2 ? '#9ae0ff' : '#e9e4d6'; }
-      this.ht('mono', label, bx, by + 36, 13, col, 1, 'left', true);
-      if (pk.holes > 0) for (let h = 0; h < pk.holes; h++) { g.fillStyle(0xe05a47, 1); g.fillRect(bx + bw - 14 - h * 14, by - 10, 8, 6); }
+    // Bimbo's water: the life bar in world rooms. Hearts only in the gray-box Room 01.
+    if (pk.enabled) this.waterHud(sim);
+    else {
+      panel(16, 16, 300, 52);
+      for (let i = 0; i < 5; i++) this.pixelHeart(30 + i * 36, 28, 4, i < sim.player.hp ? 0xe05a47 : 0x2a2838, i < sim.player.hp ? 0xff8a72 : 0x3e3a52);
     }
+    this.hudBimbo.setVisible(pk.enabled && !this.packOpen);
 
     // fury + strain, top centre
     const fx0 = W / 2 - 160, fy = 30;
@@ -491,12 +509,139 @@ export class ArtRenderer {
       if (sim.room.def.subtitle) this.ht('body', sim.room.def.subtitle, W / 2, 234, 18, '#c9a46a', a, 'center', true);
     }
     if (this.flash > 0) { g.fillStyle(0x05040a, Math.min(0.85, this.flash)); g.fillRect(0, 0, W, H); }
+    if (this.packOpen && sim.pack.enabled) this.drawPackUi(sim); else this.showPackUi(false);
     if (sim.won) {
       g.fillStyle(0x0b0a10, 0.78); g.fillRect(0, 0, W, H);
       this.ht('display', 'END OF THE PLAYTEST', W / 2, H / 2 - 30, 52, '#f2c230');
       this.ht('body', sim.room.def.winText ?? 'The path is open.', W / 2, H / 2 + 24, 18, '#e9c9a0', 1, 'center', true);
       this.ht('mono', `${sim.kit.leashDef.name} · ${Object.values(sim.world).filter(m => m.chest).length} chest opened · press R to go back into the room`, W / 2, H / 2 + 56, 13, '#9aa3a6', 1, 'center', true);
     }
+  }
+
+  /** Water bar (with a lag chunk showing what a hit just knocked out), leak rate, supplies, Bimbo's face. */
+  private waterHud(sim: Sim): void {
+    const g = this.hud, pk = sim.pack, time = this.time;
+    const dt = Math.max(0, time - this.lagT); this.lagT = time;
+    if (pk.water > this.lag) this.lag = pk.water; else this.lag = Math.max(pk.water, this.lag - dt * 0.25);
+    const low = pk.water < 0.3, flash = low && Math.floor(time * 5) % 2 === 0;
+    g.fillStyle(0x0b0a10, 0.75); g.fillRect(16, 16, 420, 118); g.lineStyle(2, low ? 0x8a3a3a : 0x2a2838, 1); g.strokeRect(16, 16, 420, 118);
+    // Bimbo's face reacts to the water
+    const mood = pk.water > 0.6 ? 0 : pk.water > 0.3 ? 2 : 4, blink = ((time * 0.9) % 3.4) < 0.12 ? 1 : 0;
+    this.hudBimbo.setFrame(mood + blink).setPosition(60, 82 + Math.round(Math.sin(time * 3) * 2)).setScale(1);
+    this.ht('display', 'BIMBO', 112, 40, 16, low ? '#ff8a8a' : '#f6f1e6', 1, 'left');
+    this.ht('mono', `${Math.ceil(pk.water * 100)}%`, 420, 40, 14, low ? '#ff8a8a' : '#9ae0ff', 1, 'right', true);
+    const bx = 110, by = 48, bw = 312, bh = 22;
+    g.fillStyle(0x1a1522, 1); g.fillRect(bx, by, bw, bh);
+    g.fillStyle(0xf6f1e6, 0.8); g.fillRect(bx + 2, by + 2, (bw - 4) * this.lag, bh - 4);              // just-lost water
+    g.fillStyle(low ? (flash ? 0xe05a47 : 0x8a3a3a) : 0x2f7fb0, 1); g.fillRect(bx + 2, by + 2, (bw - 4) * pk.water, bh - 4);
+    g.fillStyle(low ? 0xff8a8a : 0x4ab0e0, 1); g.fillRect(bx + 2, by + 2, (bw - 4) * pk.water, 7);
+    g.fillStyle(0x9ae0ff, low ? 0 : 0.9); g.fillRect(bx + 2, by + 3, (bw - 4) * pk.water, 2);
+    for (let k = 1; k < 10; k++) { g.fillStyle(0x1a1522, 0.6); g.fillRect(bx + 2 + ((bw - 4) * k) / 10, by + 2, 1, bh - 4); }
+    // leak rate under the bar
+    const leak = sim.leakRate() * 100, secs = pk.water / Math.max(1e-6, sim.leakRate());
+    const state = pk.refilling ? 'REFILLING' : low ? 'GASPING! FIND WATER' : pk.holes ? `${pk.holes} TEAR${pk.holes > 1 ? 'S' : ''}` : 'PACK SOUND';
+    this.ht('mono', `LEAK −${leak.toFixed(1)}%/s`, bx, by + 42, 13, pk.holes ? '#ff9a7a' : '#9aa3a6', 1, 'left', true);
+    this.ht('mono', pk.refilling ? state : `${state} · dry in ${secs >= 600 ? '10m+' : Math.ceil(secs) + 's'}`, bx + 160, by + 42, 12,
+      pk.refilling ? '#9ae0ff' : low ? '#ff8a8a' : '#9aa3a6', 1, 'left', true);
+    for (let h = 0; h < pk.holes; h++) {                 // a rip mark per tear, dripping
+      const x = bx + 132 + h * 6; g.fillStyle(0xe05a47, 1); g.fillRect(x, by + 32, 4, 6);
+      if (Math.floor(time * 4 + h) % 2) { g.fillStyle(0x9ae0ff, 1); g.fillRect(x + 1, by + 40, 2, 2); }
+    }
+    // supplies
+    const needleCol = pk.needles ? '#e9e4d6' : '#ff8a8a', twine = sim.kit.mats.fluff;
+    this.ht('mono', `NEEDLE ×${pk.needles}`, bx, by + 68, 12, needleCol, 1, 'left', true);
+    this.ht('mono', `TWINE ×${twine}`, bx + 104, by + 68, 12, twine ? '#e0c890' : '#ff8a8a', 1, 'left', true);
+    const canPatch = pk.holes > 0 && pk.needles > 0 && twine > 0;
+    this.ht('mono', canPatch ? '[P] PATCH' : pk.holes && !pk.needles ? 'FIND A SEWING KIT!' : '[I] BACKPACK', bx + 196, by + 68, 12,
+      canPatch ? (Math.floor(time * 3) % 2 ? '#f2c230' : '#e9e4d6') : pk.holes && !pk.needles ? '#ff8a8a' : '#9aa3a6', 1, 'left', true);
+  }
+
+  // ------------------------------------------------------------------ backpack screen
+  packOpen = false;
+  private lag = 1;
+  private lagT = 0;
+  private hudBimbo!: Phaser.GameObjects.Sprite;
+  private ui!: { dim: Phaser.GameObjects.Graphics; pack: Phaser.GameObjects.Image; bimbo: Phaser.GameObjects.Sprite;
+    patches: Phaser.GameObjects.Sprite[]; tears: Phaser.GameObjects.Sprite[]; water: Phaser.GameObjects.Graphics };
+
+  private buildPackUi(screen: <T extends Phaser.GameObjects.GameObject>(o: T) => T): void {
+    const sc = this.scene, slots = Object.keys(SPRITES.pack_ui!.points).filter(k => k.startsWith('slot')).length;
+    this.hudBimbo = screen(sc.add.sprite(0, 0, 'bimbo').setDepth(9050));
+    this.setOrigin(this.hudBimbo, 'bimbo');
+    this.ui = {
+      dim: screen(sc.add.graphics().setDepth(9400)),
+      pack: screen(sc.add.image(0, 0, 'pack_ui').setOrigin(0, 0).setScale(3).setDepth(9410)),
+      water: screen(sc.add.graphics().setDepth(9411)),
+      patches: Array.from({ length: slots }, (_, i) => screen(sc.add.sprite(0, 0, 'patch', i % 4).setScale(3).setDepth(9412))),
+      tears: Array.from({ length: slots }, () => screen(sc.add.sprite(0, 0, 'tear').setScale(3).setDepth(9413))),
+      bimbo: screen(sc.add.sprite(0, 0, 'bimbo').setScale(3).setDepth(9420)),
+    };
+    this.setOrigin(this.ui.bimbo, 'bimbo');
+    for (const k of ['patch', 'tear'] as const) for (const s2 of this.ui[k === 'patch' ? 'patches' : 'tears']) this.setOrigin(s2, k);
+    this.showPackUi(false);
+  }
+
+  private showPackUi(on: boolean): void {
+    const u = this.ui;
+    for (const o of [u.dim, u.pack, u.water, u.bimbo, ...u.patches, ...u.tears]) o.setVisible(on);
+  }
+
+  private drawPackUi(sim: Sim): void {
+    // the game is paused while this is open, so animate on the wall clock
+    const u = this.ui, pk = sim.pack, time = performance.now() / 1000, P0 = { x: 150, y: 170 }, S3 = 3;
+    const pts = SPRITES.pack_ui!.points as unknown as Record<string, number[]>;
+    this.showPackUi(true);
+    u.dim.clear(); u.dim.fillStyle(0x0b0a10, 0.86); u.dim.fillRect(0, 0, SCREEN_W, SCREEN_H);
+    u.dim.fillStyle(0x1b1a26, 1); u.dim.fillRect(110, 90, 1060, 560); u.dim.lineStyle(3, 0x3e3a52, 1); u.dim.strokeRect(110, 90, 1060, 560);
+    u.pack.setPosition(P0.x, P0.y);
+    // water level in the clear window
+    const [wx, wy, ww, wh] = pts.window!;
+    const lvl = Math.max(0, Math.min(1, pk.water)), low = lvl < 0.3;
+    u.water.clear();
+    u.water.fillStyle(low ? 0xc05a5a : 0x2f7fb0, 1);
+    u.water.fillRect(P0.x + wx! * S3, P0.y + (wy! + wh! * (1 - lvl)) * S3, ww! * S3, wh! * lvl * S3);
+    u.water.fillStyle(0x9ae0ff, 0.9); u.water.fillRect(P0.x + wx! * S3, P0.y + (wy! + wh! * (1 - lvl)) * S3, ww! * S3, 3);
+    // patches sewn so far, then the open tears on the next slots
+    const slots = u.patches.length;
+    u.patches.forEach((s2, i) => {
+      const at = pts[`slot${i}`]!;
+      s2.setVisible(i < pk.patches).setPosition(P0.x + at[0]! * S3, P0.y + at[1]! * S3);
+    });
+    u.tears.forEach((s2, i) => {
+      const at = pts[`slot${(Math.min(pk.patches, slots) + i) % slots}`]!;
+      s2.setVisible(i < pk.holes).setFrame(Math.floor(time * 3 + i) % 2).setPosition(P0.x + at[0]! * S3 + 4, P0.y + at[1]! * S3 + 4);
+    });
+    const mood = lvl > 0.6 ? 0 : lvl > 0.3 ? 2 : 4, blink = ((time * 0.8) % 3.1) < 0.12 ? 1 : 0;
+    const [bx, by] = pts.bimbo!;
+    u.bimbo.setFrame(mood + blink).setPosition(P0.x + bx! * S3, P0.y + by! * S3 + Math.round(Math.sin(time * 2.4) * 4) + (low ? 10 : 0))
+      .setAngle(Math.sin(time * 1.7) * (low ? 2 : 5));
+    // the words
+    const X = 620, k = sim.kit;
+    this.ut('display', 'BACKPACK', X, 150, 40, '#f6f1e6', 1, 'left');
+    const moodText = lvl > 0.6 ? 'Bimbo is happy. Splashy, even.' : lvl > 0.3 ? 'Bimbo is getting thirsty…' : 'Bimbo is GASPING. Water, now!';
+    this.ut('body', moodText, X, 186, 20, lvl > 0.3 ? '#9ae0ff' : '#ff8a8a', 1, 'left', true);
+    const rows: [string, string, string][] = [
+      ['Water', `${Math.ceil(lvl * 100)}%`, low ? '#ff8a8a' : '#9ae0ff'],
+      ['Leak rate', `−${(sim.leakRate() * 100).toFixed(1)}% per second`, pk.holes ? '#ff9a7a' : '#9aa3a6'],
+      ['Open tears', `${pk.holes}`, pk.holes ? '#ff9a7a' : '#9aa3a6'],
+      ['Patches sewn', `${pk.patches}`, '#e0c890'],
+      ['Needle uses', `${pk.needles}  (sewing kits give ${C.kitNeedles})`, pk.needles ? '#e9e4d6' : '#ff8a8a'],
+      ['Twine', `${k.mats.fluff}  (one per patch)`, k.mats.fluff ? '#e0c890' : '#ff8a8a'],
+    ];
+    rows.forEach(([a, b, c], i) => {
+      this.ut('mono', a.toUpperCase(), X, 236 + i * 30, 13, '#9aa3a6', 1, 'left', true);
+      this.ut('mono', b, X + 170, 236 + i * 30, 15, c, 1, 'left', true);
+    });
+    const sup = (Object.keys(MATERIALS) as ItemId[]).filter(id => id !== 'fluff').map(id => `${ITEMS[id].name} ${k.mats[id]}`).join(' · ');
+    const breads = BREADS.filter(b => k.bread[b.id] > 0).map(b => `${b.name} ×${k.bread[b.id]}`).join(' · ') || 'no bread';
+    this.ut('mono', 'SUPPLIES', X, 430, 13, '#9aa3a6', 1, 'left', true);
+    this.ut('body', sup, X, 458, 15, '#e9e4d6', 1, 'left');
+    this.ut('body', breads, X, 482, 15, '#e9c9a0', 1, 'left');
+    this.ut('body', `Leash: ${k.leashDef.name}`, X, 506, 15, '#c9a46a', 1, 'left');
+    const canPatch = pk.holes > 0 && pk.needles > 0 && k.mats.fluff > 0;
+    this.ut('mono', canPatch ? '[P] PATCH A TEAR' : pk.holes ? (pk.needles ? 'NEED TWINE TO PATCH' : 'NEED A SEWING KIT TO PATCH') : 'NO TEARS TO PATCH', X, 570, 15,
+      canPatch ? '#f2c230' : pk.holes ? '#ff8a8a' : '#7cc48a', 1, 'left', true);
+    this.ut('mono', '[I] / [ESC] CLOSE', X, 600, 12, '#9aa3a6', 1, 'left', true);
   }
 
   private pixelHeart(x: number, y: number, s: number, c: number, hi: number): void {
@@ -528,6 +673,9 @@ export class ArtRenderer {
     let p = this.worldPools[face];
     if (!p) { p = this.worldPools[face] = new TextPool(this.scene, face, 5200, t => this.worldIgnore(t), ZOOM); }
     p.get(s, x, y, size, color, alpha, 'center', true);
+  }
+  private ut(face: Face, s: string, x: number, y: number, size: number, color: string, alpha = 1, align: 'center' | 'left' | 'right' = 'center', bold = false) {
+    return this.utext[face].get(s, x, y, size, color, alpha, align, bold);
   }
   private ht(face: Face, s: string, x: number, y: number, size: number, color: string, alpha = 1, align: 'center' | 'left' | 'right' = 'center', bold = false) {
     return this.htext[face].get(s, x, y, size, color, alpha, align, bold);

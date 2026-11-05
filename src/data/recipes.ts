@@ -15,7 +15,7 @@ export interface ItemDef { name: string; color: string; source: string }
 
 export const MATERIALS: Record<MaterialId, ItemDef> = {
   mop: { name: 'Fishing Line', color: '#ddd5be', source: 'The tackle box by the path. Restocks every 15 s.' },
-  fluff: { name: 'Reed Fiber', color: '#8db07a', source: 'Frogs carry it. Also patches the backpack: 2 per hole [P].' },
+  fluff: { name: 'Twine', color: '#d9c08a', source: 'Frogs carry it; spools lie around the marsh. One twine + one needle use patches a tear [P].' },
   crust: { name: 'Old Crust', color: '#c98a3c', source: 'Frogs, sometimes. Frogs steal bread.' },
   chain: { name: 'Shell Scute', color: '#7c8794', source: 'Old Snapper and other shelled brutes.' },
   goo: { name: 'Pond Muck', color: '#5fbf6a', source: 'Splashes up when something falls in the water.' },
@@ -89,7 +89,7 @@ export const BREADS: readonly BreadDef[] = [
   { id: 'stale', name: 'Stale Crust', build: 'any', cost: { crust: 2 }, effect: 'Calms the goose. Clears Fury and strain.', lore: 'Also found lying around. Do not eat it yourself.' },
   { id: 'sour', name: 'Sourdough of Serenity', build: 'brawler', cost: { crust: 2, down: 1 }, effect: 'Calms, then Fury cannot build for 8 seconds.', lore: 'Bake with his own down so he feels heard.' },
   { id: 'bagel', name: 'Scute Bagel', build: 'any', cost: { crust: 2, chain: 1 }, effect: 'Calms and reinforces the leash: +2 strength for 20 seconds.', lore: 'Crunchy. Structurally load-bearing.' },
-  { id: 'muffin', name: 'Reed Muffin', build: 'any', cost: { crust: 1, fluff: 2 }, effect: 'Calms. The goose coughs up a heart for you: +1 HP.', lore: 'Do not ask where the heart came from.' },
+  { id: 'muffin', name: 'Twine Muffin', build: 'any', cost: { crust: 1, fluff: 2 }, effect: 'Calms. The goose spits a beakful of pond water into the pack: +25% water (+1 heart in Room 01).', lore: 'Do not ask where the water came from.' },
   { id: 'pepper', name: 'Ghost Pepper Roll', build: 'berserker', cost: { crust: 1, goo: 1 }, effect: 'Does NOT calm. Goose goes instantly FURIOUS.', lore: 'For when you want him angry on purpose.' },
   { id: 'bun', name: 'Clapper Bun', build: 'honker', cost: { crust: 2, clapper: 1 }, effect: 'Calms. His next 5 honks are mega honks.', lore: 'The clapper is baked inside. He swallows it. It rings.' },
 ];

@@ -31,3 +31,5 @@ The M1 gate is "the Phaser build plays exactly like the prototype". Rules, numbe
   poofing. Bunnies and knights in Room 01 still poof.
 - Rooms with doors respawn a fall at the last safe ground instead of fixed left/right points; Room 01
   keeps its fixed respawns. R restarts from the door you came in by.
+- World rooms have no hearts: Bimbo's water is the life bar. Hits splash water out or tear the pack;
+  empty water restarts the room. Room 01 keeps hearts exactly as the prototype.

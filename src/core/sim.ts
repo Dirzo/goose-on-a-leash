@@ -1,5 +1,6 @@
 /**
- * The whole game simulation: the current room, plus what carries between rooms (kit, pack, hearts, room memory).
+ * The whole game simulation: the current room, plus what carries between rooms (kit, pack, room memory).
+ * In world rooms (those with water) Bimbo's water is Rocco's life; hearts only apply in the gray-box Room 01.
  * No Phaser imports: everything here runs headless in tests. Room 01 behaviour is ported 1:1 from the prototype.
  */
 import { C, DEFAULT_TUNING, type Tuning } from './config';
@@ -24,7 +25,7 @@ const ENTRANCED: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['frog', 'snapper']
 const WAKE_TIME = 1.6;
 
 /** What a room remembers after you leave it. */
-export interface RoomMemory { gateOpen: boolean; bread: boolean[]; chest: boolean; rang: boolean }
+export interface RoomMemory { gateOpen: boolean; bread: boolean[]; chest: boolean; rang: boolean; kits?: boolean[]; spools?: boolean[] }
 
 export interface Player {
   x: number; y: number; r: number; vx: number; vy: number;
@@ -56,13 +57,14 @@ export interface Item { mat: ItemId; x: number; y: number; vx: number; vy: numbe
 
 export interface Buffs { noFury: number; bagel: number; mega: number }
 
-/** The backpack that keeps the Moon Koi alive. Only active in rooms that have refill zones. */
+/** The backpack that keeps Bimbo the Moon Koi alive. Active in rooms that have water to refill from. */
 export interface Pack {
   enabled: boolean;
-  water: number;          // 0-1
-  holes: number;
-  patches: number;        // sewn on so far (shown on the sprite)
-  lastWater: Vec;         // where Rocco wakes if the koi faints
+  water: number;          // 0-1: Bimbo's life, and Rocco's
+  holes: number;          // open tears; each adds to the leak rate
+  patches: number;        // sewn on so far (shown on the backpack screen)
+  needles: number;        // needle uses left from sewing kits; each patch spends one
+  lastWater: Vec;         // the last shore Rocco refilled at
   refilling: boolean;
 }
 
@@ -108,6 +110,9 @@ export class Sim {
   enemies: Enemy[] = [];
   items: Item[] = [];
   breadGot: boolean[] = [];
+  /** Sewing kits and twine spools already taken in this room. */
+  kitsGot: boolean[] = [];
+  spoolsGot: boolean[] = [];
   buff: Buffs = { noFury: 0, bagel: 0, mega: 0 };
   pack!: Pack;
   rope!: Rope;
@@ -157,7 +162,7 @@ export class Sim {
   reset(def: RoomDef = this.room?.def ?? ROOM_01): void {
     const s = def.playerStart;
     this.player = { x: s.x, y: s.y, r: C.playerRadius, vx: 0, vy: 0, hp: C.maxHp, inv: 0, air: false, pull: null, fx: 1, fy: 0, dead: 0 };
-    this.pack = { enabled: !!def.refills?.length, water: 1, holes: 0, patches: 0, lastWater: { ...s }, refilling: false };
+    this.pack = { enabled: !!def.refills?.length, water: 1, holes: 0, patches: 0, needles: C.kitNeedles, lastWater: { ...s }, refilling: false };
     this.buff = { noFury: 0, bagel: 0, mega: 0 };
     this.time = 0; this.won = false; this.clearT = 0; this.handled = 0;
     this.entryDoor = null;
@@ -168,7 +173,8 @@ export class Sim {
 
   /**
    * Travel into a room through one of its doors (or its start when `doorId` is null).
-   * Hearts, pack, kit and buffs carry over. `revive` refills hearts and tops the pack up (after dying or a restart).
+   * Pack, kit and buffs carry over. `revive` (after Bimbo faints, or a restart) refills the pack and closes all
+   * but a couple of tears with emergency knots.
    * `keepMemory` false skips recording the room being left (loading a save replaces room memory wholesale).
    */
   enterRoom(def: RoomDef, doorId: string | null, revive = false, keepMemory = true): void {
@@ -179,8 +185,9 @@ export class Sim {
     this.player = { x: s.x, y: s.y, r: C.playerRadius, vx: 0, vy: 0, hp, inv: 0.8, air: false, pull: null,
       fx: door ? Math.sign(def.width / 2 - s.x) || 1 : 1, fy: 0, dead: 0 };
     const pk = this.pack;
-    this.pack = { enabled: !!def.refills?.length, water: revive ? Math.max(pk?.water ?? 1, C.faintRefill) : pk?.water ?? 1,
-      holes: pk?.holes ?? 0, patches: pk?.patches ?? 0, lastWater: { ...s }, refilling: false };
+    this.pack = { enabled: !!def.refills?.length, water: revive ? 1 : pk?.water ?? 1,
+      holes: revive ? Math.min(pk?.holes ?? 0, C.faintHolesKept) : pk?.holes ?? 0, patches: pk?.patches ?? 0,
+      needles: pk?.needles ?? C.kitNeedles, lastWater: { ...s }, refilling: false };
     this.won = false;
     this.entryDoor = door ? door.id : null;
     this.setupRoom(def, s);
@@ -224,7 +231,7 @@ export class Sim {
     if (!this.room) return;
     const id = this.room.def.id;
     this.world[id] = { gateOpen: !!this.room.def.gate && !this.room.gateClosed, bread: [...this.breadGot],
-      chest: this.world[id]?.chest ?? false, rang: this.rang };
+      chest: this.world[id]?.chest ?? false, rang: this.rang, kits: [...this.kitsGot], spools: [...this.spoolsGot] };
   }
 
   private setupRoom(def: RoomDef, s: Vec): void {
@@ -236,6 +243,8 @@ export class Sim {
     this.enemies = def.enemies.map(e => this.mkEnemy(e.kind, e.x, e.y));
     this.items = [];
     this.breadGot = def.breadSpots.map((_, i) => mem?.bread[i] ?? false);
+    this.kitsGot = (def.kits ?? []).map((_, i) => mem?.kits?.[i] ?? false);
+    this.spoolsGot = (def.spools ?? []).map((_, i) => mem?.spools?.[i] ?? false);
     this.rope = new Rope(s);
     this.lastSafe = { ...s };
     this.spawnT = 4; this.knightT = 0; this.clapperCd = 0; this.rang = mem?.rang ?? false; this.bucketCd = 0;
@@ -381,7 +390,10 @@ export class Sim {
     if (id === 'stale') this.say(wasFeral ? 'Bread accepted. Truce.' : 'Bread. The goose is (briefly) at peace.');
     if (id === 'sour') { this.buff.noFury = 8; this.say('Sourdough of Serenity. Zen goose for 8 s.'); }
     if (id === 'bagel') { this.buff.bagel = 20; this.say('Chain Bagel. Leash reinforced +2 for 20 s.'); }
-    if (id === 'muffin') { this.player.hp = Math.min(C.maxHp, this.player.hp + 1); this.say('The goose coughs up a heart. +1 HP. Gross.'); }
+    if (id === 'muffin') {
+      if (this.pack.enabled) { this.pack.water = Math.min(1, this.pack.water + 0.25); this.say('Biscuit spits a beakful of pond water into the pack. Bimbo: "...thanks?"'); }
+      else { this.player.hp = Math.min(C.maxHp, this.player.hp + 1); this.say('The goose coughs up a heart. +1 HP. Gross.'); }
+    }
     if (id === 'bun') { this.buff.mega = 5; this.say('Clapper Bun. He rings inside. 5 mega honks.'); }
   }
 
@@ -390,18 +402,22 @@ export class Sim {
     this.say(`Bread ready: ${breadById(id).name} ×${this.kit.bread[id]}`);
   }
 
-  /** Sew a patch over one hole, using Reed Fiber. */
+  /** Sew a patch over one tear: one twine and one needle use from a sewing kit. */
   patchPack(): boolean {
     const pk = this.pack;
     if (!pk.enabled || this.won || this.player.dead) return false;
-    if (pk.holes <= 0) { this.say('No holes to patch. The koi thanks you anyway.'); return false; }
-    if (this.kit.mats.fluff < C.patchCost) { this.say(`Need ${C.patchCost} Reed Fiber to patch. Frogs drop it.`); return false; }
-    this.kit.mats.fluff -= C.patchCost;
+    if (pk.holes <= 0) { this.say('No tears to patch. Bimbo blows you a bubble.'); return false; }
+    if (pk.needles <= 0) { this.say('No needle left! Find a sewing kit before Bimbo runs dry.'); return false; }
+    if (this.kit.mats.fluff < C.patchCost) { this.say('No twine! Frogs carry it, and spools lie around the marsh.'); return false; }
+    this.kit.mats.fluff -= C.patchCost; pk.needles--;
     pk.holes--; pk.patches++;
     this.fx('patch', this.player.x - 10, this.player.y - 30);
-    this.say(pk.holes ? `Patched one. ${pk.holes} left.` : 'Pack patched. No more leaks.');
+    this.say(pk.holes ? `Patched one. ${pk.holes} tear${pk.holes > 1 ? 's' : ''} still leaking.` : 'All patched. Bimbo stops glaring at you.');
     return true;
   }
+
+  /** Leak in pack fractions per second. */
+  leakRate(): number { return C.packDrain + C.holeDrain * this.pack.holes; }
 
   private stepPack(dt: number): void {
     const pk = this.pack, p = this.player;
@@ -411,18 +427,21 @@ export class Sim {
     if (pk.refilling) {
       pk.water = Math.min(1, pk.water + C.refillRate * dt);
       pk.lastWater = { x: p.x, y: p.y };
-      if (!was && pk.water < 0.98) { this.fx('splash', p.x - 10, p.y - 34); this.say('Refilling the pack. The koi perks up.'); }
+      if (!was && pk.water < 0.98) { this.fx('splash', p.x - 10, p.y - 34); this.say('Refilling the pack. Bimbo perks up.'); }
       return;
     }
     const before = pk.water;
-    pk.water = Math.max(0, pk.water - (C.packDrain + C.holeDrain * pk.holes) * dt);
-    if (before >= 0.3 && pk.water < 0.3) this.say('The Moon Koi is gasping. Find water!');
-    if (pk.water <= 0) {
+    pk.water = Math.max(0, pk.water - this.leakRate() * dt);
+    this.waterWarnings(before);
+  }
+
+  private waterWarnings(before: number): void {
+    const pk = this.pack, p = this.player;
+    if (before >= 0.3 && pk.water < 0.3) this.say('Bimbo is gasping! Find water, or a sewing kit for those tears.');
+    if (pk.water <= 0 && !p.dead) {
       this.fx('faint', p.x, p.y - 40);
-      this.say('The Moon Koi fainted! Rocco runs it back to the water…');
-      p.x = pk.lastWater.x; p.y = pk.lastWater.y; p.vx = p.vy = 0; p.pull = null; p.air = false; p.inv = 1.5;
-      const g = this.goose; g.state = 'held'; g.feral = false; g.x = p.x - 30; g.y = p.y;
-      pk.water = C.faintRefill;
+      this.say('Bimbo fainted! Rocco dunks him and ties emergency knots…');
+      p.dead = 1.2; p.vx = p.vy = 0; p.pull = null; p.air = false;
     }
   }
 
@@ -479,16 +498,30 @@ export class Sim {
     if (this.goose.target === e && this.goose.state === 'latched') this.goose.state = 'held';
   }
 
-  hurtPlayer(amt = 1): void {
-    const p = this.player;
+  /**
+   * A hit on Rocco. In world rooms it lands on the backpack: it either tears it (the leak rate goes up)
+   * or splashes water out. In Room 01 it costs hearts, as in the prototype.
+   */
+  hurtPlayer(amt = 1, heavy = false): void {
+    const p = this.player, pk = this.pack;
     if (p.inv > 0 || p.air || p.dead) return;
-    p.hp -= amt; p.inv = C.invulnerable;
-    if (this.pack.enabled && this.pack.holes < C.maxHoles && this.rng() < C.holeChance) {
-      this.pack.holes++;
-      this.fx('tear', p.x - 10, p.y - 30);
-      this.say(this.pack.holes === 1 ? 'Your pack tore! Water is leaking. [P] to patch.' : `Another hole! ${this.pack.holes} leaks now.`);
+    p.inv = C.invulnerable;
+    if (!pk.enabled) {
+      p.hp -= amt;
+      if (p.hp <= 0) { p.dead = 0.9; this.say('The janitor is out. Resetting…'); }
+      return;
     }
-    if (p.hp <= 0) { p.dead = 0.9; this.say(this.pack.enabled ? 'Rocco is out. Back to the dock…' : 'The janitor is out. Resetting…'); }
+    const before = pk.water;
+    if (pk.holes < C.maxHoles && this.rng() < (heavy ? C.heavyHoleChance : C.holeChance)) {
+      pk.holes++;
+      this.fx('tear', p.x - 10, p.y - 30);
+      this.say(pk.holes === 1 ? 'RIP! The pack tore. Water is leaking. [P] to patch.' : `Another tear! ${pk.holes} leaking now.`);
+    } else {
+      pk.water = Math.max(0, pk.water - (heavy ? C.heavySpill : C.hitSpill) * amt);
+      this.fx('splash', p.x - 10, p.y - 34);
+      if (pk.water > 0.3) this.say(heavy ? 'WHAM. A big splash out of the pack.' : 'Splash! Water knocked out of the pack.');
+    }
+    this.waterWarnings(before);
   }
 
   // ------------------------------------------------ step
@@ -541,6 +574,17 @@ export class Sim {
     // pickups
     room.def.breadSpots.forEach((b, i) => {
       if (!this.breadGot[i] && Math.hypot(b.x - p.x, b.y - p.y) < 24) { this.breadGot[i] = true; this.kit.bread.stale++; this.say('Stale Crust +1'); }
+    });
+    (room.def.kits ?? []).forEach((k, i) => {
+      if (this.kitsGot[i] || Math.hypot(k.x - p.x, k.y - p.y) > 24) return;
+      this.kitsGot[i] = true; this.pack.needles += C.kitNeedles;
+      this.fx('pick', p.x, p.y - 40, { text: `+${C.kitNeedles} needle uses` });
+      this.say(this.pack.holes ? `Sewing kit! ${this.pack.holes} tear${this.pack.holes > 1 ? 's' : ''} to patch: press P.` : 'Sewing kit! Needle and thread for three patches.');
+    });
+    (room.def.spools ?? []).forEach((k, i) => {
+      if (this.spoolsGot[i] || Math.hypot(k.x - p.x, k.y - p.y) > 24) return;
+      this.spoolsGot[i] = true; this.kit.mats.fluff += C.spoolTwine;
+      this.fx('pick', p.x, p.y - 40, { text: `+${C.spoolTwine} Twine` });
     });
     for (const it of this.items) {
       it.t += dt;
@@ -628,11 +672,11 @@ export class Sim {
     }
     if (!p.air && room.inPit(p.x, p.y, 6)) {
       const pond = this.pack.enabled;
-      this.hurtPlayer();
+      if (!pond) this.hurtPlayer();
       const sp = room.def.respawns ? room.def.respawns[room.pitSide(p.x)] : this.lastSafe;
       p.x = sp.x; p.y = sp.y; p.vx = p.vy = 0;
       g.state = 'held'; g.x = p.x - 30; g.y = p.y;
-      if (pond) { this.pack.water = 1; this.fx('splash', p.x, p.y - 20); }   // at least the koi enjoyed it
+      if (pond) this.fx('splash', p.x, p.y - 20);
       this.say(this.pick(pond ? 'swim' : 'fall'));
     }
     if (!p.air && !p.pull && !room.inPit(p.x, p.y, -22)) this.lastSafe = { x: p.x, y: p.y };
@@ -684,7 +728,7 @@ export class Sim {
         if (g.target === e) g.state = 'held';
         continue;
       }
-      if (!e.stun && d < e.r + p.r) this.hurtPlayer();
+      if (!e.stun && d < e.r + p.r) this.hurtPlayer(1, e.heavy);
     }
     for (let i = 0; i < this.enemies.length; i++) for (let j = i + 1; j < this.enemies.length; j++) {
       const a = this.enemies[i]!, b = this.enemies[j]!;

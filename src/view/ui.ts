@@ -115,8 +115,10 @@ export function mountUi(scene: GameScene): void {
   book.addEventListener('click', e => { if (e.target === book) closeBook(); });
 
   scene.controls.onUi = a => {
-    if (a === 'book') openBook();
-    else if (a === 'closeBook') closeBook();
-    else if (a === 'reset') scene.resetRoom();
+    if (a === 'book') { if (open) closeBook(); else { scene.setPackOpen(false); openBook(); } }
+    else if (a === 'pack') { if (open) closeBook(); scene.setPackOpen(!scene.packOpen); }
+    else if (a === 'closeBook' || a === 'close') { if (open) closeBook(); scene.setPackOpen(false); }
+    else if (a === 'patch') { if (scene.packOpen) scene.patchFromPack(); }
+    else if (a === 'reset') { if (open) closeBook(); scene.setPackOpen(false); scene.resetRoom(); }
   };
 }

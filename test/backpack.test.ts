@@ -1,4 +1,4 @@
-/** The backpack that keeps the Moon Koi alive, in Willowmere Pond. */
+/** The backpack that keeps Bimbo the Moon Koi alive: his water is Rocco's life in world rooms. */
 import { describe, expect, it } from 'vitest';
 import { C, STEP } from '../src/core/config';
 import { Sim } from '../src/core/sim';
@@ -25,10 +25,30 @@ describe('backpack', () => {
     expect(1 - b.pack.water).toBeCloseTo((C.packDrain + 2 * C.holeDrain) * 10, 2);
   });
 
-  it('a hit can tear a hole, up to the maximum', () => {
-    const sim = pond(); fixRng(sim, 0);
-    for (let i = 0; i < 5; i++) { sim.player.inv = 0; sim.hurtPlayer(0); }
-    expect(sim.pack.holes).toBe(C.maxHoles);
+  it('a hit either tears the pack (up to the maximum) or splashes water out; hearts never change', () => {
+    const tear = pond(); fixRng(tear, 0);
+    for (let i = 0; i < 8; i++) { tear.player.inv = 0; tear.hurtPlayer(); }
+    expect(tear.pack.holes).toBe(C.maxHoles);
+    expect(tear.player.hp).toBe(C.maxHp);
+
+    const spill = pond(); fixRng(spill, 0.99);
+    spill.player.inv = 0; spill.hurtPlayer();
+    expect(spill.pack.holes).toBe(0);
+    expect(spill.pack.water).toBeCloseTo(1 - C.hitSpill, 5);
+    spill.player.inv = 0; spill.hurtPlayer(1, true);
+    expect(spill.pack.water).toBeCloseTo(1 - C.hitSpill - C.heavySpill, 5);
+    expect(spill.player.hp).toBe(C.maxHp);
+  });
+
+  it('a hit right after a hit does nothing (brief invulnerability)', () => {
+    const sim = pond(); fixRng(sim, 0.99);
+    sim.player.inv = 0; sim.hurtPlayer(); sim.hurtPlayer();
+    expect(sim.pack.water).toBeCloseTo(1 - C.hitSpill, 5);
+  });
+
+  it('leak rate is shown per tear', () => {
+    const sim = pond(); sim.pack.holes = 3;
+    expect(sim.leakRate()).toBeCloseTo(C.packDrain + 3 * C.holeDrain, 6);
   });
 
   it('standing on the shoreline refills the pack', () => {
@@ -37,45 +57,73 @@ describe('backpack', () => {
     sim.player.x = 425; sim.player.y = 200;          // west shore refill zone
     run(sim, 2);
     expect(sim.pack.water).toBeGreaterThan(0.95);
-    expect(sim.pack.lastWater.x).toBeCloseTo(sim.player.x, 0);
   });
 
-  it('patching costs Reed Fiber and closes a hole', () => {
+  it('patching needs a needle use and a twine, and closes one tear', () => {
     const sim = pond();
-    sim.pack.holes = 2; sim.kit.mats.fluff = 1;
-    expect(sim.patchPack()).toBe(false);
-    sim.kit.mats.fluff = 4;
+    sim.pack.holes = 2; sim.kit.mats.fluff = 0; sim.pack.needles = 1;
+    expect(sim.patchPack()).toBe(false);              // no twine
+    sim.kit.mats.fluff = 3; sim.pack.needles = 0;
+    expect(sim.patchPack()).toBe(false);              // no needle
+    sim.pack.needles = 1;
     expect(sim.patchPack()).toBe(true);
     expect(sim.pack.holes).toBe(1);
-    expect(sim.kit.mats.fluff).toBe(4 - C.patchCost);
+    expect(sim.pack.needles).toBe(0);
+    expect(sim.kit.mats.fluff).toBe(3 - C.patchCost);
     expect(sim.pack.patches).toBe(1);
+    expect(sim.patchPack()).toBe(false);              // out of needle: race to the next kit
   });
 
   it('one patch input sews exactly one patch', () => {
     const sim = pond();
-    sim.pack.holes = 3; sim.kit.mats.fluff = 10;
+    sim.pack.holes = 3; sim.kit.mats.fluff = 10; sim.pack.needles = 3;
     sim.step(STEP, { moveX: 0, moveY: 0, aimX: 0, aimY: 0, patch: true });
     expect(sim.pack.holes).toBe(2);
-    expect(sim.kit.mats.fluff).toBe(10 - C.patchCost);
+    expect(sim.pack.needles).toBe(2);
   });
 
-  it('when the water runs out the koi faints and Rocco wakes at the last water', () => {
+  it('sewing kits and twine spools are picked up once and remembered', () => {
     const sim = pond();
-    sim.pack.lastWater = { x: 425, y: 400 };
-    sim.player.x = 200; sim.player.y = 300;
+    const k = WILLOWMERE.kits![0]!, sp = WILLOWMERE.spools![0]!;
+    const needles = sim.pack.needles, twine = sim.kit.mats.fluff;
+    sim.player.x = k.x; sim.player.y = k.y; sim.step(STEP);
+    sim.player.x = sp.x; sim.player.y = sp.y; sim.step(STEP);
+    expect(sim.pack.needles).toBe(needles + C.kitNeedles);
+    expect(sim.kit.mats.fluff).toBe(twine + C.spoolTwine);
+    sim.player.x = k.x; sim.player.y = k.y; sim.step(STEP);
+    expect(sim.pack.needles).toBe(needles + C.kitNeedles);
+    sim.restartRoom();
+    sim.player.x = k.x; sim.player.y = k.y; sim.step(STEP);
+    expect(sim.pack.needles).toBe(needles + C.kitNeedles);
+  });
+
+  it('when the water runs out Bimbo faints: back to the room entry with a full pack and at most two tears', () => {
+    const sim = pond();
+    sim.pack.holes = 5; sim.player.x = 200; sim.player.y = 300;
     sim.pack.water = 0.00001;
     sim.step(STEP);
-    expect(sim.player.x).toBe(425);
-    expect(sim.pack.water).toBeCloseTo(C.faintRefill, 2);
+    expect(sim.player.dead).toBeGreaterThan(0);
+    run(sim, 1.5);
+    expect(sim.player.dead).toBe(0);
+    expect(sim.player.x).toBe(WILLOWMERE.playerStart.x);
+    expect(sim.pack.water).toBeGreaterThan(0.95);
+    expect(sim.pack.holes).toBe(C.faintHolesKept);
   });
 
-  it('falling in the pond costs a heart but fills the pack', () => {
+  it('a big enough hit at low water makes Bimbo faint', () => {
+    const sim = pond(); fixRng(sim, 0.99);
+    sim.pack.water = 0.05; sim.player.inv = 0; sim.hurtPlayer();
+    expect(sim.player.dead).toBeGreaterThan(0);
+  });
+
+  it('falling in the pond costs nothing but the trip back (no free refill)', () => {
     const sim = pond();
     sim.pack.water = 0.3; sim.player.inv = 0;
     sim.player.x = 600; sim.player.y = 200;          // open water
     sim.step(STEP);
-    expect(sim.player.hp).toBe(4);
-    expect(sim.pack.water).toBeGreaterThan(0.99);
+    expect(sim.player.hp).toBe(C.maxHp);
+    expect(sim.pack.water).toBeLessThan(0.31);
+    expect(sim.room.inPit(sim.player.x, sim.player.y, 6)).toBe(false);
   });
 });
 

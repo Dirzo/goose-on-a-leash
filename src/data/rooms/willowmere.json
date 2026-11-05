@@ -203,8 +203,8 @@
     },
     {
       "kind": "snapper",
-      "x": 862,
-      "y": 330
+      "x": 880,
+      "y": 450
     }
   ],
   "knightSpawn": null,
@@ -232,5 +232,17 @@
       "label": "To Reedmarsh"
     }
   ],
-  "exit": null
+  "exit": null,
+  "kits": [
+    {
+      "x": 372,
+      "y": 300
+    }
+  ],
+  "spools": [
+    {
+      "x": 150,
+      "y": 420
+    }
+  ]
 }

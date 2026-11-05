@@ -20,6 +20,8 @@ sys.path.insert(0, os.path.join(HERE, 'characters'))
 import biscuit_hd  # noqa: E402
 import critters_hd  # noqa: E402
 import rocco_hd  # noqa: E402
+sys.path.insert(0, os.path.join(HERE, 'ui'))
+import backpack_ui as bui  # noqa: E402
 
 OUT = os.path.join(HERE, '..', 'src', 'assets', 'sprites')
 os.makedirs(OUT, exist_ok=True)
@@ -48,6 +50,13 @@ strip('frog', [critters_hd.frog(False), critters_hd.frog(True)], (13, 15))
 strip('frog_awake', [critters_hd.frog(False, awake=True), critters_hd.frog(True, awake=True)], (13, 15))
 strip('snapper', [critters_hd.snapper(False, submerged=False), critters_hd.snapper(True, submerged=False)], (30, 24))
 strip('snapper_awake', [critters_hd.snapper(False, submerged=False, awake=True), critters_hd.snapper(True, submerged=False, awake=True)], (30, 24))
+
+# backpack screen: Bimbo (happy, worried, gasping x open/blink), the pack, patches, tears
+strip('bimbo', [bui.bimbo(m, b) for m in ('happy', 'worried', 'gasping') for b in (False, True)], bui.BIMBO_ANCHOR)
+strip('pack_ui', [bui.pack()], (0, 0), {'window': list(bui.WINDOW), 'bimbo': list(bui.BIMBO_AT),
+      **{f'slot{i}': list(p) for i, p in enumerate(bui.PATCH_SLOTS)}})
+strip('patch', [bui.patch(i) for i in range(4)], (8, 7))
+strip('tear', [bui.tear(0), bui.tear(1)], (7, 6))
 
 with open(os.path.join(OUT, 'sprites.json'), 'w') as f:
     json.dump(manifest, f, indent=1)

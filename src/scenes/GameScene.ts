@@ -89,6 +89,17 @@ export class GameScene extends Phaser.Scene {
     this.feed(this.sim.drainEvents());
   }
 
+  /** The backpack screen (art rooms with a pack only). Opening it pauses the game. */
+  get packOpen(): boolean { return this.view instanceof ArtRenderer && this.view.packOpen; }
+  setPackOpen(on: boolean): boolean {
+    if (!(this.view instanceof ArtRenderer) || (on && !this.sim.pack.enabled)) return false;
+    this.view.packOpen = on; this.paused = on;
+    if (!on) this.game.canvas.focus();
+    return true;
+  }
+  /** Patch from the backpack screen (the sim is paused, so feed its events straight to the view). */
+  patchFromPack(): void { this.sim.patchPack(); this.feed(this.sim.drainEvents()); }
+
   /** Write the autosave now (also done on every room arrival). */
   saveNow(): boolean { return this.saving && storeSave(snapshotSave(this.sim)); }
 

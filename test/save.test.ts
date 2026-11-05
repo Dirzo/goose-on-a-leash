@@ -40,7 +40,7 @@ describe('saves', () => {
     expect(s.door).toBeNull();
     expect(s.hp).toBe(5);
     expect(s.pack.water).toBeGreaterThan(0);
-    expect(s.pack.holes).toBe(3);
+    expect(s.pack.holes).toBe(5);
     expect(s.kit.owned).toEqual(['mop', 'golden']);
     expect(s.kit.leash).toBe('mop');
     expect(s.kit.mats.fluff).toBe(0);

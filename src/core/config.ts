@@ -52,12 +52,17 @@ export const C = {
   maxBunnies: 4,
   knightRespawn: 25,
   bucketCooldown: 15,
-  // backpack: water fractions per second
+  // backpack: Bimbo's water is Rocco's life in the world rooms. Fractions of a full pack.
   packDrain: 0.004,       // a sound pack lasts about 4 minutes away from water
-  holeDrain: 0.012,       // each hole adds this; 3 holes empty a full pack in about 25 s
+  holeDrain: 0.012,       // each tear adds this per second; 3 tears empty a full pack in about 25 s
   refillRate: 0.45,
-  holeChance: 0.6,        // chance a hit tears a hole
-  maxHoles: 3,
-  patchCost: 2,           // Reed Fiber per patch
-  faintRefill: 0.5,       // water after the koi faints and Rocco wakes at the last water
+  hitSpill: 0.12,         // a hit that doesn't tear splashes this much water out
+  heavySpill: 0.22,       // Old Snapper hits harder
+  holeChance: 0.4,        // chance a light hit tears the pack instead of splashing
+  heavyHoleChance: 0.6,
+  maxHoles: 5,
+  patchCost: 1,           // twine per patch (plus one needle use from a sewing kit)
+  kitNeedles: 3,          // patches in one sewing kit
+  spoolTwine: 2,          // twine on one spool
+  faintHolesKept: 2,      // after Bimbo faints, Rocco ties emergency knots: at most this many tears stay open
 } as const;

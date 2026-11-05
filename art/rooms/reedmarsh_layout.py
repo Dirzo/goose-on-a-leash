@@ -63,6 +63,9 @@ def border_and_doors(w, h, doors):
     return walls, out
 
 
+POST_CLEARANCE = 130   # no critter starts this close to a grappling post (landing must be safe)
+
+
 def room(id, name, w, h, doors, start_door, **kw):
     walls, door_defs = border_and_doors(w, h, doors)
     walls += kw.pop('props', [])
@@ -76,7 +79,13 @@ def room(id, name, w, h, doors, start_door, **kw):
         'enemies': kw.pop('enemies', []), 'knightSpawn': None, 'lightKind': 'frog', 'heavyKind': 'snapper',
         'doors': door_defs, 'paths': kw.pop('paths', []),
     }
+    grapple_snapper = kw.pop('grapple_snapper', False)
     r.update(kw)
+    for e in r['enemies']:
+        if e['kind'] == 'snapper' and grapple_snapper: continue   # Snapper Shallows: he IS the grapple
+        for p in r['posts']:
+            d = math.dist((e['x'], e['y']), (p['x'], p['y']))
+            assert d >= POST_CLEARANCE, f"{id}: {e['kind']} at {e['x']},{e['y']} is {d:.0f} from a post"
     return r
 
 
@@ -108,6 +117,7 @@ ROOMS.append(room(
     vents=[{'x': 820, 'y': 160}],
     enemies=[frog(300, 180), frog(640, 200), frog(420, 480), frog(700, 520), frog(590, 440)],
     bread=[{'x': 860, 'y': 560}, {'x': 120, 'y': 110}],
+    spools=[{'x': 860, 'y': 180}],
     lantern={'x': 520, 'y': 236},
     paths=[[[480, 576], [480, 400]], [[480, 230], [480, 64]]],
 ))
@@ -128,8 +138,9 @@ ROOMS.append(room(
     refills=[rect(236, 20, 26, 560), rect(958, 20, 26, 560)],
     posts=[post(*A), post(*B), post(*Cc), post(*D)],
     props=[rect(1120, 120, 40, 30, kind='rock'), rect(90, 470, 56, 24, kind='log'), rect(1180, 470, 40, 28, kind='stump')],
-    enemies=[frog(452, 236), frog(818, 248), frog(1110, 220), frog(1130, 420)],
+    enemies=[frog(150, 140), frog(160, 500), frog(1110, 180), frog(1130, 460)],
     bread=[{'x': 630, 'y': 372}, {'x': 120, 'y': 120}],
+    kits=[{'x': 1180, 'y': 540}], spools=[{'x': 110, 'y': 400}],
     lantern={'x': 226, 'y': 250},
     paths=[[[66, 300], [236, 300]], [[984, 310], [1214, 310]]],
 ))
@@ -151,6 +162,7 @@ ROOMS.append(room(
     vents=[{'x': 170, 'y': 140}, {'x': 210, 'y': 500}, {'x': 520, 'y': 520}, {'x': 470, 'y': 110}],
     enemies=[frog(360, 160), frog(420, 440), frog(700, 320)],
     bread=[{'x': 100, 'y': 540}, {'x': 560, 'y': 300}, {'x': 860, 'y': 520}],
+    spools=[{'x': 300, 'y': 540}, {'x': 850, 'y': 430}],
     lantern={'x': 640, 'y': 236},
     paths=[[[66, 300], [560, 300], [894, 300]]],
 ))
@@ -170,6 +182,8 @@ ROOMS.append(room(
            rect(1000, 520, 40, 28, kind='stump')],
     enemies=[snapper(660, 330), snapper(900, 500), frog(800, 190), frog(980, 420), frog(180, 300)],
     bread=[{'x': 120, 'y': 560}, {'x': 1040, 'y': 160}],
+    kits=[{'x': 1000, 'y': 110}], spools=[{'x': 180, 'y': 540}],
+    grapple_snapper=True,
     lantern={'x': 370, 'y': 300},
     paths=[[[66, 320], [376, 320]], [[604, 330], [960, 330], [960, 70]]],
 ))
@@ -186,6 +200,7 @@ ROOMS.append(room(
     chest={'x': 400, 'y': 262, 'leash': 'braided'},
     props=[rect(110, 80, 40, 28, kind='stump'), rect(660, 410, 40, 30, kind='rock')],
     bread=[{'x': 120, 'y': 430}],
+    kits=[{'x': 372, 'y': 300}], spools=[{'x': 690, 'y': 120}],
     lantern={'x': 440, 'y': 214},
     paths=[[[66, 260], [222, 260]], [[400, 420], [400, 470], [700, 470], [734, 260]]],
 ))
@@ -208,8 +223,9 @@ ROOMS.append(room(
     posts=[post(*PA), post(*PB), post(*PC)],
     bell=bell6,
     props=[rect(100, 120, 40, 30, kind='rock'), rect(1120, 520, 56, 24, kind='log')],
-    enemies=[frog(520, 310), frog(815, 400), snapper(1150, 450), frog(1150, 230)],
+    enemies=[frog(120, 180), snapper(1170, 510), frog(1180, 140)],
     bread=[{'x': 1190, 'y': 570}, {'x': 120, 'y': 540}],
+    spools=[{'x': 130, 'y': 440}],
     lantern={'x': 230, 'y': 300},
     paths=[[[66, 320], [216, 320]], [[1044, 330], [1214, 320]]],
     winText='Reedmarsh, part one: done. The Heron Ferryman waits deeper in the marsh.',
