@@ -1,4 +1,7 @@
 """
+NOTE: superseded by the fine-resolution art (640x360 native, see art/characters/rocco_hd.py).
+Kept for the 320x180 style frames until those are redrawn.
+
 Shared character sprites for style frames and sheets. Native pixels, 1 px outline ('O').
 Each sprite is a list of rows; '.' is transparent. Keys map to palette names in PALETTE.
 
