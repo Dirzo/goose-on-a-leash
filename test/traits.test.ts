@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { STEP } from '../src/core/config';
 import { Sim } from '../src/core/sim';
 import { ROOMS, WILLOWMERE } from '../src/data/rooms';
+import { LAYOUT } from './helpers';
 import { applySave, decodeSave, encodeSave, snapshotSave } from '../src/core/save';
 
 function hub(): Sim {
@@ -57,7 +58,7 @@ describe("Biscuit's traits", () => {
   });
 
   it('the Heron gives two Golden Feathers', () => {
-    const sim = hub(); sim.kit.findLeash('braided'); sim.enterRoom(ROOMS['reedmarsh-12']!, 'w');
+    const sim = hub(); sim.kit.findLeash('braided'); sim.enterRoom(LAYOUT['reedmarsh-12']!, 'w');
     sim.damage(sim.enemies.find(e => e.kind === 'heron')!, 999);
     expect(sim.kit.mats.feather).toBe(2);
   });

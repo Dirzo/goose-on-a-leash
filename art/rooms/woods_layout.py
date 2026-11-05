@@ -20,7 +20,7 @@ import os
 from roomkit import BASE_LEASH, HONK, check_reach, foe, post, rect, room, tree
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, '..', '..', 'src', 'data', 'rooms')
+OUT = os.path.join(HERE, 'build')   # per-room layouts; merge_areas.py stitches them into areas
 ROOMS = []
 W = lambda **kw: dict(biome='woods', lightKind='squirrel', heavyKind='badger', **kw)
 sq = lambda x, y: foe('squirrel', x, y)

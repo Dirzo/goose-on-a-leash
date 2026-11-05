@@ -4,7 +4,7 @@ import { Sim } from '../core/sim';
 import { ROOMS, WILLOWMERE, type RoomDef } from '../data/rooms';
 import { Controls } from '../view/controls';
 import { Renderer, snapshot, type Snapshot } from '../view/render';
-import { ArtRenderer, SCREEN_H, SCREEN_W } from '../view/art';
+import { ArtRenderer, CANVAS_H, CANVAS_W } from '../view/art';
 import { ROOM_ART, nearestFilter, preloadArt } from '../view/assets';
 import { applySave, loadStoredSave, snapshotSave, storeSave } from '../core/save';
 import { sound } from '../view/audio';
@@ -53,7 +53,7 @@ export class GameScene extends Phaser.Scene {
     if (ROOM_ART[def.id]) this.view = new ArtRenderer(this, this.sim);
     else {
       // gray-box room, scaled to fit the 16:9 canvas
-      const z = Math.min(SCREEN_W / def.width, SCREEN_H / def.height);
+      const z = Math.min(CANVAS_W / def.width, CANVAS_H / def.height);
       this.cameras.main.setZoom(z).centerOn(def.width / 2, def.height / 2);
       this.view = new Renderer(this);
     }

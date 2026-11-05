@@ -33,3 +33,12 @@ export function knightDummy(sim: Sim) {
   sim.goose.state = 'latched'; sim.goose.target = k; sim.goose.ox = -1; sim.goose.oy = 0;
   return k;
 }
+
+import type { RoomDef } from '../src/data/rooms';
+/**
+ * The per-room layouts the areas are stitched from (art/rooms/build). Each is self-contained, so
+ * mechanics tests use them with their original coordinates; world and travel tests use the real areas.
+ */
+export const LAYOUT: Record<string, RoomDef> = Object.fromEntries(
+  Object.values(import.meta.glob('../art/rooms/build/*.json', { eager: true, import: 'default' }) as Record<string, RoomDef>)
+    .map(r => [r.id, r]));

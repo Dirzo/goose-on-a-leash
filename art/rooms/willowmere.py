@@ -13,6 +13,7 @@ import json
 import math
 import os
 import random
+import sys
 
 import numpy as np
 from PIL import Image
@@ -233,16 +234,11 @@ for x in range(24, W - 24, 5):
         if not water[y, x]: px(x + (y // 7) % 2, y + 6, 'RD0')
 
 # ---------------------------------------------------------------- lighting: moonlit wash, lantern pool, vignette
-lum = np.ones((H, W), np.float32) * 0.92
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from depth import depth_pass, wall_mask  # noqa: E402
 lan = R['lantern']
-dl = np.hypot(xx - lan['x'], (yy - lan['y']) * 1.25)
-for rr, k in [(170, 0.10), (110, 0.14), (64, 0.2), (32, 0.26)]:
-    m = dl < rr; lum[m] += k
-warm = np.array([1.0, 0.82, 0.55], np.float32)
-glow = np.clip(1 - dl / 170, 0, 1)
-glow = np.floor(glow * 4) / 4                                   # banded, like the style frame
-img = img * lum[..., None]
-img = img * (1 - glow[..., None] * 0.35) + img * warm * glow[..., None] * 0.35 + P['L2'] * glow[..., None] * 0.12
+occ = wall_mask(R, H, W) | canopy
+img = depth_pass(img, R, occ, water=water, seed=1.3)
 red = np.array([1.06, 0.94, 1.0], np.float32)                   # the blood moon's tint
 img = img * red
 # lantern on the dock end

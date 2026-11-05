@@ -168,7 +168,7 @@
    "w": 26,
    "h": 84,
    "to": "reedmarsh-8",
-   "toDoor": "n",
+   "toDoor": "e",
    "spawn": {
     "x": 66,
     "y": 280

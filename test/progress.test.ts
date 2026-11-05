@@ -11,7 +11,7 @@ import { ROOMS, WILLOWMERE, type RoomDef } from '../src/data/rooms';
 const CELL = 8;
 const HONK_REACH = 155 * (0.85 + 0.15 * 2) + 30;   // base honk range at Goose Power 2, plus the bell's slack
 
-function reachable(def: RoomDef, leash: number, fromDoor: string | null): { doors: Set<string>; gateOpened: boolean } {
+function reachable(def: RoomDef, leash: number, fromDoor: string | null): { doors: Set<string>; gateOpened: boolean; at: (x: number, y: number) => boolean } {
   const room = new Room(def);
   room.bushAlive = room.bushAlive.map(() => false);   // Biscuit can chew through any bush he can be flung at
   room.dirty();
@@ -65,32 +65,29 @@ function reachable(def: RoomDef, leash: number, fromDoor: string | null): { door
     const ix = d.spawn.x + (d.x + d.w / 2 - d.spawn.x) * 0.7, iy = d.spawn.y + (d.y + d.h / 2 - d.spawn.y) * 0.7;
     if (seen[Math.floor(iy / CELL) * W + Math.floor(ix / CELL)]) doors.add(d.id);
   }
-  return { doors, gateOpened };
+  const at = (x: number, y: number) => {
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+      const cx = Math.floor(x / CELL) + dx, cy = Math.floor(y / CELL) + dy;
+      if (cx >= 0 && cy >= 0 && cx < W && cy < H && seen[cy * W + cx]) return true;
+    }
+    return false;
+  };
+  return { doors, gateOpened, at };
 }
+const reachableCells = (def: RoomDef, leash: number, from: string) => reachable(def, leash, from).at;
 
 /** The critical path: hub north, then each Reedmarsh room in order. */
 const PATH: [string, string | null, string, boolean][] = [
   ['willowmere', null, 'north', false],
-  ['reedmarsh-1', 's', 'n', false],
-  ['reedmarsh-2', 'w', 'e', false],
-  ['reedmarsh-3', 'w', 'e', false],
-  ['reedmarsh-4', 'w', 'n', false],
-  ['reedmarsh-5', 'w', 'e', false],
-  ['reedmarsh-6', 'w', 'e', true],
-  ['reedmarsh-7', 'w', 'e', true],
-  ['reedmarsh-8', 'w', 'n', true],
-  ['reedmarsh-9', 'w', 'e', true],
-  ['reedmarsh-10', 'w', 'e', true],
-  ['reedmarsh-11', 'w', 'e', true],
-  ['reedmarsh-12', 'w', 'e', true],
+  ['reedmarsh-1', 's', 'e', false],
+  ['reedmarsh-2', 'w', 'e', true],          // the Braided Line is found inside (see below)
+  ['reedmarsh-3', 'w', 'e', true],
+  ['reedmarsh-4', 'w', 'e', true],
+  ['reedmarsh-5', 'w', 'e', true],
   ['hollowbark-1', 'w', 'e', true],
   ['hollowbark-2', 'w', 'e', true],
   ['hollowbark-3', 'w', 'e', true],
-  ['hollowbark-4', 'w', 'n', true],
-  ['hollowbark-5', 'w', 'e', true],
-  ['hollowbark-6', 'w', 'e', true],
-  ['hollowbark-7', 'w', 'e', true],
-  ['hollowbark-8', 'w', 'e', true],
+  ['hollowbark-4', 'w', 'e', true],
 ];
 
 describe('every room can be finished', () => {
@@ -102,8 +99,10 @@ describe('every room can be finished', () => {
     });
   }
 
-  it('Snapper Shallows can be crossed by the post alone, even if both Snappers are gone', () => {
-    expect([...reachable(ROOMS['reedmarsh-4']!, 230, 'w').doors]).toContain('n');
+  it('the Braided Line chest can be reached with the starting line', () => {
+    const def = ROOMS['reedmarsh-2']!;
+    const room = reachableCells(def, 230, 'w');
+    expect(room(def.chest!.x, def.chest!.y + 24)).toBe(true);
   });
 
   it('and you can always get back: each room returns to the door you came in by', () => {

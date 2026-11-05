@@ -12,7 +12,7 @@ import type { RoomMemory, Sim } from './sim';
 export const SAVE_KEY = 'goose-on-a-leash/save/v1';
 
 export interface SaveData {
-  v: 1;
+  v: 2;
   room: string;
   door: string | null;
   hp: number;
@@ -25,7 +25,7 @@ export interface SaveData {
 export function snapshotSave(sim: Sim): SaveData {
   const k = sim.kit;
   return {
-    v: 1, room: sim.room.def.id, door: sim.entryDoor, hp: sim.player.hp,
+    v: 2, room: sim.room.def.id, door: sim.entryDoor, hp: sim.player.hp,
     pack: { water: sim.pack.water, holes: sim.pack.holes, patches: sim.pack.patches, needles: sim.pack.needles },
     kit: { mats: { ...k.mats }, owned: [...k.owned], leash: k.leash, bread: { ...k.bread }, active: k.active, toothFirst: k.toothFirst, traits: [...k.traits] },
     world: structuredClone({ ...sim.world }),
@@ -39,7 +39,7 @@ const num = (v: unknown, lo: number, hi: number, dflt: number) => (typeof v === 
 export function validateSave(raw: unknown): SaveData | null {
   if (!raw || typeof raw !== 'object') return null;
   const d = raw as Partial<SaveData>;
-  if (d.v !== 1 || typeof d.room !== 'string' || !ROOMS[d.room]) return null;
+  if (d.v !== 2 || typeof d.room !== 'string' || !ROOMS[d.room]) return null;
   const def = ROOMS[d.room]!;
   const door = typeof d.door === 'string' && def.doors?.some(x => x.id === d.door) ? d.door : null;
   const leashIds = new Set(LEASHES.map(l => l.id));
@@ -59,7 +59,7 @@ export function validateSave(raw: unknown): SaveData | null {
       barrels: Array.isArray(m.barrels) ? m.barrels.map(v => num(v, 0, 1, 0)) : [] };
   }
   return {
-    v: 1, room: d.room, door, hp: Math.round(num(d.hp, 1, C.maxHp, C.maxHp)),
+    v: 2, room: d.room, door, hp: Math.round(num(d.hp, 1, C.maxHp, C.maxHp)),
     pack: { water: num(d.pack?.water, 0.05, 1, 1), holes: Math.round(num(d.pack?.holes, 0, C.maxHoles, 0)), patches: Math.round(num(d.pack?.patches, 0, 99, 0)), needles: Math.round(num(d.pack?.needles, 0, 99, C.kitNeedles)) },
     kit: { mats, owned, leash, bread, active, toothFirst: d.kit?.toothFirst !== false,
       traits: Array.isArray(d.kit?.traits) ? d.kit!.traits.filter(t => TRAITS.some(x => x.id === t)) : [] },

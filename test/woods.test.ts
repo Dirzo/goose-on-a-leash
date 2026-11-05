@@ -2,11 +2,11 @@
 import { describe, expect, it } from 'vitest';
 import { STEP } from '../src/core/config';
 import { Sim, type InputFrame } from '../src/core/sim';
-import { ROOMS } from '../src/data/rooms';
+import { LAYOUT } from './helpers';
 
 function woods(id: string, seed = 3): Sim {
   const sim = new Sim({ seed });
-  sim.enterRoom(ROOMS[id]!, 'w');
+  sim.enterRoom(LAYOUT[id]!, 'w');
   sim.enemies = []; sim.spawnT = 1e9; sim.knightT = -1e9;
   sim.player.inv = 0;
   sim.drainEvents();
@@ -60,7 +60,7 @@ describe('Hollowbark Woods', () => {
 
   it('Biscuit flung through a bramble bush chews it away', () => {
     const sim = woods('hollowbark-2');
-    const b = ROOMS['hollowbark-2']!.bushes![0]!;
+    const b = LAYOUT['hollowbark-2']!.bushes![0]!;
     expect(sim.room.bushAlive[0]).toBe(true);
     sim.goose.state = 'flying'; sim.goose.x = b.x; sim.goose.y = b.y; sim.goose.vx = 0; sim.goose.vy = 0;
     sim.step(STEP, stand(sim));
@@ -69,7 +69,7 @@ describe('Hollowbark Woods', () => {
 
   it('a rain barrel tops up the pack and runs dry', () => {
     const sim = woods('hollowbark-4');
-    const b = ROOMS['hollowbark-4']!.barrels![0]!;
+    const b = LAYOUT['hollowbark-4']!.barrels![0]!;
     sim.player.x = b.x + 20; sim.player.y = b.y; sim.pack.water = 0.3;
     run(sim, 3, () => ({ moveX: 0, moveY: 0, aimX: b.x, aimY: b.y }));
     expect(sim.pack.water).toBeGreaterThan(0.85);
@@ -78,7 +78,7 @@ describe('Hollowbark Woods', () => {
 
   it('honking a mushroom ring puts nearby critters to sleep', () => {
     const sim = woods('hollowbark-5');
-    const m = ROOMS['hollowbark-5']!.shrooms![0]!;
+    const m = LAYOUT['hollowbark-5']!.shrooms![0]!;
     const s = sim.mkEnemy('squirrel', m.x + 40, m.y); sim.enemies.push(s);
     sim.goose.state = 'held'; sim.goose.x = m.x - 120; sim.goose.y = m.y;
     sim.player.x = m.x - 140; sim.player.y = m.y;
@@ -89,7 +89,7 @@ describe('Hollowbark Woods', () => {
 
   it('thorns snag the pack', () => {
     const sim = woods('hollowbark-7');
-    const r = ROOMS['hollowbark-7']!.brambles![0]!;
+    const r = LAYOUT['hollowbark-7']!.brambles![0]!;
     sim.player.x = r.x + r.w / 2; sim.player.y = r.y + r.h / 2;
     const w0 = sim.pack.water;
     sim.step(STEP, stand(sim));

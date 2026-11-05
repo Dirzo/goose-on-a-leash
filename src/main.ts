@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import './style.css';
 import { GameScene } from './scenes/GameScene';
 import { mountUi } from './view/ui';
-import { SCREEN_H, SCREEN_W } from './view/art';
+import { CANVAS_H, CANVAS_W } from './view/art';
 
 async function boot(): Promise<void> {
   // Canvas text needs the web fonts loaded first, or Phaser bakes in the fallback face.
@@ -14,8 +14,8 @@ async function boot(): Promise<void> {
   const game = new Phaser.Game({
     type: Phaser.WEBGL,
     parent: 'stage',
-    width: SCREEN_W,
-    height: SCREEN_H,
+    width: CANVAS_W,
+    height: CANVAS_H,
     backgroundColor: '#0c0a18',
     scene: [scene],
     input: { gamepad: true },

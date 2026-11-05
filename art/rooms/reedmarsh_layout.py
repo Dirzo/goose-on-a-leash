@@ -27,7 +27,7 @@ import math
 import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, '..', '..', 'src', 'data', 'rooms')
+OUT = os.path.join(HERE, 'build')   # per-room layouts; merge_areas.py stitches them into areas
 WALL = 20
 DOOR = 84
 BASE_LEASH, BRAIDED = 230, 270
@@ -265,7 +265,7 @@ ROOMS.append(room(
 ROOMS.append(room(
     'reedmarsh-8', 'Twine Thicket', 960, 640,
     [dict(id='w', side='W', at=320, to='reedmarsh-7', toDoor='e', label='Leaky Boardwalk'),
-     dict(id='n', side='N', at=800, to='reedmarsh-9', toDoor='w', label='Snapper Run')],
+     dict(id='e', side='E', at=110, to='reedmarsh-9', toDoor='w', label='Snapper Run')],
     'w', subtitle='Reedmarsh · 8',
     pits=[rect(440, 450, 110, 110), rect(40, 470, 100, 100)],
     refills=[rect(420, 430, 150, 22), rect(30, 450, 120, 22)],
@@ -283,7 +283,7 @@ ROOMS.append(room(
 check_reach('snapper run: escape post', (425, 190), (425, 80), BASE_LEASH)
 ROOMS.append(room(
     'reedmarsh-9', 'Snapper Run', 1280, 560,
-    [dict(id='w', side='W', at=280, to='reedmarsh-8', toDoor='n', label='Twine Thicket'),
+    [dict(id='w', side='W', at=280, to='reedmarsh-8', toDoor='e', label='Twine Thicket'),
      dict(id='e', side='E', at=280, to='reedmarsh-10', toDoor='w', label='Bell Islands')],
     'w', subtitle='Reedmarsh · 9',
     pits=[rect(20, 20, 1240, 150), rect(20, 390, 1240, 150)],

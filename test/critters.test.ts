@@ -3,11 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { C, STEP } from '../src/core/config';
 import { Sim, type InputFrame } from '../src/core/sim';
 import { ROOMS } from '../src/data/rooms';
-import { fixRng } from './helpers';
+import { fixRng, LAYOUT } from './helpers';
 
 function field(seed = 5): Sim {
   const sim = new Sim({ seed });
-  sim.enterRoom(ROOMS['reedmarsh-3']!, null);            // dry land, no posts
+  sim.enterRoom(LAYOUT['reedmarsh-3']!, null);            // dry land, no posts
   sim.enemies = []; sim.spawnT = 1e9; sim.knightT = -1e9;
   sim.player.x = 300; sim.player.y = 300; sim.player.inv = 0;
   sim.drainEvents();

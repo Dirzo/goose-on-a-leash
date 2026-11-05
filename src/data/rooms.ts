@@ -46,6 +46,12 @@ export interface RoomDef {
   lightKind?: EnemyKind;
   heavyKind?: EnemyKind;
   lantern?: Vec;
+  /** Several lanterns (areas stitched from rooms). */
+  lanterns?: Vec[];
+  /** Named parts of an area (the rooms it was stitched from): the name shows as you walk in. */
+  zones?: (Rect & { name: string })[];
+  /** The room rects the area is made of (for the painter); outside them is solid. */
+  rooms?: Rect[];
   exitLabel?: string;
   /** Rooms linked into the world. A room with doors ignores `exit`. */
   doors?: Door[];

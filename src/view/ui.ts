@@ -39,10 +39,10 @@ export function mountUi(scene: GameScene): void {
 
   // ---- room selection and reset
   const order = Object.values(ROOMS).sort((a, b) => rank(a.id) - rank(b.id));
-  function rank(id: string): number { return id === 'willowmere' ? 0 : id.startsWith('reedmarsh-') ? +id.slice(10) : 99; }
+  function rank(id: string): number { return id === 'willowmere' ? 0 : id.startsWith('reedmarsh-') ? +id.slice(10) : id.startsWith('hollowbark-') ? 10 + +id.slice(11) : 99; }
   const pick = $<HTMLSelectElement>('room-pick');
   pick.innerHTML = order.map(r => {
-    const tag = r.id === 'willowmere' ? 'Hub' : r.id.startsWith('reedmarsh-') ? `Reedmarsh ${r.id.slice(10)}` : 'Test';
+    const tag = r.id === 'willowmere' ? 'Hub' : r.id.startsWith('reedmarsh-') ? `Reedmarsh ${r.id.slice(10)}` : r.id.startsWith('hollowbark-') ? `Hollowbark ${r.id.slice(11)}` : 'Test';
     return `<option value="${r.id}">${tag} · ${esc(r.name)}${r.boss ? ' (boss)' : ''}${r.id === 'room-01' ? ' (gray-box prototype)' : ''}</option>`;
   }).join('');
   const syncPick = () => { pick.value = scene.sim.room.def.id; };
@@ -57,7 +57,7 @@ export function mountUi(scene: GameScene): void {
     }
     if (open) closeBook();
     scene.setPackOpen(false);
-    if (rank(def.id) >= 6 && rank(def.id) < 99) scene.sim.kit.findLeash('braided');
+    if (rank(def.id) >= 3 && rank(def.id) < 99) scene.sim.kit.findLeash('braided');
     const entry = def.doors?.find(d => d.to !== 'END' && rank(d.to) < rank(def.id))?.id ?? null;
     scene.sim.enterRoom(def, entry, true);
     scene.saveNow();

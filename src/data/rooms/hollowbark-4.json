@@ -1,193 +1,238 @@
 {
  "id": "hollowbark-4",
- "name": "Rain Barrels",
- "subtitle": "Hollowbark Woods \u00b7 4",
- "width": 960,
- "height": 640,
- "playerStart": {
-  "x": 66,
-  "y": 320
- },
+ "name": "The Hollow",
+ "subtitle": "Hollowbark Woods \u00b7 the Burrow King",
+ "width": 1120,
+ "height": 720,
  "walls": [
   {
-   "x": 0,
-   "y": 0,
-   "w": 718.0,
-   "h": 20,
-   "kind": "border"
-  },
-  {
-   "x": 802.0,
-   "y": 0,
-   "w": 158.0,
-   "h": 20,
-   "kind": "border"
-  },
-  {
-   "x": 0,
-   "y": 620,
-   "w": 960,
-   "h": 20,
-   "kind": "border"
-  },
-  {
-   "x": 0,
-   "y": 0,
-   "w": 20,
-   "h": 278.0,
-   "kind": "border"
-  },
-  {
-   "x": 0,
-   "y": 362.0,
-   "w": 20,
-   "h": 278.0,
-   "kind": "border"
-  },
-  {
-   "x": 940,
-   "y": 0,
-   "w": 20,
-   "h": 640,
-   "kind": "border"
+   "x": 358,
+   "y": 178,
+   "w": 44,
+   "h": 44,
+   "kind": "tree"
   },
   {
    "x": 358,
-   "y": 238,
+   "y": 498,
    "w": 44,
    "h": 44,
    "kind": "tree"
   },
   {
-   "x": 578,
-   "y": 398,
+   "x": 598,
+   "y": 128,
    "w": 44,
    "h": 44,
    "kind": "tree"
   },
   {
-   "x": 818,
-   "y": 308,
+   "x": 598,
+   "y": 558,
    "w": 44,
    "h": 44,
    "kind": "tree"
   },
   {
-   "x": 128,
-   "y": 448,
+   "x": 838,
+   "y": 178,
    "w": 44,
    "h": 44,
    "kind": "tree"
+  },
+  {
+   "x": 838,
+   "y": 498,
+   "w": 44,
+   "h": 44,
+   "kind": "tree"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1120,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 700,
+   "w": 1120,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 318.0,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 402.0,
+   "w": 20,
+   "h": 318.0,
+   "kind": "border"
+  },
+  {
+   "x": 1100,
+   "y": 0,
+   "w": 20,
+   "h": 318.0,
+   "kind": "border"
+  },
+  {
+   "x": 1100,
+   "y": 402.0,
+   "w": 20,
+   "h": 318.0,
+   "kind": "border"
   }
  ],
- "gate": null,
  "pits": [],
  "bridges": [],
  "refills": [],
  "posts": [],
- "bell": null,
- "exit": null,
- "vents": [],
- "bucket": null,
+ "vents": [
+  {
+   "x": 200,
+   "y": 140
+  },
+  {
+   "x": 200,
+   "y": 600
+  },
+  {
+   "x": 1000,
+   "y": 140
+  },
+  {
+   "x": 1000,
+   "y": 600
+  }
+ ],
  "breadSpots": [
   {
-   "x": 480,
-   "y": 330
+   "x": 980,
+   "y": 480
   }
  ],
  "enemies": [
   {
-   "kind": "badger",
-   "x": 600,
-   "y": 260
-  },
-  {
-   "kind": "squirrel",
-   "x": 300,
-   "y": 520
-  },
-  {
-   "kind": "squirrel",
-   "x": 860,
-   "y": 160
+   "kind": "king",
+   "x": 640,
+   "y": 360
   }
  ],
- "knightSpawn": null,
  "doors": [
   {
    "id": "w",
    "x": 0,
-   "y": 278.0,
+   "y": 318.0,
    "w": 26,
    "h": 84,
    "to": "hollowbark-3",
    "toDoor": "e",
    "spawn": {
     "x": 66,
-    "y": 320
+    "y": 360
    },
-   "label": "Ravine Swing"
+   "label": "Badger Sett",
+   "side": "W"
   },
   {
-   "id": "n",
-   "x": 718.0,
-   "y": 0,
-   "w": 84,
-   "h": 26,
-   "to": "hollowbark-5",
-   "toDoor": "w",
+   "id": "e",
+   "x": 1094,
+   "y": 318.0,
+   "w": 26,
+   "h": 84,
+   "to": "END",
+   "toDoor": "",
    "spawn": {
-    "x": 760,
-    "y": 70
+    "x": 1054,
+    "y": 360
    },
-   "label": "Spore Ring"
+   "gated": true,
+   "label": "Driftwood Wharf",
+   "side": "E"
   }
  ],
  "paths": [
   [
    [
     66,
-    320
+    360
    ],
    [
-    500,
-    320
-   ],
-   [
-    760,
-    200
-   ],
-   [
-    760,
-    70
+    1054,
+    360
    ]
   ]
+ ],
+ "zones": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1120,
+   "h": 720,
+   "name": "The Hollow"
+  }
+ ],
+ "gate": {
+  "x": 1074,
+  "y": 314,
+  "w": 12,
+  "h": 92
+ },
+ "bell": null,
+ "exit": null,
+ "bucket": null,
+ "knightSpawn": null,
+ "brambles": [
+  {
+   "x": 490,
+   "y": 330,
+   "w": 60,
+   "h": 40
+  },
+  {
+   "x": 700,
+   "y": 400,
+   "w": 60,
+   "h": 40
+  }
+ ],
+ "barrels": [
+  {
+   "x": 140,
+   "y": 250
+  },
+  {
+   "x": 140,
+   "y": 480
+  },
+  {
+   "x": 990,
+   "y": 250
+  }
  ],
  "biome": "woods",
  "lightKind": "squirrel",
  "heavyKind": "badger",
- "barrels": [
+ "ventSpawns": false,
+ "boss": "king",
+ "winText": "Hollowbark Woods cleared! The Burrow King points a huge claw toward the sea: Driftwood Wharf.",
+ "rooms": [
   {
-   "x": 250,
-   "y": 150
-  },
-  {
-   "x": 480,
-   "y": 540
-  },
-  {
-   "x": 640,
-   "y": 160
-  },
-  {
-   "x": 870,
-   "y": 520
+   "x": 0,
+   "y": 0,
+   "w": 1120,
+   "h": 720
   }
  ],
- "spools": [
-  {
-   "x": 150,
-   "y": 580
-  }
- ]
+ "playerStart": {
+  "x": 66,
+  "y": 360
+ }
 }

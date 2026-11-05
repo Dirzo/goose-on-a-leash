@@ -9,9 +9,13 @@ import { C } from '../core/config';
 import type { Enemy, Sim, SimEvent } from '../core/sim';
 import type { Vec } from '../core/math';
 import { SPRITES } from './assets';
+import { Atmosphere } from './atmosphere';
 import { TextPool, fillP, smoothRope, dashed, type Face, type Snapshot } from './render';
 
+/** HUD layout space (the HUD is laid out at 1280x720 and scaled up by HUD_SCALE). */
 export const SCREEN_W = 1280, SCREEN_H = 720, ZOOM = 2;
+/** The canvas: 1920x1080 at world zoom 2 shows 960x540 world pixels, crisp, a wider view of the world. */
+export const HUD_SCALE = 1.5, CANVAS_W = SCREEN_W * HUD_SCALE, CANVAS_H = SCREEN_H * HUD_SCALE;
 
 const hex = (s: string): number => parseInt(s.replace('#', ''), 16);
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -53,16 +57,18 @@ export class ArtRenderer {
   private dripAcc = 0;
   private faceL = false;
   private banner = 3.5;
+  private zone = ''; private zoneBanner = 0; private zoneName = '';
   private flash = 0;
   private bellSwing = 0;
   private cam: Vec | null = null;
+  private lead: Vec = { x: 0, y: 0 };
   /** Squash-and-stretch springs (0 = rest). */
   private sqB = 0; private sqR = 0; private wasAir = false; private snapFlash = 0; private power = 2;
 
   constructor(private scene: Phaser.Scene, sim: Sim) {
     const main = scene.cameras.main;
     main.setZoom(ZOOM).setBounds(0, 0, sim.room.def.width, sim.room.def.height).setRoundPixels(false);
-    this.hudCam = scene.cameras.add(0, 0, SCREEN_W, SCREEN_H, false, 'hud');
+    this.hudCam = scene.cameras.add(0, 0, CANVAS_W, CANVAS_H, false, 'hud').setOrigin(0, 0).setZoom(HUD_SCALE);
     const world = <T extends Phaser.GameObjects.GameObject>(o: T): T => { this.hudCam.ignore(o); return o; };
     const screen = <T extends Phaser.GameObjects.GameObject>(o: T): T => { main.ignore(o); return o; };
 
@@ -77,22 +83,24 @@ export class ArtRenderer {
     this.setOrigin(this.rocco, 'rocco_idle'); this.setOrigin(this.biscuit, 'biscuit_idle');
     this.wtext = new TextPool(scene, 'display', 5200, t => world(t), ZOOM);
     this.htext = {
-      display: new TextPool(scene, 'display', 9100, t => screen(t)),
-      mono: new TextPool(scene, 'mono', 9100, t => screen(t)),
-      body: new TextPool(scene, 'body', 9100, t => screen(t)),
+      display: new TextPool(scene, 'display', 9100, t => screen(t), HUD_SCALE),
+      mono: new TextPool(scene, 'mono', 9100, t => screen(t), HUD_SCALE),
+      body: new TextPool(scene, 'body', 9100, t => screen(t), HUD_SCALE),
     };
     this.utext = {
-      display: new TextPool(scene, 'display', 9500, t => screen(t)),
-      mono: new TextPool(scene, 'mono', 9500, t => screen(t)),
-      body: new TextPool(scene, 'body', 9500, t => screen(t)),
+      display: new TextPool(scene, 'display', 9500, t => screen(t), HUD_SCALE),
+      mono: new TextPool(scene, 'mono', 9500, t => screen(t), HUD_SCALE),
+      body: new TextPool(scene, 'body', 9500, t => screen(t), HUD_SCALE),
     };
     this.worldIgnore = world;
+    this.atmo = new Atmosphere(scene, world);
     this.buildPackUi(screen);
 
     this.setRoom(sim);
   }
 
   private bg: Phaser.GameObjects.Image;
+  atmo: Atmosphere;
   private trees: Phaser.GameObjects.Sprite[] = [];
   private roomId = '';
 
@@ -111,7 +119,8 @@ export class ArtRenderer {
       const x = 20 + Math.random() * (def.width - 40), y = 20 + Math.random() * (def.height - 40);
       if (room.inPit(x, y, 18)) this.glints.push({ x: Math.round(x), y: Math.round(y), ph: Math.random() * 6.28, len: 2 + Math.floor(Math.random() * 4) });
     }
-    this.cam = null; this.banner = 3.5; this.drips = []; this.puddles = [];
+    this.cam = null; this.banner = 3.5; this.drips = []; this.puddles = []; this.zone = ''; this.zoneBanner = 0;
+    this.atmo.setRoom(def);
     for (const t of this.trees) t.destroy();
     this.trees = def.walls.filter(w => (w as { kind?: string }).kind === 'tree').map((w, i) => {
       const t = this.worldIgnore(this.scene.add.sprite(w.x + w.w / 2, w.y + w.h - 4, 'tree', i % 3));
@@ -137,6 +146,7 @@ export class ArtRenderer {
       if (e.type === 'say') this.quips.push({ text: e.text, life: 2.6 });
       else if (e.type === 'fx') {
         this.fx.push({ kind: e.kind, x: e.x, y: e.y, t: 0, a: e.a, cone: e.cone, range: e.range, text: e.text });
+        this.atmo.flashAt(e.kind, e.x, e.y);
         const cam = this.scene.cameras.main;
         if (e.kind === 'snap') { cam.shake(320, 0.009); this.snapFlash = 1; }
         if (e.kind === 'chomp') { this.sqB = 1; cam.shake(70, 0.0012 * this.power); }
@@ -171,11 +181,22 @@ export class ArtRenderer {
     const EP = (e: Enemy): Vec => { const o = prev?.enemies.get(e.id); return o ? { x: lerp(o.x, e.x, alpha), y: lerp(o.y, e.y, alpha) } : e; };
 
     // camera: follow Rocco, leaning a little toward Biscuit, eased
-    const want = { x: P.x + (G.x - P.x) * 0.25, y: P.y - 18 + (G.y - P.y) * 0.25 };
+    // look ahead where Rocco is heading and a little toward the aim, so there is room to see what's coming
+    this.lead.x += (Math.max(-70, Math.min(70, pl.vx * 0.45)) - this.lead.x) * Math.min(1, dt * 2.5);
+    this.lead.y += (Math.max(-45, Math.min(45, pl.vy * 0.35)) - this.lead.y) * Math.min(1, dt * 2.5);
+    const want = { x: P.x + (G.x - P.x) * 0.2 + (aim.x - P.x) * 0.08 + this.lead.x, y: P.y - 18 + (G.y - P.y) * 0.2 + (aim.y - P.y) * 0.08 + this.lead.y };
     if (!this.cam) this.cam = { ...want };
-    const k = 1 - Math.exp(-dt * 8);
+    const k = 1 - Math.exp(-dt * 5);
     this.cam.x += (want.x - this.cam.x) * k; this.cam.y += (want.y - this.cam.y) * k;
     this.scene.cameras.main.centerOn(this.cam.x, this.cam.y);
+    this.atmo.draw(sim, P, EP, dt, time);
+    // walking into another part of a big area names it
+    const z = def.zones?.find(q => P.x >= q.x && P.x < q.x + q.w && P.y >= q.y && P.y < q.y + q.h);
+    if (z && z.name !== this.zone) {
+      if (this.zone && z.name !== def.name) { this.zoneBanner = 2.6; this.zoneName = z.name; }
+      this.zone = z.name;
+    }
+    this.zoneBanner = Math.max(0, this.zoneBanner - dt);
 
     // water glints
     for (const w of this.glints) {
@@ -731,6 +752,11 @@ export class ArtRenderer {
       const a = Math.min(1, this.banner / 0.8, (3.5 - this.banner) / 0.4);
       this.ht('display', sim.room.def.name.toUpperCase(), W / 2, 200, 44, '#f6f1e6', a);
       if (sim.room.def.subtitle) this.ht('body', sim.room.def.subtitle, W / 2, 234, 18, '#c9a46a', a, 'center', true);
+    }
+    if (this.zoneBanner > 0 && this.banner <= 0) {
+      const a = Math.min(1, this.zoneBanner / 0.6, (2.6 - this.zoneBanner) / 0.4);
+      this.ht('display', this.zoneName.toUpperCase(), W / 2, 150, 26, '#e9e4d6', a * 0.9);
+      g.fillStyle(0xc9a46a, a * 0.7); g.fillRect(W / 2 - 40, 162, 80, 1);
     }
     if (this.flash > 0) { g.fillStyle(0x05040a, Math.min(0.85, this.flash)); g.fillRect(0, 0, W, H); }
     if (this.snapFlash > 0) { g.fillStyle(0xffffff, this.snapFlash * 0.5); g.fillRect(0, 0, W, H); }

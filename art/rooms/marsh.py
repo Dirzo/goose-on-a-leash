@@ -24,6 +24,10 @@ ROOT = os.path.join(HERE, '..', '..')
 OUT = os.path.join(ROOT, 'src', 'assets', 'rooms')
 
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from depth import depth_pass, wall_mask  # noqa: E402
+from ground import dither_bands, fbm, paint_ground, paint_path  # noqa: E402
+
 def hx(s): return np.array([int(s[i:i + 2], 16) for i in (0, 2, 4)], np.float32)
 BASE_P = {k: hx(v) for k, v in {
     'Q0': '19221a', 'Q1': '222f22', 'Q2': '2d3d2a', 'Q3': '3e5636', 'Q4': '5a7346', 'Q5': '6e8048',
@@ -54,10 +58,11 @@ def render(R):
     woods = R.get('biome') == 'woods'
     P = dict(BASE_P)
     if woods: P.update(WOODS_P)
-    rng = random.Random(hash(R['id']) & 0xffff)
+    rng = random.Random(sum(ord(c) * (i + 1) for i, c in enumerate(R['id'])))
     yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
     img = np.zeros((H, W, 3), np.float32)
     seed = sum(map(ord, R['id'])) * 0.37
+    rng_np = np.random.default_rng(sum(ord(c) * (i + 7) for i, c in enumerate(R['id'])))
 
     def px(x, y, c):
         if 0 <= x < W and 0 <= y < H: img[int(y), int(x)] = P[c]
@@ -71,26 +76,8 @@ def render(R):
         qx = np.abs(xx - cx) - (r['w'] / 2 - rad); qy = np.abs(yy - cy) - (r['h'] / 2 - rad)
         return np.hypot(np.maximum(qx, 0), np.maximum(qy, 0)) + np.minimum(np.maximum(qx, qy), 0) - rad
 
-    # ---- ground: olive marsh grass with soggy patches
-    g = np.sin(xx * 0.019 + yy * 0.015 + seed) + np.sin(xx * 0.011 - yy * 0.024) + 0.35 * np.sin(xx * 0.23 + yy * 0.19) * np.sin(yy * 0.31 - xx * 0.07)
-    img[:] = P['Q1']; img[g < -1.35] = P['Q0']; img[g >= 0.9] = P['Q2']
-    soggy = (g < -1.6)
-    img[soggy] = P['MUD'] * 0.3 + P['Q0'] * 0.7
-    if woods:                                             # moss patches breaking up the leaf litter
-        moss = np.zeros((H, W), np.float32)
-        for _ in range(int(W * H / 22000)):              # soft round moss beds
-            cx, cy, r = rng.uniform(0, W), rng.uniform(0, H), rng.uniform(26, 70)
-            moss = np.maximum(moss, 1 - np.hypot(xx - cx, (yy - cy) * 1.3) / r)
-        dith = ((xx.astype(int) + yy.astype(int)) % 2) * 0.08
-        img[moss + dith > 0.25] = P['Q3'] * 0.6 + P['Q1'] * 0.4
-        img[moss + dith > 0.55] = P['Q3'] * 0.85 + P['Q1'] * 0.15
-        img[moss + dith > 0.8] = P['Q4'] * 0.75 + P['Q1'] * 0.25
-    if woods:                                             # fallen leaves
-        for _ in range(int(W * H / 90)):
-            x, y = rng.randrange(2, W - 3), rng.randrange(2, H - 3)
-            c = P[rng.choice(['LF1', 'LF1', 'LF2', 'LF3'])]
-            img[y, x] = c; img[y, x + 1] = c * 0.8
-            if rng.random() < 0.4: img[y + 1, x] = c * 0.7
+    # ---- ground: organic tone fields, thickets and clearings of clutter (water and trails paint over it)
+    paint_ground(img, np.ones((H, W), bool), P, rng_np, int(seed * 1000) % 100000, woods)
 
     # ---- water from the pit rects; islands carved back out. Edge noise is small so the shore matches collision.
     allpits = R.get('pits', [])
@@ -170,17 +157,9 @@ def render(R):
                 path |= np.hypot(xx - cx, yy - cy) < r + 2 * np.sin(xx * 0.9 + yy * 1.3 + i)
     path &= ~water & ~bank & ~rav
     pn = np.sin(xx * 0.31 + yy * 0.17) * np.sin(yy * 0.43 - xx * 0.12)
-    img[path] = P['D1']; img[path & (pn > 0.45)] = P['D2']; img[path & (pn < -0.55)] = P['D0']
+    paint_path(img, path, P, rng_np, int(seed * 1000) % 100000 + 7, woods)
 
     land = ~water & ~bank & ~path & ~rav
-    for _ in range(int(W * H / 300)):                     # grass blades and a few flowers
-        x, y = rng.randrange(4, W - 4), rng.randrange(4, H - 4)
-        if land[y, x]:
-            for k, (dx, dy) in enumerate([(0, 0), (-1, -1), (1, -1), (-2, -2), (2, -3), (0, -2), (0, -3)]):
-                img[y + dy, x + dx] = P['Q3'] if k < 4 else (P['Q5'] if rng.random() < 0.2 else P['Q4'])
-    for _ in range(int(W * H / 6000)):
-        x, y = rng.randrange(4, W - 4), rng.randrange(4, H - 4)
-        if land[y, x]: px(x, y, rng.choice(['FLW', 'FLW2', 'FLW3']))
 
     # ---- reeds on the banks, lily pads in open water
     def reeds(rx, ry, n):
@@ -354,50 +333,63 @@ def render(R):
         shadow(c['x'], c['y'] + 10, 22, 7, 0.6)
         disk(c['x'], c['y'] + 6, 20, 'ST0', 0.45); disk(c['x'] - 2, c['y'] + 4, 16, 'ST1', 0.45)
 
-    # ---- canopy border with gaps at the doors, trails leading out
-    d_edge = np.minimum.reduce([xx, W - 1 - xx, yy, H - 1 - yy])
+    # ---- canopy border with gaps at the doors, trails leading out. In an area stitched from rooms, the
+    # canopy hugs every closed wall and the outside of the room union, not just the image edge.
+    from scipy.ndimage import distance_transform_edt
+    solid = np.zeros((H, W), bool)
+    solid[0, :] = solid[-1, :] = True; solid[:, 0] = solid[:, -1] = True
+    for w in R['walls']:
+        if w.get('kind') in ('border', 'void'):
+            x0, y0 = max(0, int(w['x'])), max(0, int(w['y']))
+            solid[y0:int(w['y'] + w['h']), x0:int(w['x'] + w['w'])] = True
+    d_edge = distance_transform_edt(~solid).astype(np.float32)
+    deep = distance_transform_edt(solid).astype(np.float32)       # how far inside the solid mass
     wobble = 6 * np.sin(xx * 0.08 + seed) * np.sin(yy * 0.05) + 5 * np.sin((xx + yy) * 0.13) + 4
     gap = np.zeros((H, W), bool)
     for d in R.get('doors', []):
         m = 14
-        if d['x'] == 0: gm = (xx < 50) & (yy > d['y'] + m) & (yy < d['y'] + d['h'] - m)
-        elif d['x'] + d['w'] >= W: gm = (xx > W - 50) & (yy > d['y'] + m) & (yy < d['y'] + d['h'] - m)
-        elif d['y'] == 0: gm = (yy < 50) & (xx > d['x'] + m) & (xx < d['x'] + d['w'] - m)
-        else: gm = (yy > H - 50) & (xx > d['x'] + m) & (xx < d['x'] + d['w'] - m)
+        s_ = d.get('side') or ('W' if d['x'] == 0 else 'E' if d['x'] + d['w'] >= W else 'N' if d['y'] == 0 else 'S')
+        if s_ == 'W': gm = (xx >= d['x'] - 30) & (xx < d['x'] + 50) & (yy > d['y'] + m) & (yy < d['y'] + d['h'] - m)
+        elif s_ == 'E': gm = (xx <= d['x'] + d['w'] + 30) & (xx > d['x'] + d['w'] - 50) & (yy > d['y'] + m) & (yy < d['y'] + d['h'] - m)
+        elif s_ == 'N': gm = (yy >= d['y'] - 30) & (yy < d['y'] + 50) & (xx > d['x'] + m) & (xx < d['x'] + d['w'] - m)
+        else: gm = (yy <= d['y'] + d['h'] + 30) & (yy > d['y'] + d['h'] - 50) & (xx > d['x'] + m) & (xx < d['x'] + d['w'] - m)
         gap |= gm
         trail = gm & ~(np.sin(xx * 0.7 + yy) > 0.92)
         img[trail] = P['D1']; img[trail & (pn > 0.45)] = P['D2']
-    canopy = (d_edge < 18 + wobble) & ~gap
+    band = np.where(solid, 0, d_edge)
+    canopy = (solid & ~gap) | ((band < wobble - 1) & ~gap)
     img[canopy] = P['TREE']; img[canopy & (((xx * 7 + yy * 3) % 11) < 2)] = P['TREE2']
-    img[(d_edge >= 18 + wobble) & (d_edge < 21 + wobble) & ~gap] = P['TREE3']
+    img[(band >= wobble - 1) & (band < wobble + 2) & ~gap & ~solid] = P['TREE3']
+    # the forest mass seen from above: crowns of leaves, moonlit on their tops, darker the deeper in
+    crown = fbm(H, W, 26, 3, int(seed * 100) + 3)
+    cb = dither_bands(crown, 4)
+    cc = np.stack([P['TREE'] * 0.8, P['TREE'], P['TREE2'], P['TREE3']])
+    inner = canopy & (deep > 3)
+    img[inner] = cc[cb][inner]
+    lit = inner & (np.roll(crown, 3, 0) < crown - 0.06) & (crown > 0.6)   # crown tops catching the moon
+    img[lit] = img[lit] * 0.6 + (P['TREE3'] * 1.6) * 0.4
+    far = canopy & (deep > 30)
+    img[far] = img[far] * np.clip(1 - (deep[far] - 30) / 140, 0.45, 1)[..., None]
     for x in range(24, W - 24, 5):                               # hanging strands along the top
-        if gap[30, x]: continue
+        if gap[30, x] or not canopy[18, x]: continue
         for y in range(20, 20 + rng.randrange(6, 22)):
             if y + 6 < H and not water[y, x]: px(x + (y // 7) % 2, y + 6, 'RD0')
 
-    # ---- lighting: lantern pool, low marsh fog, blood-moon tint
-    lum = np.ones((H, W), np.float32) * 0.9
-    glow = np.zeros((H, W), np.float32)
-    lan = R.get('lantern')
-    if lan:
-        dl = np.hypot(xx - lan['x'], (yy - lan['y']) * 1.25)
-        for rr, k in [(170, 0.10), (110, 0.14), (64, 0.2), (32, 0.26)]:
-            lum[dl < rr] += k
-        glow = np.floor(np.clip(1 - dl / 170, 0, 1) * 4) / 4
-    warm = np.array([1.0, 0.82, 0.55], np.float32)
+    lans = R.get('lanterns') or ([R['lantern']] if R.get('lantern') else [])
+    # ---- depth: occlusion around solids, light-and-shadow rhythm, shadowed banks (lights are live in-game)
+    occ = wall_mask(R, H, W, kinds={'border', 'void', 'hedge'})
+    occ |= canopy
+    img = depth_pass(img, R, occ, water=water, seed=seed)
     if woods:
+        lum = np.ones((H, W), np.float32)
         for (cx, cy, r) in trees:                             # canopy shade around each tree
             d = np.hypot(xx - cx, (yy - cy) * 1.1)
-            lum[d < r + 70] -= 0.12; lum[d < r + 40] -= 0.08
-        beams = (np.sin((xx + yy * 0.6) * 0.012 + seed) > 0.93)   # moonlight through the leaves
-        lum[beams] += 0.1
-    img = img * lum[..., None]
-    img = img * (1 - glow[..., None] * 0.35) + img * warm * glow[..., None] * 0.35 + P['L2'] * glow[..., None] * 0.12
-    fog = np.sin(xx * 0.006 + yy * 0.02 + seed) + 0.6 * np.sin(xx * 0.017 - yy * 0.011)
-    fogm = np.floor(np.clip((fog - 0.6) / 1.0, 0, 1) * 3) / 3 * 0.12   # banded wisps
-    img = img * (1 - fogm[..., None]) + P['FOG'] * fogm[..., None]
+            lum *= 1 - 0.22 * np.clip(1 - (d - r) / 90, 0, 1)
+        beams = np.clip((np.sin((xx + yy * 0.6) * 0.012 + seed) - 0.88) / 0.12, 0, 1)   # moonlight through the leaves
+        lum += 0.12 * beams
+        img = img * lum[..., None]
     img = img * np.array([1.05, 0.95, 1.0], np.float32)
-    if lan:
+    for lan in lans:
         lantern = ["..OOOOO..", ".O43334O.", "O3344433O", "O2344432O", "O2233322O", ".O22222O.", "..OOOOO.."]
         lx, ly = lan['x'] - 4, lan['y'] - 26
         img[ly + 7:lan['y'], lan['x'] - 1:lan['x'] + 2] = P['B1']

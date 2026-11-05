@@ -12,6 +12,7 @@ import json
 import os
 import sys
 
+import numpy as np
 from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -28,11 +29,36 @@ OUT = os.path.join(HERE, '..', 'src', 'assets', 'sprites')
 os.makedirs(OUT, exist_ok=True)
 manifest = {}
 
+MOON = np.array([196, 218, 244], np.float32)
+NO_RIM = {'bimbo', 'pack_ui', 'patch', 'tear'}
+
+
+def rim_light(f):
+    """Moonlight from the upper left: the first pixels inside the outline on the top and left edges
+    pick up a cool rim, so characters read against the dark like Death's Door's figures."""
+    a = np.array(f).astype(np.float32)
+    A = a[..., 3] > 0
+    H, W = A.shape
+    def at(dy, dx):            # A shifted so out[y, x] = A[y + dy, x + dx] (False off the edge)
+        o = np.zeros_like(A)
+        ys, yd = (slice(0, H - dy), slice(dy, H)) if dy >= 0 else (slice(-dy, H), slice(0, H + dy))
+        xs, xd = (slice(0, W - dx), slice(dx, W)) if dx >= 0 else (slice(-dx, W), slice(0, W + dx))
+        o[ys, xs] = A[yd, xd]
+        return o
+    outline = A & ~(at(-1, 0) & at(1, 0) & at(0, -1) & at(0, 1))
+    inner = A & ~outline
+    rim = inner & (~at(-2, 0) | ~at(-2, -2) | ~at(0, -2))
+    soft = inner & ~rim & (~at(-3, 0) | ~at(-3, -3))
+    for m, k in ((rim, 0.42), (soft, 0.16)):
+        a[m, :3] = a[m, :3] * (1 - k) + MOON * k
+    return Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), 'RGBA')
+
+
 def strip(name, frames, anchor, points=None):
     w, h = frames[0].size
     im = Image.new('RGBA', (w * len(frames), h), (0, 0, 0, 0))
     for i, f in enumerate(frames):
-        im.paste(f, (i * w, 0))
+        im.paste(f if name in NO_RIM else rim_light(f.convert('RGBA')), (i * w, 0))
     im.save(os.path.join(OUT, f'{name}.png'))
     manifest[name] = {'w': w, 'h': h, 'frames': len(frames), 'anchor': list(anchor), 'points': points or {}}
 

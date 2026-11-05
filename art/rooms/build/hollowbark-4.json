@@ -1,0 +1,193 @@
+{
+ "id": "hollowbark-4",
+ "name": "Rain Barrels",
+ "subtitle": "Hollowbark Woods \u00b7 4",
+ "width": 960,
+ "height": 640,
+ "playerStart": {
+  "x": 66,
+  "y": 320
+ },
+ "walls": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 718.0,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 802.0,
+   "y": 0,
+   "w": 158.0,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 620,
+   "w": 960,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 278.0,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 362.0,
+   "w": 20,
+   "h": 278.0,
+   "kind": "border"
+  },
+  {
+   "x": 940,
+   "y": 0,
+   "w": 20,
+   "h": 640,
+   "kind": "border"
+  },
+  {
+   "x": 358,
+   "y": 238,
+   "w": 44,
+   "h": 44,
+   "kind": "tree"
+  },
+  {
+   "x": 578,
+   "y": 398,
+   "w": 44,
+   "h": 44,
+   "kind": "tree"
+  },
+  {
+   "x": 818,
+   "y": 308,
+   "w": 44,
+   "h": 44,
+   "kind": "tree"
+  },
+  {
+   "x": 128,
+   "y": 448,
+   "w": 44,
+   "h": 44,
+   "kind": "tree"
+  }
+ ],
+ "gate": null,
+ "pits": [],
+ "bridges": [],
+ "refills": [],
+ "posts": [],
+ "bell": null,
+ "exit": null,
+ "vents": [],
+ "bucket": null,
+ "breadSpots": [
+  {
+   "x": 480,
+   "y": 330
+  }
+ ],
+ "enemies": [
+  {
+   "kind": "badger",
+   "x": 600,
+   "y": 260
+  },
+  {
+   "kind": "squirrel",
+   "x": 300,
+   "y": 520
+  },
+  {
+   "kind": "squirrel",
+   "x": 860,
+   "y": 160
+  }
+ ],
+ "knightSpawn": null,
+ "doors": [
+  {
+   "id": "w",
+   "x": 0,
+   "y": 278.0,
+   "w": 26,
+   "h": 84,
+   "to": "hollowbark-3",
+   "toDoor": "e",
+   "spawn": {
+    "x": 66,
+    "y": 320
+   },
+   "label": "Ravine Swing"
+  },
+  {
+   "id": "n",
+   "x": 718.0,
+   "y": 0,
+   "w": 84,
+   "h": 26,
+   "to": "hollowbark-5",
+   "toDoor": "w",
+   "spawn": {
+    "x": 760,
+    "y": 70
+   },
+   "label": "Spore Ring"
+  }
+ ],
+ "paths": [
+  [
+   [
+    66,
+    320
+   ],
+   [
+    500,
+    320
+   ],
+   [
+    760,
+    200
+   ],
+   [
+    760,
+    70
+   ]
+  ]
+ ],
+ "biome": "woods",
+ "lightKind": "squirrel",
+ "heavyKind": "badger",
+ "barrels": [
+  {
+   "x": 250,
+   "y": 150
+  },
+  {
+   "x": 480,
+   "y": 540
+  },
+  {
+   "x": 640,
+   "y": 160
+  },
+  {
+   "x": 870,
+   "y": 520
+  }
+ ],
+ "spools": [
+  {
+   "x": 150,
+   "y": 580
+  }
+ ]
+}

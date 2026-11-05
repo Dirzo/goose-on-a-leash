@@ -4,7 +4,7 @@ import { C, STEP } from '../src/core/config';
 import { Sim } from '../src/core/sim';
 import { ROOMS, WILLOWMERE, type RoomDef } from '../src/data/rooms';
 import { Room } from '../src/core/room';
-import { fixRng, run } from './helpers';
+import { fixRng, run, LAYOUT } from './helpers';
 
 const REED = Object.values(ROOMS).filter(r => r.id.startsWith('reedmarsh-'));
 const WORLD = Object.values(ROOMS).filter(r => r.id !== 'room-01');
@@ -30,7 +30,10 @@ function cross(sim: Sim, from: [number, number], to: [number, number]): number |
 }
 
 describe('world map', () => {
-  it('has twelve Reedmarsh rooms', () => { expect(REED.length).toBe(12); for (let n = 1; n <= 12; n++) expect(ROOMS[`reedmarsh-${n}`]).toBeTruthy(); });
+  it('Reedmarsh is five big areas holding all twelve rooms', () => {
+    expect(REED.length).toBe(5);
+    expect(REED.flatMap(r => r.zones ?? []).length).toBe(12);
+  });
 
   it('every door leads to a real door that leads back', () => {
     for (const r of WORLD) for (const d of r.doors ?? []) {
@@ -74,10 +77,11 @@ describe('world map', () => {
 describe('travel', () => {
   it('walking into a door enters the next room at the matching door, carrying hearts, pack and kit', () => {
     const sim = at(ROOMS['reedmarsh-1']!);
+    sim.room.gateClosed = false;
     sim.player.hp = 3; sim.pack.holes = 1; sim.pack.water = 0.6; sim.kit.mats.fluff = 7;
-    const n = sim.room.def.doors!.find(d => d.id === 'n')!;
-    sim.player.x = n.x + n.w / 2; sim.player.y = 22;
-    sim.step(STEP, { moveX: 0, moveY: -1, aimX: 0, aimY: 0 });
+    const n = sim.room.def.doors!.find(d => d.id === 'e')!;
+    sim.player.x = n.x + n.w / 2 - 10; sim.player.y = n.y + n.h / 2;
+    for (let i = 0; i < 10 && sim.room.def.id === 'reedmarsh-1'; i++) sim.step(STEP, { moveX: 1, moveY: 0, aimX: 0, aimY: 0 });
     expect(sim.room.def.id).toBe('reedmarsh-2');
     const w = sim.room.def.doors!.find(d => d.id === 'w')!;
     expect(sim.player.x).toBe(w.spawn.x);
@@ -89,21 +93,21 @@ describe('travel', () => {
   });
 
   it('a gated door stays shut until the bell rings, and the room remembers it was opened', () => {
-    const sim = at(ROOMS['reedmarsh-3']!);
+    const sim = at(ROOMS['reedmarsh-1']!);
     const e = sim.room.def.doors!.find(d => d.id === 'e')!;
     sim.player.x = e.spawn.x; sim.player.y = e.spawn.y;
     run(sim, 1, { moveX: 1, moveY: 0, aimX: 0, aimY: 0 });
-    expect(sim.room.def.id).toBe('reedmarsh-3');            // gate blocks
+    expect(sim.room.def.id).toBe('reedmarsh-1');            // gate blocks
     sim.room.gateClosed = false;
     run(sim, 1, { moveX: 1, moveY: 0, aimX: 0, aimY: 0 });
-    expect(sim.room.def.id).toBe('reedmarsh-4');
-    sim.enterRoom(ROOMS['reedmarsh-3']!, 'e');
+    expect(sim.room.def.id).toBe('reedmarsh-2');
+    sim.enterRoom(ROOMS['reedmarsh-1']!, 'e');
     expect(sim.room.gateClosed).toBe(false);
   });
 
   it('Bimbo fainting in a world room revives at the door you came in through, pack refilled', () => {
-    const sim = at(ROOMS['reedmarsh-2']!);
-    sim.enterRoom(ROOMS['reedmarsh-2']!, 'e');
+    const sim = at(LAYOUT['reedmarsh-2']!);
+    sim.enterRoom(LAYOUT['reedmarsh-2']!, 'e');
     sim.player.x = 1100; sim.player.y = 200; sim.pack.holes = 1;
     sim.pack.water = 0.0001;
     run(sim, 1.5);
@@ -115,13 +119,13 @@ describe('travel', () => {
 
   it('no critter starts next to a grappling post', () => {
     for (const r of WORLD) for (const e of r.enemies) for (const p of r.posts) {
-      if (r.id === 'reedmarsh-4' && e.kind === 'snapper') continue;   // he is the grapple there
+      if (r.id === 'reedmarsh-2' && e.kind === 'snapper') continue;   // he is the grapple there
       expect(Math.hypot(e.x - p.x, e.y - p.y), `${r.id}: ${e.kind} at ${e.x},${e.y}`).toBeGreaterThanOrEqual(130);
     }
   });
 
   it('falling in respawns at the last safe ground, not a fixed point', () => {
-    const sim = at(ROOMS['reedmarsh-2']!);
+    const sim = at(LAYOUT['reedmarsh-2']!);
     sim.player.x = 425; sim.player.y = 200; run(sim, 0.3);  // on island A
     expect(sim.lastSafe.x).toBeCloseTo(425, 0);
     sim.player.x = 520; sim.player.y = 200; sim.player.inv = 0;
@@ -130,7 +134,7 @@ describe('travel', () => {
   });
 
   it('the END door finishes the slice', () => {
-    const sim = at(ROOMS['hollowbark-8']!);
+    const sim = at(ROOMS['hollowbark-4']!);
     sim.room.gateClosed = false;
     const e = sim.room.def.doors!.find(d => d.id === 'e')!;
     sim.player.x = e.spawn.x; sim.player.y = e.spawn.y;
@@ -141,7 +145,7 @@ describe('travel', () => {
 
 describe('waking from the trance', () => {
   it('a beaten frog wakes, drops Reed Fiber, stops hurting, and hops off', () => {
-    const sim = at(ROOMS['reedmarsh-1']!); fixRng(sim, 0.99);
+    const sim = at(LAYOUT['reedmarsh-1']!); fixRng(sim, 0.99);
     const f = sim.mkEnemy('frog', sim.player.x + 6, sim.player.y); sim.enemies.push(f);
     sim.damage(f, 99);
     expect(f.dead).toBe(false);
@@ -165,7 +169,7 @@ describe('waking from the trance', () => {
 
 describe('Reedmarsh crossings', () => {
   it('Mooring Run: three post islands to the far shore', () => {
-    const sim = at(ROOMS['reedmarsh-2']!); fixRng(sim, 0.99);
+    const sim = at(LAYOUT['reedmarsh-2']!); fixRng(sim, 0.99);
     expect(cross(sim, [262, 260], [420, 210])).toBe(420);
     expect(cross(sim, [470, 250], [600, 350])).toBe(600);
     expect(cross(sim, [650, 310], [790, 220])).toBe(790);
@@ -176,7 +180,7 @@ describe('Reedmarsh crossings', () => {
   });
 
   it('Snapper Shallows: latch Old Snapper on the far bank and get dragged across', () => {
-    const sim = at(ROOMS['reedmarsh-4']!); fixRng(sim, 0.99);
+    const sim = at(LAYOUT['reedmarsh-4']!); fixRng(sim, 0.99);
     const s = sim.mkEnemy('snapper', 610, 330); s.spd = 0; s.hp = s.max = 999; sim.enemies.push(s);
     cross(sim, [394, 330], [610, 330]);
     expect(sim.player.x).toBeGreaterThan(560);
@@ -184,10 +188,10 @@ describe('Reedmarsh crossings', () => {
   });
 
   it('Lily Crossing needs the Braided Line', () => {
-    const without = at(ROOMS['reedmarsh-6']!); fixRng(without, 0.99);
+    const without = at(LAYOUT['reedmarsh-6']!); fixRng(without, 0.99);
     expect(cross(without, [246, 320], [500, 285])).toBeUndefined();
 
-    const sim = at(ROOMS['reedmarsh-6']!); fixRng(sim, 0.99);
+    const sim = at(LAYOUT['reedmarsh-6']!); fixRng(sim, 0.99);
     sim.kit.findLeash('braided');
     expect(cross(sim, [246, 320], [500, 285])).toBe(500);
     expect(cross(sim, [545, 300], [790, 380])).toBe(790);
@@ -197,7 +201,7 @@ describe('Reedmarsh crossings', () => {
   });
 
   it('the tackle chest gives the Braided Line once', () => {
-    const sim = at(ROOMS['reedmarsh-5']!);
+    const sim = at(LAYOUT['reedmarsh-5']!);
     const c = sim.room.def.chest!;
     sim.player.x = c.x - 10; sim.player.y = c.y + 12;
     sim.step(STEP);
@@ -205,14 +209,14 @@ describe('Reedmarsh crossings', () => {
     expect(sim.kit.leash).toBe('braided');
     expect(sim.leashLen()).toBe(270);
     expect(sim.chestOpen()).toBe(true);
-    sim.enterRoom(ROOMS['reedmarsh-4']!, 'n'); sim.enterRoom(ROOMS['reedmarsh-5']!, 'w');
+    sim.enterRoom(LAYOUT['reedmarsh-4']!, 'n'); sim.enterRoom(LAYOUT['reedmarsh-5']!, 'w');
     expect(sim.chestOpen()).toBe(true);
   });
 });
 
 describe('Reedmarsh part two', () => {
   it('Snapper Run: a Snapper that charges over the bank splashes in, swims back, and climbs out', () => {
-    const sim = at(ROOMS['reedmarsh-9']!); fixRng(sim, 0.5);
+    const sim = at(LAYOUT['reedmarsh-9']!); fixRng(sim, 0.5);
     const s = sim.mkEnemy('snapper', 600, 300); sim.enemies.push(s);
     s.mode = 'charge'; s.attack = 'charge'; s.modeT = 0; s.vx = 0; s.vy = 330; s.hit = true;
     let swam = false;
@@ -223,7 +227,7 @@ describe('Reedmarsh part two', () => {
   });
 
   it('a frog that leaps into the water swims back instead of dying', () => {
-    const sim = at(ROOMS['reedmarsh-7']!);
+    const sim = at(LAYOUT['reedmarsh-7']!);
     const f = sim.mkEnemy('frog', 640, 225); sim.enemies.push(f);
     f.x = 700; f.y = 200; f.vx = 0; f.vy = 0;                // in the water off the island
     let swam = false;
@@ -235,7 +239,7 @@ describe('Reedmarsh part two', () => {
   });
 
   it('a hit never knocks Rocco off a boardwalk into the water', () => {
-    const sim = at(ROOMS['reedmarsh-7']!); fixRng(sim, 0.99);
+    const sim = at(LAYOUT['reedmarsh-7']!); fixRng(sim, 0.99);
     sim.player.x = 360; sim.player.y = 315; sim.player.inv = 0;   // on the first boardwalk
     sim.hurtPlayer(1, true, { x: 360, y: 290 });                  // hit from the north: pushed south, toward water
     run(sim, 0.5);
@@ -243,14 +247,14 @@ describe('Reedmarsh part two', () => {
   });
 
   it('Bell Islands: the bell can be honked from the first island', () => {
-    const sim = at(ROOMS['reedmarsh-10']!);
+    const sim = at(LAYOUT['reedmarsh-10']!);
     sim.player.x = 505; sim.player.y = 265; sim.goose.x = 495; sim.goose.y = 265; sim.goose.state = 'held';
     sim.honk({ x: 670, y: 320 });
     expect(sim.room.gateClosed).toBe(false);
   });
 
   it("Heron's Approach: fling-yank over both gaps in the boardwalk", () => {
-    const sim = at(ROOMS['reedmarsh-11']!); fixRng(sim, 0.99);
+    const sim = at(LAYOUT['reedmarsh-11']!); fixRng(sim, 0.99);
     expect(cross(sim, [414, 305], [600, 305])).toBe(600);
     expect(sim.room.inPit(sim.player.x, sim.player.y, 6)).toBe(false);
     expect(cross(sim, [754, 305], [940, 305])).toBe(940);
@@ -263,7 +267,7 @@ describe('the Heron Ferryman', () => {
   function pool(seed = 9): Sim {
     const sim = new Sim({ room: WILLOWMERE, seed });
     sim.kit.findLeash('braided');
-    sim.enterRoom(ROOMS['reedmarsh-12']!, 'w');
+    sim.enterRoom(LAYOUT['reedmarsh-12']!, 'w');
     sim.drainEvents();
     return sim;
   }
@@ -319,7 +323,7 @@ describe('the Heron Ferryman', () => {
   it('in the storm the pack refills slowly and drains faster', () => {
     const sim = pool();
     sim.enemies.find(e => e.kind === 'heron')!.cd = 999;
-    const spot = ROOMS['reedmarsh-12']!.refills![0]!;
+    const spot = LAYOUT['reedmarsh-12']!.refills![0]!;
     sim.player.x = spot.x + spot.w / 2; sim.player.y = spot.y + spot.h / 2; sim.pack.water = 0.2;
     run(sim, 1);
     expect(sim.pack.water).toBeLessThan(0.2 + C.refillRate * 0.5);
@@ -369,7 +373,7 @@ describe('the Heron Ferryman', () => {
     expect(sim.room.gateClosed).toBe(false);
     run(sim, 5);
     expect(sim.enemies.includes(h)).toBe(true);
-    sim.enterRoom(ROOMS['reedmarsh-11']!, 'e'); sim.enterRoom(ROOMS['reedmarsh-12']!, 'w');
+    sim.enterRoom(LAYOUT['reedmarsh-11']!, 'e'); sim.enterRoom(LAYOUT['reedmarsh-12']!, 'w');
     expect(sim.room.gateClosed).toBe(false);
     expect(sim.enemies.find(e => e.kind === 'heron')!.woke).toBeGreaterThan(0);
   });
