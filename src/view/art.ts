@@ -383,6 +383,10 @@ export class ArtRenderer {
       const moving = e.woke > 0 || Math.hypot(e.vx, e.vy) > 15;
       let hop = e.kind !== 'snapper' && moving ? -Math.abs(Math.sin(time * 9 + e.id)) * 4 : 0;
       if (e.mode === 'leap') hop = -Math.sin(Math.min(1, e.modeT / 0.34) * Math.PI) * 16;     // arcs through the air
+      if (e.mode === 'swim') {                     // low in the water, paddling, with a ripple
+        hop = 6 + Math.round(Math.sin(time * 6 + e.id) * 1.5);
+        g.lineStyle(1, 0x9ae0ff, 0.6); g.strokeEllipse(x, y + 6, e.heavy ? 50 : 24 + Math.sin(time * 5) * 3, e.heavy ? 12 : 7);
+      }
       const pdx = sim.player.x - x;
       s.setPosition(Math.round(x), Math.round(y + hop)).setScale(sc).setDepth(y)
         .setFlipX(e.kind === 'snapper' ? (e.woke > 0 ? pdx > 0 : e.vx < -5 || pdx < -10) : false);

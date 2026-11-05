@@ -134,6 +134,7 @@ check_reach('run: shore to A', (262, 260), A, BASE_LEASH)
 check_reach('run: A to B', (470, 250), B, BASE_LEASH)
 check_reach('run: B to C', (650, 310), Cc, BASE_LEASH)
 check_reach('run: C to far shore', (840, 240), D, BASE_LEASH)
+check_reach('run: island A back to the start shore', (375, 215), (230, 230), BASE_LEASH)
 ROOMS.append(room(
     'reedmarsh-2', 'Mooring Run', 1280, 600,
     [dict(id='w', side='W', at=300, to='reedmarsh-1', toDoor='n', label='Reed Gate'),
@@ -142,9 +143,9 @@ ROOMS.append(room(
     pits=[rect(260, 20, 700, 560)],
     bridges=[rect(370, 160, 110, 100, kind='island'), rect(550, 300, 110, 100, kind='island'), rect(740, 170, 110, 100, kind='island')],
     refills=[rect(236, 20, 26, 560), rect(958, 20, 26, 560)],
-    posts=[post(*A), post(*B), post(*Cc), post(*D)],
+    posts=[post(*A), post(*B), post(*Cc), post(*D), post(230, 230)],   # the last one is for the trip back
     props=[rect(1120, 120, 40, 30, kind='rock'), rect(90, 470, 56, 24, kind='log'), rect(1180, 470, 40, 28, kind='stump')],
-    enemies=[frog(150, 140), frog(160, 500), frog(1110, 180), frog(1130, 460)],
+    enemies=[frog(110, 100), frog(160, 500), frog(1110, 180), frog(1130, 460)],
     bread=[{'x': 630, 'y': 372}, {'x': 120, 'y': 120}],
     kits=[{'x': 1180, 'y': 540}], spools=[{'x': 110, 'y': 400}],
     lantern={'x': 226, 'y': 250},
@@ -176,6 +177,7 @@ ROOMS.append(room(
 # 4 ---------------------------------------------------------------- Snapper Shallows
 check_reach('shallows: latch Snapper as he comes to the bank', (394, 330), (600, 330), BASE_LEASH)
 check_reach('shallows: backup post', (394, 160), (610, 160), BASE_LEASH)
+check_reach('shallows: post back to the west bank', (586, 160), (370, 160), BASE_LEASH)
 ROOMS.append(room(
     'reedmarsh-4', 'Snapper Shallows', 1120, 640,
     [dict(id='w', side='W', at=320, to='reedmarsh-3', toDoor='e', label='Burrow Field'),
@@ -183,7 +185,7 @@ ROOMS.append(room(
     'w', subtitle='Reedmarsh · 4',
     pits=[rect(400, 20, 180, 600)],
     refills=[rect(376, 20, 26, 600), rect(578, 20, 26, 600)],
-    posts=[post(610, 160)],
+    posts=[post(610, 160), post(370, 160)],   # across, and back
     props=[rect(200, 120, 40, 30, kind='rock'), rect(240, 470, 56, 24, kind='log'), rect(860, 300, 40, 30, kind='rock'),
            rect(1000, 520, 40, 28, kind='stump')],
     enemies=[snapper(660, 330), snapper(900, 500), frog(800, 190), frog(980, 420), frog(180, 300)],
@@ -216,6 +218,7 @@ PA, PB, PC = (500, 285), (790, 380), (1090, 330)
 check_reach('lily: shore to A', (246, 320), PA, BRAIDED, need_braided=True)   # pit edge 240 + 6
 check_reach('lily: A to B', (545, 300), PB, BRAIDED, need_braided=True)
 check_reach('lily: B to far shore', (835, 370), PC, BRAIDED, need_braided=True)
+check_reach('lily: back from A to the west shore', (455, 290), (210, 300), BRAIDED)
 bell6 = {'x': 1196, 'y': 180, 'r': 14}
 ROOMS.append(room(
     'reedmarsh-6', 'Lily Crossing', 1280, 640,
@@ -226,7 +229,7 @@ ROOMS.append(room(
     pits=[rect(240, 20, 780, 600)],
     bridges=[rect(450, 240, 100, 90, kind='island'), rect(740, 335, 100, 90, kind='island')],
     refills=[rect(216, 20, 26, 600), rect(1018, 20, 26, 600)],
-    posts=[post(*PA), post(*PB), post(*PC)],
+    posts=[post(*PA), post(*PB), post(*PC), post(210, 300)],   # the last one is for the trip back
     bell=bell6,
     props=[rect(100, 120, 40, 30, kind='rock'), rect(1120, 520, 56, 24, kind='log')],
     enemies=[frog(120, 180), snapper(1170, 510), frog(1180, 140)],
@@ -325,6 +328,8 @@ ROOMS.append(room(
 # 11 --------------------------------------------------------------- Heron's Approach
 check_reach('approach: gap 1', (414, 305), (600, 305), BASE_LEASH)
 check_reach('approach: gap 2', (754, 305), (940, 305), BASE_LEASH)
+check_reach('approach: back over gap 2', (906, 305), (725, 305), BASE_LEASH)
+check_reach('approach: back over gap 1', (566, 305), (385, 305), BASE_LEASH)
 ROOMS.append(room(
     'reedmarsh-11', "Heron's Approach", 1280, 640,
     [dict(id='w', side='W', at=305, to='reedmarsh-10', toDoor='e', label='Bell Islands'),
@@ -334,7 +339,7 @@ ROOMS.append(room(
     bridges=[rect(196, 290, 224, 30, kind='dock'), rect(560, 290, 200, 30, kind='dock'), rect(900, 290, 184, 30, kind='dock'),
              rect(440, 150, 80, 70, kind='island'), rect(800, 410, 80, 70, kind='island'), rect(640, 430, 80, 70, kind='island')],
     refills=[rect(176, 20, 26, 600), rect(1078, 20, 26, 600)],
-    posts=[post(600, 305), post(940, 305)],
+    posts=[post(600, 305), post(940, 305), post(725, 305), post(385, 305)],   # forward pair, return pair
     props=[rect(1160, 520, 40, 30, kind='rock'), rect(80, 140, 40, 28, kind='stump')],
     enemies=[frog(480, 185), frog(840, 445), frog(680, 465)],
     bread=[{'x': 1200, 'y': 560}],

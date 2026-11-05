@@ -210,12 +210,35 @@ describe('Reedmarsh crossings', () => {
 });
 
 describe('Reedmarsh part two', () => {
-  it('Snapper Run: a Snapper that charges past Rocco over the bank goes into the water', () => {
+  it('Snapper Run: a Snapper that charges over the bank splashes in, swims back, and climbs out', () => {
     const sim = at(ROOMS['reedmarsh-9']!); fixRng(sim, 0.5);
     const s = sim.mkEnemy('snapper', 600, 300); sim.enemies.push(s);
     s.mode = 'charge'; s.attack = 'charge'; s.modeT = 0; s.vx = 0; s.vy = 330; s.hit = true;
-    run(sim, 1);
-    expect(s.falling > 0 || s.dead).toBe(true);
+    let swam = false;
+    for (let i = 0; i < 60 * 8; i++) { sim.step(STEP); if ((s.mode as string) === 'swim') swam = true; }
+    expect(swam).toBe(true);
+    expect(s.dead).toBe(false); expect(s.falling).toBe(0);
+    expect(sim.room.inPit(s.x, s.y, 2)).toBe(false);         // back on land
+  });
+
+  it('a frog that leaps into the water swims back instead of dying', () => {
+    const sim = at(ROOMS['reedmarsh-7']!);
+    const f = sim.mkEnemy('frog', 640, 225); sim.enemies.push(f);
+    f.x = 700; f.y = 200; f.vx = 0; f.vy = 0;                // in the water off the island
+    let swam = false;
+    for (let i = 0; i < 60 * 6; i++) { sim.step(STEP); if (f.mode === 'swim') swam = true; }
+    expect(swam).toBe(true);
+    expect(sim.enemies.includes(f)).toBe(true);
+    expect(f.dead).toBe(false);
+    expect(sim.room.inPit(f.x, f.y, 2)).toBe(false);
+  });
+
+  it('a hit never knocks Rocco off a boardwalk into the water', () => {
+    const sim = at(ROOMS['reedmarsh-7']!); fixRng(sim, 0.99);
+    sim.player.x = 360; sim.player.y = 315; sim.player.inv = 0;   // on the first boardwalk
+    sim.hurtPlayer(1, true, { x: 360, y: 290 });                  // hit from the north: pushed south, toward water
+    run(sim, 0.5);
+    expect(sim.room.inPit(sim.player.x, sim.player.y, 6)).toBe(false);
   });
 
   it('Bell Islands: the bell can be honked from the first island', () => {

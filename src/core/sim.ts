@@ -53,6 +53,8 @@ export interface Enemy {
   attack: AttackKind;
   /** Seconds Biscuit has been hanging on (bosses shake him off). */
   grip: number;
+  /** Has been in the water once already (the first splash shakes loose some Pond Muck). */
+  wet: boolean;
 }
 
 /**
@@ -60,7 +62,7 @@ export interface Enemy {
  * leap: a frog's flying jump at the pack. lash: a frog's tongue, out and back. charge: Old Snapper's rush.
  * recover: a beat of vulnerability after an attack.
  */
-export type CritterMode = 'stalk' | 'wind' | 'leap' | 'lash' | 'charge' | 'recover' | 'spear' | 'gust' | 'darts' | 'call';
+export type CritterMode = 'stalk' | 'wind' | 'leap' | 'lash' | 'charge' | 'recover' | 'spear' | 'gust' | 'darts' | 'call' | 'swim';
 export type AttackKind = 'leap' | 'lash' | 'charge' | 'bite' | 'spear' | 'gust' | 'dart';
 
 /** A feather dart lobbed at Bimbo: it lands on the marked spot when t reaches T. */
@@ -119,6 +121,7 @@ const QUIPS = {
   honk: ['HONK'],
   furious: ['FURY MODE. You are not in charge.'],
   slurp: ['SLURP. A frog tongue in the pack.', 'The frog drank some of Bimbo\'s water!', 'Tongue! Bimbo: "HEY."'],
+  swimback: ['Splash! The frog paddles back to shore.', 'Plop. It swims for the bank.', 'Into the drink! It will be back.'],
   wake: ['The frog blinks awake. Ribbit?', 'Trance broken. The frog hops home.', 'Red eyes fade. Frog says thanks.'],
 } as const;
 
@@ -223,6 +226,24 @@ export class Sim {
   restartRoom(): void {
     if (!this.room.def.doors) { this.reset(); return; }
     this.enterRoom(this.room.def, this.entryDoor, true);
+  }
+
+  /** The closest spot a critter can climb out onto: dry, inside the room, clear of walls (docks and islands count). */
+  nearestLand(x: number, y: number, r: number): Vec {
+    const room = this.room, { width, height } = room.def;
+    for (let d = 12; d < 900; d += 12) {
+      const n = Math.max(12, Math.round(d / 6));
+      let best: Vec | null = null, bd = Infinity;
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2, px = x + Math.cos(a) * d, py = y + Math.sin(a) * d;
+        if (px < r + 20 || py < r + 20 || px > width - r - 20 || py > height - r - 20) continue;
+        if (room.inPit(px, py, -r)) continue;
+        const o = { x: px, y: py, r }; if (room.collide(o)) continue;
+        const dd = Math.hypot(px - x, py - y); if (dd < bd) { bd = dd; best = { x: px, y: py }; }
+      }
+      if (best) return best;
+    }
+    return { x, y };
   }
 
   /** Where Bimbo is: on Rocco's back, opposite the way he faces. */
@@ -366,7 +387,7 @@ export class Sim {
     const hp = boss ? HERON_HP : k ? 8 : 3;
     return { id: this.nextId++, kind, x, y, r: boss ? 24 : k ? 20 : 13, hp, max: hp, heavy: k, stun: 0,
       vx: 0, vy: 0, falling: 0, dead: false, hitT: 0, spd: boss ? 0 : k ? 42 : 78, woke: 0,
-      mode: 'stalk', modeT: 0, cd: boss ? 2 : 0.8 + this.rng() * 1.2, tx: x, ty: y, hit: false, attack: 'leap', grip: 0 };
+      mode: 'stalk', modeT: 0, cd: boss ? 2 : 0.8 + this.rng() * 1.2, tx: x, ty: y, hit: false, attack: 'leap', grip: 0, wet: false };
   }
 
   /** Take and clear the events produced since the last drain. */
@@ -651,8 +672,9 @@ export class Sim {
       this.fx('splash', bk.x, bk.y - 34);
       if (pk.water > 0.3) this.say(heavy ? 'WHAM. Old Snapper rams the pack.' : side > 1 ? 'It leapt at Bimbo! Water everywhere.' : 'Splash! Rocco blocks most of it.');
     }
-    if (from && pk.enabled) {                        // knocked back, away from the hit
-      const [ux, uy] = dirTo(from, p); p.vx += ux * (heavy ? 340 : 200); p.vy += uy * (heavy ? 340 : 200);
+    if (from && pk.enabled) {                        // knocked back, away from the hit, but never off a dock into the water
+      const [ux, uy] = dirTo(from, p), k = heavy ? 340 : 200, reach = k * 0.12;
+      if (!this.room.inPit(p.x + ux * (reach + 10), p.y + uy * (reach + 10), 0)) { p.vx += ux * k; p.vy += uy * k; }
     }
     this.waterWarnings(before);
   }
@@ -851,6 +873,24 @@ export class Sim {
       let ax = 0, ay = 0;
       const slow = g.state === 'latched' && g.target === e ? 0.35 : 1;
       const critter = ENTRANCED.has(e.kind);
+      if (critter && !BOSS.has(e.kind) && room.inPit(e.x, e.y, 2)) {
+        // Frogs and turtles swim. In the water a critter is harmless: it paddles back to the nearest bank.
+        if (e.mode !== 'swim') {
+          e.mode = 'swim'; e.modeT = 0;
+          const land = this.nearestLand(e.x, e.y, e.r); e.tx = land.x; e.ty = land.y;
+          this.fx('splash', e.x, e.y - 6);
+          if (!e.wet) { e.wet = true; this.drop('goo', room.bankPoint(e.x, e.y, 14).x, room.bankPoint(e.x, e.y, 14).y); }
+          this.say(this.pick('swimback'));
+        }
+        e.modeT += dt;
+        if (e.modeT > 4) { const land = this.nearestLand(e.x, e.y, e.r); e.tx = land.x; e.ty = land.y; e.modeT = 0; }   // re-plan if stuck
+        const [bx, by] = dirTo(e, { x: e.tx, y: e.ty }), sp = e.heavy ? 40 : 62;
+        e.x += (bx * sp + e.vx) * dt; e.y += (by * sp + e.vy) * dt;
+        const dk = Math.exp(-4 * dt); e.vx *= dk; e.vy *= dk;
+        room.collide(e); this.keepInside(e);
+        continue;
+      }
+      if (e.mode === 'swim') { e.mode = 'recover'; e.modeT = 0; e.cd = 1.2; }   // climbed out, shaking off
       if (BOSS.has(e.kind)) [ax, ay] = this.heronAI(e, dt, d);
       else if (critter) [ax, ay] = this.critterAI(e, dt, d, slow);
       else if (!e.stun && d < (AGGRO[e.kind] ?? 300)) { ax = dx * e.spd * slow; ay = dy * e.spd * slow; }
@@ -863,7 +903,7 @@ export class Sim {
       e.x += e.vx * dt; e.y += e.vy * dt;
       const dec = Math.exp(-5 * dt); e.vx *= dec; e.vy *= dec;
       room.collide(e);
-      if (room.inPit(e.x, e.y, 2) && Math.hypot(e.vx, e.vy) > 0) {
+      if (!critter && room.inPit(e.x, e.y, 2) && Math.hypot(e.vx, e.vy) > 0) {   // Room 01 pests fall; critters swim (above)
         e.falling = 0.001; this.handled++;
         const bank = room.bankPoint(e.x, e.y, 14);
         this.drop('goo', bank.x, bank.y);
