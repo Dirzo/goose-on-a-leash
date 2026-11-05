@@ -2,6 +2,7 @@
 Rocco at the fine resolution (640x360 native). Built from shapes, then pixel-cleaned:
   * silhouette outline in near-black, internal edges in a darker tone of each part ("sel-out"),
     which reads finer and softer than a black line everywhere;
+  * polarized fishing glasses (why the blood moon can't entrance him);
   * a small backpack strapped on his back (straps across his chest), the Moon Koi peeking out;
   * animated: idle bob, koi bob and fin flap, water dripping from the leak and splashing out the top.
 
@@ -32,6 +33,7 @@ C = {k: hx(v) for k, v in {
     'koiw': 'fffaf2', 'koiw2': 'e8e0d4', 'koig': 'f4c040', 'koif': 'ffbcc4', 'koie': '15111c',
     'water0': '3c9ab8', 'water1': '62bcd6', 'water2': 'b6ecfa',
     'rod': '8a5a2a', 'rod2': 'b47c40', 'line': 'd8ecf4',
+    'frame': 'd8a84a', 'frame2': '8a6424', 'lens': '2a6a7a', 'glint': 'ffffff', 'glint2': 'ff9aa0',
 }.items()}
 
 class Layer:
@@ -180,6 +182,23 @@ def build(frame, leak=True, water_level=0.8):
         head.ell(ex, oy + 25, 4, 4, 'eyew')
         head.ell(ex + 1, oy + 26, 2.5, 3, 'pupil')
         head.px(ex, oy + 24, 'shine'); head.px(ex + 2, oy + 28, 'shine')
+    # polarized fishing glasses: tinted see-through lenses in a thin gold frame
+    hp = head.im.load()
+    lens = C['lens']
+    for (ex, ey) in ((ox + 25, oy + 25), (ox + 41, oy + 25)):
+        for y in range(ey - 6, ey + 7):
+            for x in range(ex - 6, ex + 7):
+                dd = ((x - ex) / 5.6) ** 2 + ((y - ey) / 5.2) ** 2
+                if not (0 <= x < FW and 0 <= y < FH): continue
+                if dd <= 1:
+                    r, g, b, a = hp[x, y]
+                    if a: hp[x, y] = (int(r * 0.55 + lens[0] * 0.45), int(g * 0.55 + lens[1] * 0.45), int(b * 0.55 + lens[2] * 0.45), 255)
+                elif dd <= 1.42:
+                    hp[x, y] = C['frame'] + (255,)
+        # glints: a white streak and a hint of the red moon in each lens
+        head.px(ex - 3, ey - 3, 'glint'); head.px(ex - 2, ey - 4, 'glint'); head.px(ex + 3, ey + 2, 'glint2')
+    head.line([(ox + 31, oy + 23), (ox + 35, oy + 23)], 'frame')           # bridge
+    head.line([(ox + 18, oy + 24), (ox + 15, oy + 22)], 'frame2')          # arm toward his ear
     L.append(head)
 
     # --- ears through holes in the bucket hat, then the hat
