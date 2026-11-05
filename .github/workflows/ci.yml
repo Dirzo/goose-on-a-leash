@@ -28,29 +28,37 @@ jobs:
           path: dist
 
   deploy:
-    # Needs repo secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID.
+    # Skips itself until repo secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are added.
     needs: check
     if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
+    env:
+      HAS_CLOUDFLARE: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
     steps:
+      - name: Cloudflare not configured yet
+        if: env.HAS_CLOUDFLARE != 'true'
+        run: echo "::notice::Skipping deploy. Add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repo secrets to enable it."
       - uses: actions/download-artifact@v4
+        if: env.HAS_CLOUDFLARE == 'true'
         with:
           name: dist
           path: dist
       - uses: actions/checkout@v4
+        if: env.HAS_CLOUDFLARE == 'true'
         with:
           path: src-repo
           sparse-checkout: wrangler.jsonc
       - run: cp src-repo/wrangler.jsonc .
+        if: env.HAS_CLOUDFLARE == 'true'
       - name: Deploy production (main)
-        if: github.event_name == 'push'
+        if: env.HAS_CLOUDFLARE == 'true' && github.event_name == 'push'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
       - name: Upload preview version (pull request)
-        if: github.event_name == 'pull_request'
+        if: env.HAS_CLOUDFLARE == 'true' && github.event_name == 'pull_request'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
