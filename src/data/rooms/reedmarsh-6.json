@@ -186,14 +186,14 @@
    "y": 278.0,
    "w": 26,
    "h": 84,
-   "to": "END",
-   "toDoor": "",
+   "to": "reedmarsh-7",
+   "toDoor": "w",
    "spawn": {
     "x": 1214,
     "y": 320
    },
    "gated": true,
-   "label": "Deeper into Reedmarsh"
+   "label": "Leaky Boardwalk"
   }
  ],
  "paths": [
@@ -227,6 +227,5 @@
  "lantern": {
   "x": 230,
   "y": 300
- },
- "winText": "Reedmarsh, part one: done. The Heron Ferryman waits deeper in the marsh."
+ }
 }

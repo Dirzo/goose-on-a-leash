@@ -206,6 +206,15 @@ def render(R):
             disk(lx1, (ly0 + ly1) / 2, w['h'] / 2, 'OUT'); disk(lx1, (ly0 + ly1) / 2, w['h'] / 2 - 1, 'RING')
             disk(lx1, (ly0 + ly1) / 2, w['h'] / 4, 'BARK1')
             for k in range(5): px(lx0 + 10 + k * 9, ly0 - 1, 'Q4')
+        elif kind == 'reeds':
+            # a dense wall of reeds and cattails: dark mud base, stems packed in rows
+            x0, y0, x1, y1 = w['x'], w['y'], w['x'] + w['w'], w['y'] + w['h']
+            base = (xx >= x0 - 2) & (xx < x1 + 2) & (yy >= y0 - 2) & (yy < y1 + 2)
+            img[base] = P['MUD'] * 0.5 + P['RD0'] * 0.5
+            shadow((x0 + x1) / 2 + 4, y1 + 2, w['w'] / 2 + 6, 6, 0.6)
+            for ry in range(int(y0) + 14, int(y1) + 6, 9):
+                for rx in range(int(x0) - 2, int(x1) - 2, 7):
+                    reeds(rx + rng.randrange(0, 3), ry, 2)
         elif kind == 'rock':
             rcx, rcy = w['x'] + w['w'] / 2, w['y'] + w['h'] / 2
             shadow(rcx + 4, rcy + 10, 26, 8)

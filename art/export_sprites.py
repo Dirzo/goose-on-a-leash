@@ -51,6 +51,11 @@ strip('frog_awake', [critters_hd.frog(False, awake=True), critters_hd.frog(True,
 strip('snapper', [critters_hd.snapper(False, submerged=False), critters_hd.snapper(True, submerged=False)], (30, 24))
 strip('snapper_awake', [critters_hd.snapper(False, submerged=False, awake=True), critters_hd.snapper(True, submerged=False, awake=True)], (30, 24))
 
+# the Heron Ferryman: idle, idle-blink, wind, stab, gust; and awake
+strip('heron', [critters_hd.heron('idle'), critters_hd.heron('idle', blink=True), critters_hd.heron('wind'),
+                critters_hd.heron('stab'), critters_hd.heron('gust')], critters_hd.HERON_ANCHOR, {'beakStab': [71, 34]})
+strip('heron_awake', [critters_hd.heron('idle', awake=True), critters_hd.heron('idle', blink=True, awake=True)], critters_hd.HERON_ANCHOR)
+
 # backpack screen: Bimbo (happy, worried, gasping x open/blink), the pack, patches, tears
 strip('bimbo', [bui.bimbo(m, b) for m in ('happy', 'worried', 'gasping') for b in (False, True)], bui.BIMBO_ANCHOR)
 strip('pack_ui', [bui.pack()], (0, 0), {'window': list(bui.WINDOW), 'bimbo': list(bui.BIMBO_AT),

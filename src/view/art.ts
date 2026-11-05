@@ -358,15 +358,31 @@ export class ArtRenderer {
       if (e.dead) continue;
       alive.add(e.id);
       let s = this.foes.get(e.id);
-      if (!s) { s = this.worldIgnore(this.scene.add.sprite(0, 0, e.kind === 'snapper' ? 'snapper' : 'frog')); this.foes.set(e.id, s); }
+      if (!s) { s = this.worldIgnore(this.scene.add.sprite(0, 0, e.kind === 'snapper' ? 'snapper' : e.kind === 'heron' ? 'heron' : 'frog')); this.foes.set(e.id, s); }
       const { x, y } = EP(e);
       const awake = e.woke > 0 || (e.stun > 0 && e.kind !== 'snapper');
-      const kind = e.kind === 'snapper' ? (e.woke > 0 ? 'snapper_awake' : 'snapper') : awake ? 'frog_awake' : 'frog';
+      const kind = e.kind === 'heron' ? (e.woke > 0 ? 'heron_awake' : 'heron')
+        : e.kind === 'snapper' ? (e.woke > 0 ? 'snapper_awake' : 'snapper') : awake ? 'frog_awake' : 'frog';
       const blink = ((time * 1.1 + e.id * 0.37) % 3.2) < 0.14;
+      if (e.kind === 'heron') {
+        const pose = e.woke > 0 ? (blink ? 1 : 0) : e.mode === 'spear' ? 3 : e.mode === 'gust' ? 4
+          : e.mode === 'wind' ? (e.attack === 'gust' ? 4 : 2) : blink ? 1 : 0;
+        this.show(s, kind, pose);
+        s.setPosition(Math.round(x), Math.round(y + 8)).setDepth(y).setFlipX(sim.player.x < x).setAlpha(1);
+        const tell2 = e.mode === 'wind' && Math.floor(e.modeT * 14) % 2 === 0 && !e.woke;
+        if (e.hitT > 0 || tell2) s.setTint(e.hitT > 0 ? 0xffffff : 0xffd0d0).setTintMode(Phaser.TintModes.FILL); else s.clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
+        g.fillStyle(0x000000, 0.35); g.fillEllipse(x, y + 8, 40, 9);
+        g.lineStyle(1, 0x9ae0ff, 0.5); g.strokeEllipse(x, y + 8, 46 + Math.sin(time * 3) * 4, 10);   // ripples round his legs
+        if (e.stun > 0) for (let i = 0; i < 3; i++) { const a = time * 5 + i * 2.1; this.fxg.fillStyle(0xf2c230, 1); this.star(this.fxg, x + Math.cos(a) * 18, y - 84 + Math.sin(a) * 3, 3); }
+        if (!e.woke && e.stun <= 0) this.drawAttack(e, x, y, time);
+        if (e.woke > 0 && e.woke < 6) this.wt('The Ferryman', x, y - 96, 9, '#9ae0ff', Math.min(1, 6 - e.woke));
+        continue;
+      }
       this.show(s, kind, blink ? 1 : 0);
       const sc = e.falling ? Math.max(0.05, 1 - e.falling / 0.6) : 1;
       const moving = e.woke > 0 || Math.hypot(e.vx, e.vy) > 15;
-      const hop = e.kind !== 'snapper' && moving ? -Math.abs(Math.sin(time * 9 + e.id)) * 4 : 0;
+      let hop = e.kind !== 'snapper' && moving ? -Math.abs(Math.sin(time * 9 + e.id)) * 4 : 0;
+      if (e.mode === 'leap') hop = -Math.sin(Math.min(1, e.modeT / 0.34) * Math.PI) * 16;     // arcs through the air
       const pdx = sim.player.x - x;
       s.setPosition(Math.round(x), Math.round(y + hop)).setScale(sc).setDepth(y)
         .setFlipX(e.kind === 'snapper' ? (e.woke > 0 ? pdx > 0 : e.vx < -5 || pdx < -10) : false);
@@ -381,7 +397,10 @@ export class ArtRenderer {
         }
         continue;
       }
-      if (e.hitT > 0) s.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL); else s.clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
+      const tell = e.mode === 'wind' && Math.floor(e.modeT * 18) % 2 === 0;
+      if (e.hitT > 0 || tell) s.setTint(e.hitT > 0 ? 0xffffff : 0xffe0e0).setTintMode(Phaser.TintModes.FILL); else s.clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
+      s.setScale(sc, e.kind === 'snapper' && e.mode === 'wind' ? sc * (1 + Math.min(1, e.modeT / 0.5) * 0.18) : sc);   // Snapper rears up
+      if (!e.falling && !e.woke && e.stun <= 0) this.drawAttack(e, x, y, time);
       if (!e.falling) {
         const w = kind === 'snapper' ? 46 : 18;
         g.fillStyle(0x000000, 0.35); g.fillEllipse(x, y + 2, w, w * 0.3);
@@ -432,6 +451,24 @@ export class ArtRenderer {
       }
       if (f.kind === 'patch') { for (let i = 0; i < 5; i++) { f2.fillStyle(0x8db07a, 1 - kk); f2.fillRect(Math.round(f.x - 6 + i * 3), Math.round(f.y + (i % 2 ? -2 : 2) - kk * 8), 2, 1); } if (kk < 0.7) this.wt('PATCHED', f.x, f.y - 14 - kk * 10, 8, '#cfe3c4', 1 - kk); }
       if (f.kind === 'faint') this.wt('Bimbo fainted…', f.x, f.y - 10 - kk * 6, 9, '#9ae0ff', Math.min(1, 2 - kk * 1.25), 'body');
+    }
+
+    // feather darts: a red mark where each will land, the feather arcing down onto it
+    for (const d of sim.darts) {
+      const u = Math.min(1, d.t / d.T), r = 6 + u * 10;
+      this.floor.lineStyle(2, 0xff4a4a, 0.3 + 0.6 * u); this.floor.strokeEllipse(d.tx, d.ty, r * 2.2, r * 1.1);
+      this.floor.fillStyle(0xff4a4a, 0.15 * u); this.floor.fillEllipse(d.tx, d.ty, r * 2.2, r * 1.1);
+      const fx2 = d.x0 + (d.tx - d.x0) * u, fy2 = d.y0 + (d.ty - d.y0) * u - Math.sin(u * Math.PI) * 90;
+      f2.lineStyle(2, 0xe8eef2, 1); f2.lineBetween(fx2 - 3, fy2 - 6, fx2 + 3, fy2 + 6);
+      f2.fillStyle(0x7890aa, 1); f2.fillRect(fx2 - 2, fy2 - 6, 3, 6);
+    }
+    for (const fx3 of this.fx) if (fx3.kind === 'gust' && fx3.a !== undefined) {
+      const kk = fx3.t / 0.8;
+      for (let i = 0; i < 6; i++) {
+        const a = fx3.a + (i - 2.5) * 0.18, r0 = 30 + kk * 260 + (i % 2) * 20;
+        f2.lineStyle(2, 0xe8eef2, 0.6 * (1 - kk));
+        f2.lineBetween(fx3.x + Math.cos(a) * r0, fx3.y - 40 + Math.sin(a) * r0, fx3.x + Math.cos(a) * (r0 + 26), fx3.y - 40 + Math.sin(a) * (r0 + 26));
+      }
     }
 
     // reticle
@@ -501,6 +538,17 @@ export class ArtRenderer {
       const t = this.ht('body', q.text, W / 2, y, 18, '#e9e4d6', a, 'center', true);
       g.fillStyle(0x0b0a10, 0.75 * a); g.fillRect(W / 2 - t.width / 2 - 12, y - 18, t.width + 24, 27);
     });
+
+    // boss health
+    const boss = sim.enemies.find(e => e.kind === 'heron' && !e.woke);
+    if (boss) {
+      const bw2 = 520, bx2 = W / 2 - bw2 / 2, by2 = 150, angry = boss.hp < boss.max / 2;
+      g.fillStyle(0x0b0a10, 0.8); g.fillRect(bx2 - 12, by2 - 30, bw2 + 24, 52);
+      this.ht('display', 'THE HERON FERRYMAN', W / 2, by2 - 8, 16, angry ? '#ff8a8a' : '#e9e4d6');
+      g.fillStyle(0x1a1522, 1); g.fillRect(bx2, by2, bw2, 12);
+      g.fillStyle(angry ? 0xe05a47 : 0xc94b3a, 1); g.fillRect(bx2 + 2, by2 + 2, (bw2 - 4) * Math.max(0, boss.hp / boss.max), 8);
+      g.fillStyle(0xe9e4d6, 0.5); g.fillRect(bx2 + bw2 / 2, by2, 1, 12);
+    }
 
     // room banner
     if (this.banner > 0) {
@@ -642,6 +690,37 @@ export class ArtRenderer {
     this.ut('mono', canPatch ? '[P] PATCH A TEAR' : pk.holes ? (pk.needles ? 'NEED TWINE TO PATCH' : 'NEED A SEWING KIT TO PATCH') : 'NO TEARS TO PATCH', X, 570, 15,
       canPatch ? '#f2c230' : pk.holes ? '#ff8a8a' : '#7cc48a', 1, 'left', true);
     this.ut('mono', '[I] / [ESC] CLOSE', X, 600, 12, '#9aa3a6', 1, 'left', true);
+  }
+
+  /** Telegraphs and strikes: a target marker on the ground while winding up, the tongue, charge dust. */
+  private drawAttack(e: Enemy, x: number, y: number, time: number): void {
+    const f = this.fxg, g = this.floor;
+    if (e.kind === 'heron') {
+      if (e.mode === 'wind') {
+        this.wt('!', x, y - 100 - Math.round(Math.sin(time * 20)), 16, '#ff4a4a', 1);
+        if (e.attack === 'spear') {
+          const k = Math.min(1, e.modeT / 0.6), [ux, uy] = [e.tx - x, e.ty - y], l = Math.hypot(ux, uy) || 1;
+          g.lineStyle(3, 0xff4a4a, 0.25 + 0.5 * k); g.lineBetween(x, y - 4, x + (ux / l) * 150, y - 4 + (uy / l) * 150);
+        }
+      } else if (e.mode === 'spear') {
+        const l = Math.hypot(e.tx - x, e.ty - y) || 1, k = Math.min(1, e.modeT / 0.08);
+        f.lineStyle(4, 0xffd860, 1 - e.modeT / 0.3); f.lineBetween(x, y - 30, x + ((e.tx - x) / l) * 150 * k, y - 4 + ((e.ty - y) / l) * 150 * k);
+      }
+      return;
+    }
+    if (e.mode === 'wind') {
+      const k = Math.min(1, e.modeT / (e.heavy ? 0.7 : 0.4)), r = 6 + k * 6;
+      g.lineStyle(2, 0xff4a4a, 0.4 + 0.5 * k); g.strokeEllipse(e.tx, e.ty + 2, r * 2.2, r * 1.1);
+      g.lineStyle(1, 0xff4a4a, 0.6 * k); g.lineBetween(x, y, e.tx, e.ty);
+      this.wt('!', x, y - (e.heavy ? 34 : 22) - Math.round(Math.sin(time * 20)), e.heavy ? 14 : 11, '#ff4a4a', 1);
+    } else if (e.mode === 'lash') {
+      const t = e.modeT / 0.22, out = t < 0.5 ? t * 2 : (1 - t) * 2;
+      const ex = x + (e.tx - x) * out, ey = y - 8 + (e.ty - (y - 8)) * out;
+      f.lineStyle(3, 0xff7a9a, 1); f.lineBetween(x, y - 8, ex, ey);
+      f.fillStyle(0xff4a7a, 1); f.fillCircle(ex, ey, 3);
+    } else if (e.mode === 'charge' && Math.floor(time * 30) % 2 === 0) {
+      g.fillStyle(0x8a7a60, 0.5); g.fillCircle(x - e.vx * 0.05 + (Math.random() - 0.5) * 10, y + 4, 3 + Math.random() * 3);
+    }
   }
 
   private pixelHeart(x: number, y: number, s: number, c: number, hi: number): void {

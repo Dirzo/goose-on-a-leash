@@ -1,0 +1,221 @@
+{
+ "id": "reedmarsh-9",
+ "name": "Snapper Run",
+ "subtitle": "Reedmarsh \u00b7 9",
+ "width": 1280,
+ "height": 560,
+ "playerStart": {
+  "x": 66,
+  "y": 280
+ },
+ "walls": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 540,
+   "w": 1280,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 238.0,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 322.0,
+   "w": 20,
+   "h": 238.0,
+   "kind": "border"
+  },
+  {
+   "x": 1260,
+   "y": 0,
+   "w": 20,
+   "h": 238.0,
+   "kind": "border"
+  },
+  {
+   "x": 1260,
+   "y": 322.0,
+   "w": 20,
+   "h": 238.0,
+   "kind": "border"
+  },
+  {
+   "x": 300,
+   "y": 220,
+   "w": 40,
+   "h": 30,
+   "kind": "rock"
+  },
+  {
+   "x": 700,
+   "y": 300,
+   "w": 40,
+   "h": 28,
+   "kind": "stump"
+  },
+  {
+   "x": 1000,
+   "y": 200,
+   "w": 56,
+   "h": 24,
+   "kind": "log"
+  }
+ ],
+ "gate": null,
+ "pits": [
+  {
+   "x": 20,
+   "y": 20,
+   "w": 1240,
+   "h": 150
+  },
+  {
+   "x": 20,
+   "y": 390,
+   "w": 1240,
+   "h": 150
+  }
+ ],
+ "bridges": [
+  {
+   "x": 380,
+   "y": 40,
+   "w": 90,
+   "h": 80,
+   "kind": "island"
+  },
+  {
+   "x": 820,
+   "y": 40,
+   "w": 90,
+   "h": 80,
+   "kind": "island"
+  }
+ ],
+ "refills": [
+  {
+   "x": 20,
+   "y": 168,
+   "w": 1240,
+   "h": 22
+  },
+  {
+   "x": 20,
+   "y": 370,
+   "w": 1240,
+   "h": 22
+  }
+ ],
+ "posts": [
+  {
+   "x": 425,
+   "y": 80,
+   "r": 9
+  },
+  {
+   "x": 865,
+   "y": 80,
+   "r": 9
+  }
+ ],
+ "bell": null,
+ "exit": null,
+ "vents": [],
+ "bucket": null,
+ "breadSpots": [
+  {
+   "x": 760,
+   "y": 360
+  }
+ ],
+ "enemies": [
+  {
+   "kind": "snapper",
+   "x": 520,
+   "y": 280
+  },
+  {
+   "kind": "snapper",
+   "x": 900,
+   "y": 330
+  },
+  {
+   "kind": "snapper",
+   "x": 1100,
+   "y": 230
+  }
+ ],
+ "knightSpawn": null,
+ "lightKind": "frog",
+ "heavyKind": "snapper",
+ "doors": [
+  {
+   "id": "w",
+   "x": 0,
+   "y": 238.0,
+   "w": 26,
+   "h": 84,
+   "to": "reedmarsh-8",
+   "toDoor": "n",
+   "spawn": {
+    "x": 66,
+    "y": 280
+   },
+   "label": "Twine Thicket"
+  },
+  {
+   "id": "e",
+   "x": 1254,
+   "y": 238.0,
+   "w": 26,
+   "h": 84,
+   "to": "reedmarsh-10",
+   "toDoor": "w",
+   "spawn": {
+    "x": 1214,
+    "y": 280
+   },
+   "label": "Bell Islands"
+  }
+ ],
+ "paths": [
+  [
+   [
+    66,
+    280
+   ],
+   [
+    1214,
+    280
+   ]
+  ]
+ ],
+ "kits": [
+  {
+   "x": 640,
+   "y": 200
+  }
+ ],
+ "spools": [
+  {
+   "x": 180,
+   "y": 350
+  }
+ ],
+ "lantern": {
+  "x": 640,
+  "y": 190
+ }
+}

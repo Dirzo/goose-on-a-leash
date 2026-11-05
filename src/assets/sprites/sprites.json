@@ -221,6 +221,31 @@
   ],
   "points": {}
  },
+ "heron": {
+  "w": 72,
+  "h": 92,
+  "frames": 5,
+  "anchor": [
+   30,
+   88
+  ],
+  "points": {
+   "beakStab": [
+    71,
+    34
+   ]
+  }
+ },
+ "heron_awake": {
+  "w": 72,
+  "h": 92,
+  "frames": 2,
+  "anchor": [
+   30,
+   88
+  ],
+  "points": {}
+ },
  "bimbo": {
   "w": 64,
   "h": 56,

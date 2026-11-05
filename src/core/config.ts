@@ -53,13 +53,16 @@ export const C = {
   knightRespawn: 25,
   bucketCooldown: 15,
   // backpack: Bimbo's water is Rocco's life in the world rooms. Fractions of a full pack.
-  packDrain: 0.004,       // a sound pack lasts about 4 minutes away from water
-  holeDrain: 0.012,       // each tear adds this per second; 3 tears empty a full pack in about 25 s
+  packDrain: 0.002,       // a sound pack lasts about 8 minutes away from water
+  holeDrain: 0.006,       // each tear adds this per second; 3 tears empty a full pack in about 50 s
   refillRate: 0.45,
-  hitSpill: 0.12,         // a hit that doesn't tear splashes this much water out
-  heavySpill: 0.22,       // Old Snapper hits harder
-  holeChance: 0.4,        // chance a light hit tears the pack instead of splashing
-  heavyHoleChance: 0.6,
+  hitSpill: 0.07,         // a hit that doesn't tear splashes this much water out
+  heavySpill: 0.13,       // Old Snapper hits harder
+  slurpSpill: 0.05,       // a frog tongue that reaches Bimbo slurps this much
+  holeChance: 0.25,       // chance a light hit tears the pack instead of splashing (more from behind, less from the front)
+  heavyHoleChance: 0.45,
+  backHitTear: 1.7,       // hits on the pack side multiply the tear chance; hits Rocco takes face-on multiply it by frontHitTear
+  frontHitTear: 0.4,
   maxHoles: 5,
   patchCost: 1,           // twine per patch (plus one needle use from a sewing kit)
   kitNeedles: 3,          // patches in one sewing kit

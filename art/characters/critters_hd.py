@@ -54,3 +54,69 @@ def snapper(blink, submerged=True, awake=False):
             if px[x, y][3]: px[x, y] = (0, 0, 0, 0)
     return im
 
+
+
+HPAL = {k: hx(v) for k, v in {
+    'H0': '2e3a4c', 'H1': '4a5c74', 'H2': '7890aa', 'H3': 'b4c4d4', 'HW': 'e8eef2', 'HK': '15111c',
+    'BK': 'e8b830', 'BK2': 'ffd860', 'LG': 'a89a50', 'LG2': '7a6e38', 'FR': 'ff3a3a', 'FR2': 'ffb0a0', 'WAT': '9ae0ff',
+}.items()}
+HERON_W, HERON_H = 72, 92
+HERON_ANCHOR = (30, 88)
+
+def heron(pose='idle', blink=False, awake=False):
+    """The Heron Ferryman, Reedmarsh's boss: tall, blue-grey, black crest plume, a long yellow spear of a beak.
+    Poses: idle, wind (neck coiled back), stab (neck shot forward), gust (wings thrown open). Faces right."""
+    w, h = HERON_W, HERON_H
+    L = []
+    if pose == 'gust':
+        wb = Layer('wingb', w, h, HPAL)
+        wb.poly([(24, 46), (2, 18), (6, 40), (18, 56)], 'H1')
+        for k in range(4): wb.line([(4 + k * 3, 22 + k * 7), (18, 50)], 'H0')
+        L.append(wb)
+    legs = Layer('legs', w, h, HPAL)
+    legs.line([(28, 62), (26, 88)], 'LG', 2); legs.line([(34, 62), (36, 88)], 'LG2', 2)
+    legs.line([(20, 88), (32, 88)], 'LG', 1); legs.line([(32, 88), (42, 88)], 'LG2', 1)
+    L.append(legs)
+    body = Layer('heron', w, h, HPAL)
+    body.ell(30, 54, 13, 11, 'H2')                                   # body
+    body.poly([(18, 54), (6, 66), (14, 64), (22, 60)], 'H1')         # tail plumes
+    body.ell(32, 58, 9, 6, 'H3')                                     # breast
+    # neck and head by pose
+    if pose == 'wind':
+        neck = [(34, 46), (40, 38), (36, 30), (28, 26), (30, 18)]; head = (34, 16); beak = [(38, 14), (60, 12), (38, 18)]
+    elif pose == 'stab':
+        neck = [(36, 48), (44, 44), (52, 40), (58, 36)]; head = (60, 34); beak = [(64, 32), (71, 34), (64, 37)]
+    else:
+        neck = [(34, 46), (38, 36), (36, 26), (36, 18)]; head = (38, 14); beak = [(42, 12), (62, 15), (42, 17)]
+    pts = neck + [head]
+    for (x0, y0), (x1, y1) in zip(pts, pts[1:]):                       # a solid S-curve, thinning toward the head
+        n = int(max(abs(x1 - x0), abs(y1 - y0))) + 1
+        for k in range(n + 1):
+            u = k / n; r = 3.6 - 1.0 * (pts.index((x0, y0)) + u) / len(pts)
+            body.ell(x0 + (x1 - x0) * u, y0 + (y1 - y0) * u, r, r, 'H3')
+    body.ell(neck[0][0], neck[0][1], 5, 5, 'H3')
+    body.ell(head[0], head[1], 6, 5, 'HW')
+    body.poly([(head[0] - 2, head[1] - 4), (head[0] - 16, head[1] - 11), (head[0] - 13, head[1] - 7), (head[0] - 4, head[1] - 1)], 'HK')   # crest plume
+    L.append(body)
+    bk = Layer('beak', w, h, HPAL)
+    bk.poly(beak, 'BK'); bk.line([beak[0], beak[1]], 'BK2')
+    L.append(bk)
+    eye = Layer('eye', w, h, HPAL)
+    ex, ey = head[0] + 1, head[1] - 1
+    if blink: eye.line([(ex - 1, ey), (ex + 1, ey)], 'HK')
+    else:
+        eye.rect(ex - 1, ey - 1, ex + 1, ey + 1, 'HK' if awake else 'FR')
+        eye.px(ex - 1, ey - 1, 'HW' if awake else 'FR2')
+    eye.line([(head[0] - 4, head[1] + 1), (head[0] + 4, head[1] + 2)], 'HK')   # black eye stripe
+    L.append(eye)
+    if pose == 'gust':
+        wf = Layer('wingf', w, h, HPAL)
+        wf.poly([(36, 46), (66, 20), (62, 42), (44, 56)], 'H2')
+        for k in range(4): wf.line([(64 - k * 3, 24 + k * 6), (44, 52)], 'H1')
+        L.append(wf)
+    else:
+        wf = Layer('wingf', w, h, HPAL)
+        wf.ell(26, 52, 11, 8, 'H1')
+        for k in range(3): wf.line([(18 + k * 4, 50 + k), (24 + k * 4, 58)], 'H0')
+        L.append(wf)
+    return composite(L)

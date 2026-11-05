@@ -1,0 +1,257 @@
+{
+ "id": "reedmarsh-12",
+ "name": "The Ferryman's Pool",
+ "subtitle": "Reedmarsh \u00b7 the Ferryman",
+ "width": 1120,
+ "height": 700,
+ "playerStart": {
+  "x": 66,
+  "y": 350
+ },
+ "walls": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1120,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 680,
+   "w": 1120,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 308.0,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 392.0,
+   "w": 20,
+   "h": 308.0,
+   "kind": "border"
+  },
+  {
+   "x": 1100,
+   "y": 0,
+   "w": 20,
+   "h": 308.0,
+   "kind": "border"
+  },
+  {
+   "x": 1100,
+   "y": 392.0,
+   "w": 20,
+   "h": 308.0,
+   "kind": "border"
+  },
+  {
+   "x": 150,
+   "y": 200,
+   "w": 40,
+   "h": 30,
+   "kind": "rock"
+  },
+  {
+   "x": 950,
+   "y": 470,
+   "w": 56,
+   "h": 24,
+   "kind": "log"
+  }
+ ],
+ "gate": {
+  "x": 1074,
+  "y": 304,
+  "w": 12,
+  "h": 92
+ },
+ "pits": [
+  {
+   "x": 380,
+   "y": 120,
+   "w": 450,
+   "h": 460
+  }
+ ],
+ "bridges": [
+  {
+   "x": 560,
+   "y": 310,
+   "w": 90,
+   "h": 80,
+   "kind": "island"
+  }
+ ],
+ "refills": [
+  {
+   "x": 356,
+   "y": 96,
+   "w": 498,
+   "h": 26
+  },
+  {
+   "x": 356,
+   "y": 578,
+   "w": 498,
+   "h": 26
+  },
+  {
+   "x": 356,
+   "y": 96,
+   "w": 26,
+   "h": 508
+  },
+  {
+   "x": 828,
+   "y": 96,
+   "w": 26,
+   "h": 508
+  }
+ ],
+ "posts": [
+  {
+   "x": 340,
+   "y": 350,
+   "r": 9
+  },
+  {
+   "x": 870,
+   "y": 350,
+   "r": 9
+  },
+  {
+   "x": 605,
+   "y": 80,
+   "r": 9
+  },
+  {
+   "x": 605,
+   "y": 620,
+   "r": 9
+  }
+ ],
+ "bell": null,
+ "exit": null,
+ "vents": [
+  {
+   "x": 200,
+   "y": 150
+  },
+  {
+   "x": 200,
+   "y": 560
+  },
+  {
+   "x": 960,
+   "y": 150
+  },
+  {
+   "x": 960,
+   "y": 560
+  }
+ ],
+ "bucket": null,
+ "breadSpots": [
+  {
+   "x": 960,
+   "y": 350
+  },
+  {
+   "x": 140,
+   "y": 480
+  }
+ ],
+ "enemies": [
+  {
+   "kind": "heron",
+   "x": 605,
+   "y": 360
+  }
+ ],
+ "knightSpawn": null,
+ "lightKind": "frog",
+ "heavyKind": "snapper",
+ "doors": [
+  {
+   "id": "w",
+   "x": 0,
+   "y": 308.0,
+   "w": 26,
+   "h": 84,
+   "to": "reedmarsh-11",
+   "toDoor": "e",
+   "spawn": {
+    "x": 66,
+    "y": 350
+   },
+   "label": "Heron's Approach"
+  },
+  {
+   "id": "e",
+   "x": 1094,
+   "y": 308.0,
+   "w": 26,
+   "h": 84,
+   "to": "END",
+   "toDoor": "",
+   "spawn": {
+    "x": 1054,
+    "y": 350
+   },
+   "gated": true,
+   "label": "Hollowbark Woods"
+  }
+ ],
+ "paths": [
+  [
+   [
+    66,
+    350
+   ],
+   [
+    356,
+    350
+   ]
+  ],
+  [
+   [
+    854,
+    350
+   ],
+   [
+    1054,
+    350
+   ]
+  ]
+ ],
+ "boss": "heron",
+ "ventSpawns": false,
+ "kits": [
+  {
+   "x": 140,
+   "y": 620
+  }
+ ],
+ "spools": [
+  {
+   "x": 980,
+   "y": 80
+  },
+  {
+   "x": 140,
+   "y": 80
+  }
+ ],
+ "lantern": {
+  "x": 330,
+  "y": 300
+ },
+ "winText": "Reedmarsh cleared! The Heron Ferryman will carry you on to Hollowbark Woods."
+}

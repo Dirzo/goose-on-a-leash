@@ -17,15 +17,18 @@ export type GooseState = 'held' | 'flying' | 'latched' | 'loose' | 'returning';
 export type { EnemyKind };
 
 /** How close Rocco must get before an entranced critter notices him. Room 01's pests see across the room. */
-const AGGRO: Partial<Record<EnemyKind, number>> = { frog: 160, snapper: 210 };
-const HEAVY: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['knight', 'snapper']);
+const AGGRO: Partial<Record<EnemyKind, number>> = { frog: 160, snapper: 210, heron: 520 };
+const HEAVY: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['knight', 'snapper', 'heron']);
 /** Animals under the blood moon's trance. Beaten, they wake up and wander off instead of dying. */
-const ENTRANCED: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['frog', 'snapper']);
+const ENTRANCED: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['frog', 'snapper', 'heron']);
+/** Bosses stand their ground: no knockback, they never fall in, and they stay once woken. */
+const BOSS: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['heron']);
+export const HERON_HP = 24;
 /** Seconds a woken critter takes to hop away. */
 const WAKE_TIME = 1.6;
 
 /** What a room remembers after you leave it. */
-export interface RoomMemory { gateOpen: boolean; bread: boolean[]; chest: boolean; rang: boolean; kits?: boolean[]; spools?: boolean[] }
+export interface RoomMemory { gateOpen: boolean; bread: boolean[]; chest: boolean; rang: boolean; kits?: boolean[]; spools?: boolean[]; boss?: boolean }
 
 export interface Player {
   x: number; y: number; r: number; vx: number; vy: number;
@@ -41,7 +44,27 @@ export interface Enemy {
   vx: number; vy: number; falling: number; dead: boolean; hitT: number; spd: number;
   /** Seconds since it woke from the trance (0 = still entranced). A woken critter is harmless and leaving. */
   woke: number;
+  /** Entranced critters' attack state machine (Room 01 pests just chase). */
+  mode: CritterMode; modeT: number; cd: number;
+  /** Where the current attack is aimed (Bimbo, as he was when it wound up). */
+  tx: number; ty: number;
+  /** The attack already landed (one hit per attack). */
+  hit: boolean;
+  attack: AttackKind;
+  /** Seconds Biscuit has been hanging on (bosses shake him off). */
+  grip: number;
 }
+
+/**
+ * stalk: circle round to Rocco's back, where Bimbo is. wind: telegraph (flash + marker) before a strike.
+ * leap: a frog's flying jump at the pack. lash: a frog's tongue, out and back. charge: Old Snapper's rush.
+ * recover: a beat of vulnerability after an attack.
+ */
+export type CritterMode = 'stalk' | 'wind' | 'leap' | 'lash' | 'charge' | 'recover' | 'spear' | 'gust' | 'darts' | 'call';
+export type AttackKind = 'leap' | 'lash' | 'charge' | 'bite' | 'spear' | 'gust' | 'dart';
+
+/** A feather dart lobbed at Bimbo: it lands on the marked spot when t reaches T. */
+export interface Dart { x0: number; y0: number; tx: number; ty: number; t: number; T: number }
 
 export interface PostTarget { x: number; y: number; r: number; post: true }
 export type Target = Enemy | PostTarget;
@@ -75,7 +98,7 @@ export interface InputFrame {
   fling?: boolean; yank?: boolean; honk?: boolean; letGo?: boolean; feed?: boolean; cycle?: boolean; patch?: boolean;
 }
 
-export type FxKind = 'honk' | 'chomp' | 'boing' | 'poof' | 'ring' | 'snap' | 'bread' | 'pick' | 'tear' | 'splash' | 'faint' | 'patch' | 'wake' | 'chest';
+export type FxKind = 'honk' | 'chomp' | 'boing' | 'poof' | 'ring' | 'snap' | 'bread' | 'pick' | 'tear' | 'splash' | 'faint' | 'patch' | 'wake' | 'chest' | 'gust';
 export type SimEvent =
   | { type: 'say'; text: string }
   | { type: 'fx'; kind: FxKind; x: number; y: number; a?: number; cone?: number; range?: number; text?: string }
@@ -95,6 +118,7 @@ const QUIPS = {
   swim: ['Rocco fell in the pond. Biscuit honks with laughter.'],
   honk: ['HONK'],
   furious: ['FURY MODE. You are not in charge.'],
+  slurp: ['SLURP. A frog tongue in the pack.', 'The frog drank some of Bimbo\'s water!', 'Tongue! Bimbo: "HEY."'],
   wake: ['The frog blinks awake. Ribbit?', 'Trance broken. The frog hops home.', 'Red eyes fade. Frog says thanks.'],
 } as const;
 
@@ -109,6 +133,7 @@ export class Sim {
   goose!: Goose;
   enemies: Enemy[] = [];
   items: Item[] = [];
+  darts: Dart[] = [];
   breadGot: boolean[] = [];
   /** Sewing kits and twine spools already taken in this room. */
   kitsGot: boolean[] = [];
@@ -200,6 +225,87 @@ export class Sim {
     this.enterRoom(this.room.def, this.entryDoor, true);
   }
 
+  /** Where Bimbo is: on Rocco's back, opposite the way he faces. */
+  packPoint(dist = 10): Vec {
+    const p = this.player, l = Math.hypot(p.fx, p.fy) || 1;
+    return { x: p.x - (p.fx / l) * dist, y: p.y - (p.fy / l) * dist };
+  }
+
+  /**
+   * Entranced critters want Bimbo. They circle to Rocco's back, wind up (telegraphed), then strike at the pack:
+   * frogs leap or lash their tongues, Old Snapper rears and charges. Returns the critter's walking velocity.
+   */
+  private critterAI(e: Enemy, dt: number, d: number, slow: number): [number, number] {
+    const p = this.player, frog = !e.heavy;
+    e.modeT += dt; e.cd -= dt;
+    if (e.stun > 0 && e.mode !== 'recover' && e.mode !== 'stalk') { e.mode = 'recover'; e.modeT = 0; }
+    if (e.stun > 0) return [0, 0];
+    const aware = d < (AGGRO[e.kind] ?? 200) || e.mode !== 'stalk';
+    const to = (x: number, y: number, sp: number): [number, number] => {
+      const [ux, uy, l] = dirTo(e, { x, y }); return l < 2 ? [0, 0] : [ux * sp, uy * sp];
+    };
+    const bimbo = this.packPoint(10);
+    const hitsBimbo = (reach: number) => Math.hypot(bimbo.x - e.x, bimbo.y - e.y) < e.r + reach;
+    switch (e.mode) {
+      case 'stalk': {
+        if (!aware || p.dead) return [0, 0];
+        // sneak round behind: aim for a point past the pack, wobbling side to side so a pack of frogs fans out
+        const back = this.packPoint(frog ? 46 : 30), perp = { x: -p.fy, y: p.fx };
+        const wob = Math.sin(this.time * (frog ? 2.3 : 1.1) + e.id * 1.7) * (frog ? 38 : 18);
+        const tx = back.x + perp.x * wob, ty = back.y + perp.y * wob;
+        const db = Math.hypot(bimbo.x - e.x, bimbo.y - e.y);
+        if (e.cd <= 0 && db < (frog ? 150 : 170)) {
+          e.mode = 'wind'; e.modeT = 0; e.hit = false;
+          // lead the target a little: Rocco is probably still moving
+          e.tx = bimbo.x + p.vx * 0.25; e.ty = bimbo.y + p.vy * 0.25;
+          e.attack = !frog ? (db < 50 ? 'bite' : 'charge') : db < 70 || this.rng() < 0.45 ? 'leap' : 'lash';
+          if (e.attack === 'lash' && db > 140) e.attack = 'leap';
+          return [0, 0];
+        }
+        // the odd sideways hop makes frogs hard to read
+        if (frog && this.rng() < dt * 0.8) { const a = this.rng() * Math.PI * 2; e.vx += Math.cos(a) * 160; e.vy += Math.sin(a) * 160; }
+        return to(tx, ty, e.spd * slow);
+      }
+      case 'wind': {
+        const wind = e.attack === 'lash' ? 0.38 : e.attack === 'bite' ? 0.32 : frog ? 0.42 : 0.7;
+        if (e.modeT < wind) return [0, 0];
+        e.mode = e.attack === 'lash' ? 'lash' : e.attack === 'leap' ? 'leap' : 'charge'; e.modeT = 0;
+        if (e.mode !== 'lash') {
+          const [ux, uy] = dirTo(e, { x: e.tx, y: e.ty });
+          const sp = e.attack === 'leap' ? 360 : e.attack === 'bite' ? 260 : 330;
+          e.vx = ux * sp; e.vy = uy * sp;
+        }
+        return [0, 0];
+      }
+      case 'leap': case 'charge': {
+        // momentum carries it (velocity set at launch; friction applies). It can overshoot into the water.
+        const len = e.mode === 'leap' ? 0.34 : e.attack === 'bite' ? 0.22 : 0.75;
+        if (e.mode === 'charge' && e.attack === 'charge') { const [ux, uy] = dirTo({ x: 0, y: 0 }, { x: e.vx, y: e.vy }); e.vx = ux * 330; e.vy = uy * 330; }
+        if (!e.hit && hitsBimbo(p.r + 4)) { e.hit = true; this.hurtPlayer(1, e.heavy, e, e.attack); e.vx *= -0.3; e.vy *= -0.3; }
+        if (e.modeT > len) { e.mode = 'recover'; e.modeT = 0; }
+        return [0, 0];
+      }
+      case 'lash': {
+        // the tongue shoots out to the marked spot and back (0.22 s); it slurps if Bimbo is on the line
+        const out = Math.min(1, e.modeT / 0.11);
+        if (!e.hit && out >= 1) {
+          const [ux, uy, l] = dirTo(e, { x: e.tx, y: e.ty });
+          const reach = Math.min(l + 10, 150);
+          const bx = bimbo.x - e.x, by = bimbo.y - e.y, along = bx * ux + by * uy, off = Math.abs(bx * uy - by * ux);
+          if (along > 0 && along < reach && off < 14) { e.hit = true; this.hurtPlayer(1, false, e, 'lash'); }
+          else e.hit = true;    // missed: one try per lash
+        }
+        if (e.modeT > 0.22) { e.mode = 'recover'; e.modeT = 0; }
+        return [0, 0];
+      }
+      case 'recover': {
+        if (e.modeT > (frog ? 0.55 : 1.0)) { e.mode = 'stalk'; e.modeT = 0; e.cd = (frog ? 0.7 : 1.4) + this.rng() * 1.1; }
+        return [0, 0];
+      }
+      default: e.mode = 'recover'; e.modeT = 0; return [0, 0];
+    }
+  }
+
   private useDoor(d: Door): void {
     if (d.to === 'END') {
       this.remember();
@@ -231,7 +337,8 @@ export class Sim {
     if (!this.room) return;
     const id = this.room.def.id;
     this.world[id] = { gateOpen: !!this.room.def.gate && !this.room.gateClosed, bread: [...this.breadGot],
-      chest: this.world[id]?.chest ?? false, rang: this.rang, kits: [...this.kitsGot], spools: [...this.spoolsGot] };
+      chest: this.world[id]?.chest ?? false, rang: this.rang, kits: [...this.kitsGot], spools: [...this.spoolsGot],
+      boss: this.world[id]?.boss || this.enemies.some(e => BOSS.has(e.kind) && e.woke > 0) };
   }
 
   private setupRoom(def: RoomDef, s: Vec): void {
@@ -241,7 +348,8 @@ export class Sim {
     this.goose = { x: s.x - 30 * (this.player.fx || 1), y: s.y, vx: 0, vy: 0, state: 'held', feral: false, strain: 0, target: null, ox: 0, oy: 0, face: 1,
       t: 0, fury: 0, furious: 0, tug: 0, honkCd: 0, biteT: 0, grabCd: 0 };
     this.enemies = def.enemies.map(e => this.mkEnemy(e.kind, e.x, e.y));
-    this.items = [];
+    if (mem?.boss) for (const e of this.enemies) if (BOSS.has(e.kind)) { e.woke = 0.001; e.hp = 0; }   // already beaten: friendly
+    this.items = []; this.darts = [];
     this.breadGot = def.breadSpots.map((_, i) => mem?.bread[i] ?? false);
     this.kitsGot = (def.kits ?? []).map((_, i) => mem?.kits?.[i] ?? false);
     this.spoolsGot = (def.spools ?? []).map((_, i) => mem?.spools?.[i] ?? false);
@@ -254,9 +362,11 @@ export class Sim {
   private active(e: Enemy): boolean { return !e.dead && !e.falling && !e.woke; }
 
   mkEnemy(kind: EnemyKind, x: number, y: number): Enemy {
-    const k = HEAVY.has(kind);
-    return { id: this.nextId++, kind, x, y, r: k ? 20 : 13, hp: k ? 8 : 3, max: k ? 8 : 3, heavy: k, stun: 0,
-      vx: 0, vy: 0, falling: 0, dead: false, hitT: 0, spd: k ? 42 : 78, woke: 0 };
+    const k = HEAVY.has(kind), boss = kind === 'heron';
+    const hp = boss ? HERON_HP : k ? 8 : 3;
+    return { id: this.nextId++, kind, x, y, r: boss ? 24 : k ? 20 : 13, hp, max: hp, heavy: k, stun: 0,
+      vx: 0, vy: 0, falling: 0, dead: false, hitT: 0, spd: boss ? 0 : k ? 42 : 78, woke: 0,
+      mode: 'stalk', modeT: 0, cd: boss ? 2 : 0.8 + this.rng() * 1.2, tx: x, ty: y, hit: false, attack: 'leap', grip: 0 };
   }
 
   /** Take and clear the events produced since the last drain. */
@@ -491,7 +601,16 @@ export class Sim {
     if (ENTRANCED.has(e.kind)) {
       e.woke = 0.001; e.stun = 0; e.hp = 0;
       this.fx('wake', e.x, e.y);
-      this.say(e.heavy ? 'Old Snapper blinks. The red fades from his eyes.' : this.pick('wake'));
+      if (BOSS.has(e.kind)) {
+        this.darts = [];
+        for (const o of this.enemies) if (o !== e && this.active(o)) { o.woke = 0.001; this.fx('wake', o.x, o.y); }   // his frogs wake too
+        this.room.gateClosed = false;
+        this.world[this.room.def.id] = { ...(this.world[this.room.def.id] ?? { gateOpen: true, bread: [...this.breadGot], chest: false, rang: this.rang }), boss: true, gateOpen: true };
+        this.say('The red drains from the Heron\'s eyes. "...Raccoon. I am the Ferryman. The way on is open."');
+        // he flings his gifts to Rocco's bank: his rock is out of reach now he is friendly
+        const gx = this.player.x, gy = this.player.y;
+        this.drop('crest', gx, gy); this.drop('chain', gx, gy, 2); this.drop('fluff', gx, gy, 3);
+      } else this.say(e.heavy ? 'Old Snapper blinks. The red fades from his eyes.' : this.pick('wake'));
     } else { e.dead = true; this.fx('poof', e.x, e.y); }
     if (!e.heavy) { this.drop('fluff', e.x, e.y); if (this.rng() < 0.45) this.drop('crust', e.x, e.y); }
     else { this.drop('chain', e.x, e.y, 2); this.drop('crest', e.x, e.y); }
@@ -502,7 +621,7 @@ export class Sim {
    * A hit on Rocco. In world rooms it lands on the backpack: it either tears it (the leak rate goes up)
    * or splashes water out. In Room 01 it costs hearts, as in the prototype.
    */
-  hurtPlayer(amt = 1, heavy = false): void {
+  hurtPlayer(amt = 1, heavy = false, from?: Vec, kind?: AttackKind): void {
     const p = this.player, pk = this.pack;
     if (p.inv > 0 || p.air || p.dead) return;
     p.inv = C.invulnerable;
@@ -512,14 +631,28 @@ export class Sim {
       return;
     }
     const before = pk.water;
-    if (pk.holes < C.maxHoles && this.rng() < (heavy ? C.heavyHoleChance : C.holeChance)) {
+    // which side did it come from? Bimbo rides on Rocco's back, so hits there tear far more often
+    let side = 1;
+    if (from) {
+      const fl = Math.hypot(p.fx, p.fy) || 1, ox = from.x - p.x, oy = from.y - p.y;
+      side = (ox * -p.fx + oy * -p.fy) / fl > 0 ? C.backHitTear : C.frontHitTear;
+    }
+    const bk = this.packPoint(14);
+    if (kind === 'lash') {
+      pk.water = Math.max(0, pk.water - C.slurpSpill * amt);
+      this.fx('splash', bk.x, bk.y - 34);
+      if (pk.water > 0.3) this.say(this.pick('slurp'));
+    } else if (pk.holes < C.maxHoles && this.rng() < (heavy ? C.heavyHoleChance : C.holeChance) * side) {
       pk.holes++;
-      this.fx('tear', p.x - 10, p.y - 30);
-      this.say(pk.holes === 1 ? 'RIP! The pack tore. Water is leaking. [P] to patch.' : `Another tear! ${pk.holes} leaking now.`);
+      this.fx('tear', bk.x, bk.y - 30);
+      this.say(pk.holes === 1 ? 'RIP! It went for Bimbo and tore the pack. [P] to patch.' : `Another tear! ${pk.holes} leaking now.`);
     } else {
-      pk.water = Math.max(0, pk.water - (heavy ? C.heavySpill : C.hitSpill) * amt);
-      this.fx('splash', p.x - 10, p.y - 34);
-      if (pk.water > 0.3) this.say(heavy ? 'WHAM. A big splash out of the pack.' : 'Splash! Water knocked out of the pack.');
+      pk.water = Math.max(0, pk.water - (heavy ? C.heavySpill : C.hitSpill) * amt * (side < 1 ? 0.6 : 1));
+      this.fx('splash', bk.x, bk.y - 34);
+      if (pk.water > 0.3) this.say(heavy ? 'WHAM. Old Snapper rams the pack.' : side > 1 ? 'It leapt at Bimbo! Water everywhere.' : 'Splash! Rocco blocks most of it.');
+    }
+    if (from && pk.enabled) {                        // knocked back, away from the hit
+      const [ux, uy] = dirTo(from, p); p.vx += ux * (heavy ? 340 : 200); p.vy += uy * (heavy ? 340 : 200);
     }
     this.waterWarnings(before);
   }
@@ -616,7 +749,7 @@ export class Sim {
     if (this.spawnT <= 0) {
       this.spawnT = C.bunnySpawnEvery;
       const vents = room.def.vents;
-      if (bunnies < C.maxBunnies && vents.length) {
+      if (bunnies < C.maxBunnies && vents.length && room.def.ventSpawns !== false) {
         const v = vents[Math.floor(this.rng() * vents.length)]!;
         this.enemies.push(this.mkEnemy(light, v.x, v.y)); this.fx('ring', v.x, v.y);
       }
@@ -649,6 +782,11 @@ export class Sim {
       const ml = Math.hypot(mx, my);
       if (ml > 1) { mx /= ml; my /= ml; }
       if (ml > 0.01) { const l = Math.hypot(mx, my); p.fx = mx / l; p.fy = my / l; }
+      // In world rooms Rocco faces where you aim, so you can turn to keep Bimbo (on his back) away from a critter.
+      if (this.pack.enabled && input) {
+        const ax2 = input.aimX - p.x, ay2 = input.aimY - p.y, al = Math.hypot(ax2, ay2);
+        if (al > 24) { p.fx = ax2 / al; p.fy = ay2 / al; }
+      }
       const acc = 1 - Math.exp(-14 * dt);
       p.vx += (mx * C.playerSpeed - p.vx) * acc; p.vy += (my * C.playerSpeed - p.vy) * acc;
       // a goose stronger than his leash tugs you around
@@ -700,6 +838,7 @@ export class Sim {
       if (e.falling) { e.falling += dt; if (e.falling > 0.6) { e.falling = 0; e.dead = true; } continue; }
       e.stun = Math.max(0, e.stun - dt); e.hitT = Math.max(0, e.hitT - dt);
       const [dx, dy, d] = dirTo(e, p);
+      if (e.woke && BOSS.has(e.kind)) { e.woke += dt; continue; }   // the Ferryman stays, friendly
       if (e.woke) {
         // awake and grateful: hop away from Rocco (frogs are happy to swim), then gone
         e.woke += dt;
@@ -711,12 +850,16 @@ export class Sim {
       }
       let ax = 0, ay = 0;
       const slow = g.state === 'latched' && g.target === e ? 0.35 : 1;
-      if (!e.stun && d < (AGGRO[e.kind] ?? 300)) { ax = dx * e.spd * slow; ay = dy * e.spd * slow; }
+      const critter = ENTRANCED.has(e.kind);
+      if (BOSS.has(e.kind)) [ax, ay] = this.heronAI(e, dt, d);
+      else if (critter) [ax, ay] = this.critterAI(e, dt, d, slow);
+      else if (!e.stun && d < (AGGRO[e.kind] ?? 300)) { ax = dx * e.spd * slow; ay = dy * e.spd * slow; }
       // AI won't walk into the pit; knockback can push them in
       let nx = e.x + ax * dt, ny = e.y + ay * dt;
       if (room.inPit(nx, e.y, -e.r)) nx = e.x;
       if (room.inPit(e.x, ny, -e.r)) ny = e.y;
       e.x = nx; e.y = ny;
+      if (BOSS.has(e.kind)) { e.vx = e.vy = 0; continue; }
       e.x += e.vx * dt; e.y += e.vy * dt;
       const dec = Math.exp(-5 * dt); e.vx *= dec; e.vy *= dec;
       room.collide(e);
@@ -728,7 +871,7 @@ export class Sim {
         if (g.target === e) g.state = 'held';
         continue;
       }
-      if (!e.stun && d < e.r + p.r) this.hurtPlayer(1, e.heavy);
+      if (!critter && !e.stun && d < e.r + p.r) this.hurtPlayer(1, e.heavy);
     }
     for (let i = 0; i < this.enemies.length; i++) for (let j = i + 1; j < this.enemies.length; j++) {
       const a = this.enemies[i]!, b = this.enemies[j]!;
@@ -737,7 +880,119 @@ export class Sim {
       if (d < m && d > 0) { const q = (m - d) / 2; a.x -= (dx / d) * q; a.y -= (dy / d) * q; b.x += (dx / d) * q; b.y += (dy / d) * q; }
     }
 
+    this.stepDarts(dt);
     this.stepGoose(dt);
+  }
+
+  private stepDarts(dt: number): void {
+    const p = this.player;
+    for (const d of this.darts) {
+      d.t += dt;
+      if (d.t >= d.T) {
+        this.fx('splash', d.tx, d.ty - 6);
+        const b = this.packPoint(10);
+        if (Math.hypot(b.x - d.tx, b.y - d.ty) < 20 && !p.air) this.hurtPlayer(1, false, { x: d.x0, y: d.y0 }, 'dart');
+      }
+    }
+    this.darts = this.darts.filter(d => d.t < d.T);
+  }
+
+  /**
+   * The Heron Ferryman, entranced. He stands on his rock in deep water and goes for Bimbo:
+   * spear (a long beak stab, close), darts (feathers lobbed onto marked spots), gust (wing blast that shoves
+   * Rocco away and splashes the pack), call (frogs out of the burrows). Below half health he gets faster and
+   * throws more darts. Biscuit can hang on for a while before he is shaken off.
+   */
+  private heronAI(e: Enemy, dt: number, d: number): [number, number] {
+    const p = this.player, g = this.goose, angry = e.hp < e.max / 2;
+    e.modeT += dt; e.cd -= dt;
+    if (g.state === 'latched' && g.target === e) {
+      e.grip += dt;
+      if (e.grip > (angry ? 1.2 : 1.7)) {
+        e.grip = 0; g.state = 'held'; const [ux, uy] = dirTo(e, g); g.vx = ux * 500; g.vy = uy * 500;
+        this.say('The Heron flicks Biscuit off with one wing.');
+        e.mode = 'gust'; e.modeT = 0; e.hit = false;
+      }
+    } else e.grip = 0;
+    if (e.stun > 0) { if (e.mode !== 'stalk') { e.mode = 'recover'; e.modeT = 0; } return [0, 0]; }
+    if (p.dead) return [0, 0];
+    const bimbo = this.packPoint(10);
+    const db = Math.hypot(bimbo.x - e.x, bimbo.y - e.y);
+    switch (e.mode) {
+      case 'stalk': case 'recover': {
+        if (e.mode === 'recover' && e.modeT < (angry ? 0.5 : 0.9)) return [0, 0];
+        if (e.cd > 0) return [0, 0];
+        e.modeT = 0; e.hit = false;
+        const frogs = this.enemies.filter(o => o.kind === 'frog' && this.active(o)).length;
+        const roll = this.rng();
+        if (db < 150) { e.mode = 'wind'; e.attack = 'spear'; e.tx = bimbo.x; e.ty = bimbo.y; }
+        else if (frogs < (angry ? 3 : 2) && this.room.def.vents.length && roll < 0.25) { e.mode = 'call'; }
+        else if (roll < 0.4 && db < 320) { e.mode = 'wind'; e.attack = 'gust'; }
+        else { e.mode = 'wind'; e.attack = 'dart'; }
+        return [0, 0];
+      }
+      case 'wind': {
+        const wind = e.attack === 'spear' ? (angry ? 0.45 : 0.6) : e.attack === 'gust' ? 0.8 : (angry ? 0.5 : 0.7);
+        if (e.attack === 'spear' && e.modeT < wind * 0.6) { e.tx = bimbo.x; e.ty = bimbo.y; }   // tracks, then commits
+        if (e.modeT < wind) return [0, 0];
+        e.modeT = 0;
+        if (e.attack === 'spear') e.mode = 'spear';
+        else if (e.attack === 'gust') e.mode = 'gust';
+        else {
+          e.mode = 'darts';
+          const n = angry ? 5 : 3;
+          for (let i = 0; i < n; i++) {
+            // aim at Bimbo, where he is headed, and scattered around him
+            const lead = i === 0 ? 0 : 0.5, sx = (this.rng() - 0.5) * 120 * (i ? 1 : 0), sy = (this.rng() - 0.5) * 90 * (i ? 1 : 0);
+            this.darts.push({ x0: e.x, y0: e.y - 40, tx: bimbo.x + p.vx * lead + sx, ty: bimbo.y + p.vy * lead + sy, t: 0, T: 0.75 + i * 0.12 });
+          }
+          this.say(angry ? 'A storm of feathers!' : 'Feather darts! Watch the marks.');
+        }
+        return [0, 0];
+      }
+      case 'spear': {
+        // the beak shoots out along the committed line, 150 long
+        const [ux, uy] = dirTo(e, { x: e.tx, y: e.ty });
+        const bx = bimbo.x - e.x, by = bimbo.y - e.y, along = bx * ux + by * uy, off = Math.abs(bx * uy - by * ux);
+        if (!e.hit && e.modeT > 0.08) { e.hit = true; if (along > 0 && along < 150 && off < 16) this.hurtPlayer(1, true, e, 'spear'); }
+        if (e.modeT > 0.3) { e.mode = 'recover'; e.modeT = 0; e.cd = (angry ? 0.6 : 1.1) + this.rng() * 0.6; }
+        return [0, 0];
+      }
+      case 'gust': {
+        if (!e.hit) {
+          e.hit = true;
+          const [ux, uy, l] = dirTo(e, p);
+          if (l < 340) {
+            const push = 620 * (1 - l / 420);
+            p.vx += ux * push; p.vy += uy * push;
+            if (g.state !== 'latched') { g.vx += ux * push; g.vy += uy * push; }
+            if (this.pack.enabled) { this.pack.water = Math.max(0, this.pack.water - 0.03); this.fx('splash', p.x, p.y - 30); }
+          }
+          this.fx('gust', e.x, e.y, { a: Math.atan2(p.y - e.y, p.x - e.x) });
+          this.say('WHOOSH. A wing gust across the water.');
+        }
+        if (e.modeT > 0.4) { e.mode = 'recover'; e.modeT = 0; e.cd = 0.8 + this.rng() * 0.8; }
+        return [0, 0];
+      }
+      case 'darts': {
+        if (e.modeT > 0.4) { e.mode = 'recover'; e.modeT = 0; e.cd = (angry ? 0.9 : 1.5) + this.rng() * 0.8; }
+        return [0, 0];
+      }
+      case 'call': {
+        if (!e.hit) {
+          e.hit = true;
+          const vents = this.room.def.vents;
+          for (let i = 0; i < (angry ? 2 : 1); i++) {
+            const v = vents[Math.floor(this.rng() * vents.length)]!;
+            const f = this.mkEnemy('frog', v.x, v.y); f.cd = 1.2; this.enemies.push(f); this.fx('ring', v.x, v.y);
+          }
+          this.say('KRAAAK! The Heron calls up frogs from the burrows.');
+        }
+        if (e.modeT > 0.6) { e.mode = 'recover'; e.modeT = 0; e.cd = 1 + this.rng(); }
+        return [0, 0];
+      }
+      default: e.mode = 'recover'; e.modeT = 0; return [0, 0];
+    }
   }
 
   private stepGoose(dt: number): void {
@@ -816,7 +1071,7 @@ export class Sim {
               this.fx('chomp', p.x, p.y);
               if (this.rng() < 0.25) this.say('He chews the Toothed Leash instead of you.');
             } else if (p.inv <= 0) {
-              this.hurtPlayer(this.tuning.power >= 4 ? 2 : 1);
+              this.hurtPlayer(this.tuning.power >= 4 ? 2 : 1, false, g, 'bite');
               p.vx += dx * 260; p.vy += dy * 260;
               this.fx('chomp', p.x, p.y);
               if (this.kit.toothFirst || this.rng() < 0.4) { this.kit.toothFirst = false; this.drop('tooth', p.x, p.y); }

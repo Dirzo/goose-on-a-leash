@@ -9,6 +9,12 @@ One idea per room:
   4 Snapper Shallows no bridge: latch onto Old Snapper on the far bank and let him drag you over
   5 The Braided Line a quiet shrine; the tackle chest holds a longer, stronger line
   6 Lily Crossing    posts spaced past the old line's reach; the Braided Line makes it
+  7 Leaky Boardwalk  a long zigzag boardwalk; frogs leap at Bimbo from little islands alongside
+  8 Twine Thicket    a maze of reed walls; burrows keep coming; twine and a sewing kit in the nooks
+  9 Snapper Run      a corridor between two waters with three Snappers: bait their charges into the water
+ 10 Bell Islands     the bell sits on an island out of honk range from every shore; hop out to ring it
+ 11 Heron's Approach a broken boardwalk: fling-yank over each gap while frogs leap from islands
+ 12 Ferryman's Pool  boss: the Heron Ferryman on his rock in deep water
 
 Reach check: Biscuit can latch anything within the leash length (230, or 270 with the Braided Line)
 of where Rocco stands. `check_reach` asserts each intended jump is in range (and out of range without
@@ -214,7 +220,7 @@ bell6 = {'x': 1196, 'y': 180, 'r': 14}
 ROOMS.append(room(
     'reedmarsh-6', 'Lily Crossing', 1280, 640,
     [dict(id='w', side='W', at=320, to='reedmarsh-5', toDoor='e', label='The Braided Line'),
-     dict(id='e', side='E', at=320, to='END', toDoor='', gated=True, label='Deeper into Reedmarsh')],
+     dict(id='e', side='E', at=320, to='reedmarsh-7', toDoor='w', gated=True, label='Leaky Boardwalk')],
     'w', subtitle='Reedmarsh · 6',
     gate=rect(1234, 274, 12, 92),
     pits=[rect(240, 20, 780, 600)],
@@ -228,7 +234,138 @@ ROOMS.append(room(
     spools=[{'x': 130, 'y': 440}],
     lantern={'x': 230, 'y': 300},
     paths=[[[66, 320], [216, 320]], [[1044, 330], [1214, 320]]],
-    winText='Reedmarsh, part one: done. The Heron Ferryman waits deeper in the marsh.',
+))
+
+# 7 ---------------------------------------------------------------- Leaky Boardwalk
+ROOMS.append(room(
+    'reedmarsh-7', 'Leaky Boardwalk', 1280, 640,
+    [dict(id='w', side='W', at=320, to='reedmarsh-6', toDoor='e', label='Lily Crossing'),
+     dict(id='e', side='E', at=215, to='reedmarsh-8', toDoor='w', label='Twine Thicket')],
+    'w', subtitle='Reedmarsh · 7',
+    pits=[rect(200, 20, 880, 600)],
+    bridges=[rect(196, 300, 330, 30, kind='dock'), rect(496, 100, 30, 230, kind='dock'), rect(496, 100, 330, 30, kind='dock'),
+             rect(796, 100, 30, 420, kind='dock'), rect(796, 490, 288, 30, kind='dock'),
+             rect(600, 190, 80, 70, kind='island'), rect(330, 420, 80, 70, kind='island'), rect(900, 280, 80, 70, kind='island'),
+             rect(640, 410, 70, 60, kind='island')],
+    refills=[rect(176, 20, 26, 600), rect(1078, 20, 26, 600)],
+    props=[rect(1160, 120, 40, 30, kind='rock'), rect(80, 520, 56, 24, kind='log')],
+    enemies=[frog(640, 225), frog(370, 455), frog(940, 315), frog(675, 440)],
+    bread=[{'x': 1150, 'y': 580}],
+    spools=[{'x': 660, 'y': 115}, {'x': 811, 'y': 300}],
+    lantern={'x': 1110, 'y': 470},
+    paths=[[[66, 320], [196, 315]], [[1084, 505], [1180, 505], [1180, 215], [1214, 215]]],
+))
+
+# 8 ---------------------------------------------------------------- Twine Thicket
+ROOMS.append(room(
+    'reedmarsh-8', 'Twine Thicket', 960, 640,
+    [dict(id='w', side='W', at=320, to='reedmarsh-7', toDoor='e', label='Leaky Boardwalk'),
+     dict(id='n', side='N', at=800, to='reedmarsh-9', toDoor='w', label='Snapper Run')],
+    'w', subtitle='Reedmarsh · 8',
+    pits=[rect(440, 450, 110, 110), rect(40, 470, 100, 100)],
+    refills=[rect(420, 430, 150, 22), rect(30, 450, 120, 22)],
+    props=[rect(180, 20, 40, 380, kind='reeds'), rect(380, 240, 40, 380, kind='reeds'), rect(580, 20, 40, 420, kind='reeds'),
+           rect(740, 200, 200, 40, kind='reeds'), rect(250, 120, 40, 28, kind='stump')],
+    vents=[{'x': 300, 'y': 120}, {'x': 500, 'y': 580}, {'x': 860, 'y': 520}],
+    enemies=[frog(300, 500), frog(480, 150), frog(700, 400), frog(860, 320)],
+    bread=[{'x': 690, 'y': 560}],
+    kits=[{'x': 900, 'y': 580}], spools=[{'x': 100, 'y': 80}, {'x': 300, 'y': 590}, {'x': 680, 'y': 100}],
+    lantern={'x': 700, 'y': 300},
+    paths=[[[66, 320], [140, 320], [140, 430], [300, 430], [300, 180], [500, 180], [500, 400], [700, 470], [700, 120], [800, 70]]],
+))
+
+# 9 ---------------------------------------------------------------- Snapper Run
+check_reach('snapper run: escape post', (425, 190), (425, 80), BASE_LEASH)
+ROOMS.append(room(
+    'reedmarsh-9', 'Snapper Run', 1280, 560,
+    [dict(id='w', side='W', at=280, to='reedmarsh-8', toDoor='n', label='Twine Thicket'),
+     dict(id='e', side='E', at=280, to='reedmarsh-10', toDoor='w', label='Bell Islands')],
+    'w', subtitle='Reedmarsh · 9',
+    pits=[rect(20, 20, 1240, 150), rect(20, 390, 1240, 150)],
+    bridges=[rect(380, 40, 90, 80, kind='island'), rect(820, 40, 90, 80, kind='island')],
+    refills=[rect(20, 168, 1240, 22), rect(20, 370, 1240, 22)],
+    posts=[post(425, 80), post(865, 80)],
+    props=[rect(300, 220, 40, 30, kind='rock'), rect(700, 300, 40, 28, kind='stump'), rect(1000, 200, 56, 24, kind='log')],
+    enemies=[snapper(520, 280), snapper(900, 330), snapper(1100, 230)],
+    bread=[{'x': 760, 'y': 360}],
+    kits=[{'x': 640, 'y': 200}], spools=[{'x': 180, 'y': 350}],
+    lantern={'x': 640, 'y': 190},
+    paths=[[[66, 280], [1214, 280]]],
+))
+
+# 10 --------------------------------------------------------------- Bell Islands
+bell10 = {'x': 670, 'y': 320, 'r': 14}
+HONK = 178 + 14 + 30
+check_reach('bell islands: honk from island 1', (505, 265), (bell10['x'], bell10['y']), HONK)
+for shore in [(670, 54), (670, 586), (294, 320), (906, 320)]:
+    assert math.dist(shore, (bell10['x'], bell10['y'])) > HONK, f'bell reachable from shore {shore}'
+check_reach('bell islands: shore to island 1', (294, 300), (465, 255), BASE_LEASH)
+check_reach('bell islands: island 1 to island 2', (505, 270), (715, 350), BRAIDED)
+check_reach('bell islands: island 2 to far shore', (735, 340), (950, 330), BASE_LEASH)
+check_reach('bell islands: back to the near shore', (425, 250), (250, 300), BASE_LEASH)
+ROOMS.append(room(
+    'reedmarsh-10', 'Bell Islands', 1120, 640,
+    [dict(id='w', side='W', at=320, to='reedmarsh-9', toDoor='e', label='Snapper Run'),
+     dict(id='e', side='E', at=320, to='reedmarsh-11', toDoor='w', gated=True, label="Heron's Approach")],
+    'w', subtitle='Reedmarsh · 10',
+    gate=rect(1074, 274, 12, 92),
+    pits=[rect(300, 60, 600, 520)],
+    bridges=[rect(420, 210, 90, 90, kind='island'), rect(620, 290, 120, 100, kind='island')],
+    refills=[rect(276, 60, 26, 520), rect(898, 60, 26, 520)],
+    posts=[post(465, 255), post(250, 300), post(715, 350), post(950, 330)],
+    bell=bell10,
+    props=[rect(120, 220, 40, 30, kind='rock'), rect(980, 560, 56, 24, kind='log')],
+    enemies=[frog(150, 150), frog(150, 500), frog(1000, 180), frog(1010, 470)],
+    bread=[{'x': 1000, 'y': 330}],
+    spools=[{'x': 120, 'y': 330}],
+    lantern={'x': 260, 'y': 250},
+    paths=[[[66, 320], [276, 310]], [[924, 330], [1054, 320]]],
+))
+
+# 11 --------------------------------------------------------------- Heron's Approach
+check_reach('approach: gap 1', (414, 305), (600, 305), BASE_LEASH)
+check_reach('approach: gap 2', (754, 305), (940, 305), BASE_LEASH)
+ROOMS.append(room(
+    'reedmarsh-11', "Heron's Approach", 1280, 640,
+    [dict(id='w', side='W', at=305, to='reedmarsh-10', toDoor='e', label='Bell Islands'),
+     dict(id='e', side='E', at=305, to='reedmarsh-12', toDoor='w', label="The Ferryman's Pool")],
+    'w', subtitle='Reedmarsh · 11',
+    pits=[rect(200, 20, 880, 600)],
+    bridges=[rect(196, 290, 224, 30, kind='dock'), rect(560, 290, 200, 30, kind='dock'), rect(900, 290, 184, 30, kind='dock'),
+             rect(440, 150, 80, 70, kind='island'), rect(800, 410, 80, 70, kind='island'), rect(640, 430, 80, 70, kind='island')],
+    refills=[rect(176, 20, 26, 600), rect(1078, 20, 26, 600)],
+    posts=[post(600, 305), post(940, 305)],
+    props=[rect(1160, 520, 40, 30, kind='rock'), rect(80, 140, 40, 28, kind='stump')],
+    enemies=[frog(480, 185), frog(840, 445), frog(680, 465)],
+    bread=[{'x': 1200, 'y': 560}],
+    kits=[{'x': 1150, 'y': 200}], spools=[{'x': 1150, 'y': 420}, {'x': 1210, 'y': 300}],
+    lantern={'x': 1120, 'y': 280},
+    paths=[[[66, 305], [196, 305]], [[1084, 305], [1214, 305]]],
+))
+
+# 12 --------------------------------------------------------------- The Ferryman's Pool (boss)
+check_reach('pool: fling at the Heron from the west bank', (374, 350), (605 - 35, 360), BRAIDED)
+for pt in [(340, 350), (870, 350), (605, 80), (605, 620)]:
+    check_reach(f'pool: island to shore post {pt}', (605, 350), pt, BRAIDED + 20)
+ROOMS.append(room(
+    'reedmarsh-12', "The Ferryman's Pool", 1120, 700,
+    [dict(id='w', side='W', at=350, to='reedmarsh-11', toDoor='e', label="Heron's Approach"),
+     dict(id='e', side='E', at=350, to='END', toDoor='', gated=True, label='Hollowbark Woods')],
+    'w', subtitle='Reedmarsh · the Ferryman',
+    gate=rect(1074, 304, 12, 92),
+    pits=[rect(380, 120, 450, 460)],
+    bridges=[rect(560, 310, 90, 80, kind='island')],
+    refills=[rect(356, 96, 498, 26), rect(356, 578, 498, 26), rect(356, 96, 26, 508), rect(828, 96, 26, 508)],
+    posts=[post(340, 350), post(870, 350), post(605, 80), post(605, 620)],
+    props=[rect(150, 200, 40, 30, kind='rock'), rect(950, 470, 56, 24, kind='log')],
+    vents=[{'x': 200, 'y': 150}, {'x': 200, 'y': 560}, {'x': 960, 'y': 150}, {'x': 960, 'y': 560}],
+    enemies=[{'kind': 'heron', 'x': 605, 'y': 360}],
+    boss='heron', ventSpawns=False,
+    bread=[{'x': 960, 'y': 350}, {'x': 140, 'y': 480}],
+    kits=[{'x': 140, 'y': 620}], spools=[{'x': 980, 'y': 80}, {'x': 140, 'y': 80}],
+    lantern={'x': 330, 'y': 300},
+    paths=[[[66, 350], [356, 350]], [[854, 350], [1054, 350]]],
+    winText='Reedmarsh cleared! The Heron Ferryman will carry you on to Hollowbark Woods.',
 ))
 
 os.makedirs(OUT, exist_ok=True)

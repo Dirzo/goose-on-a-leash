@@ -1,7 +1,7 @@
 import type { Circle, Rect, Vec } from '../core/math';
 import type { LeashId } from './recipes';
 
-export type EnemyKind = 'bunny' | 'knight' | 'frog' | 'snapper';
+export type EnemyKind = 'bunny' | 'knight' | 'frog' | 'snapper' | 'heron';
 
 /** A doorway on a room edge. Walking into it travels to `toDoor` in room `to` (or ends the slice when `to` is 'END'). */
 export interface Door {
@@ -54,6 +54,10 @@ export interface RoomDef {
   spools?: Vec[];
   /** A tackle chest holding a leash, opened once. */
   chest?: { x: number; y: number; leash: LeashId };
+  /** False: the burrows don't spawn on their own (a boss calls frogs instead). */
+  ventSpawns?: boolean;
+  /** A boss fight: beating the boss (waking him) opens the room's gate. */
+  boss?: EnemyKind;
   /** Shown under the room name on arrival. */
   subtitle?: string;
   /** Shown when the slice ends through an 'END' door. */

@@ -29,7 +29,7 @@ function cross(sim: Sim, from: [number, number], to: [number, number]): number |
 }
 
 describe('world map', () => {
-  it('has six Reedmarsh rooms', () => { expect(REED.map(r => r.id).sort()).toEqual([1, 2, 3, 4, 5, 6].map(n => `reedmarsh-${n}`)); });
+  it('has twelve Reedmarsh rooms', () => { expect(REED.length).toBe(12); for (let n = 1; n <= 12; n++) expect(ROOMS[`reedmarsh-${n}`]).toBeTruthy(); });
 
   it('every door leads to a real door that leads back', () => {
     for (const r of [WILLOWMERE, ...REED]) for (const d of r.doors ?? []) {
@@ -129,7 +129,7 @@ describe('travel', () => {
   });
 
   it('the END door finishes the slice', () => {
-    const sim = at(ROOMS['reedmarsh-6']!);
+    const sim = at(ROOMS['reedmarsh-12']!);
     sim.room.gateClosed = false;
     const e = sim.room.def.doors!.find(d => d.id === 'e')!;
     sim.player.x = e.spawn.x; sim.player.y = e.spawn.y;
@@ -206,5 +206,106 @@ describe('Reedmarsh crossings', () => {
     expect(sim.chestOpen()).toBe(true);
     sim.enterRoom(ROOMS['reedmarsh-4']!, 'n'); sim.enterRoom(ROOMS['reedmarsh-5']!, 'w');
     expect(sim.chestOpen()).toBe(true);
+  });
+});
+
+describe('Reedmarsh part two', () => {
+  it('Snapper Run: a Snapper that charges past Rocco over the bank goes into the water', () => {
+    const sim = at(ROOMS['reedmarsh-9']!); fixRng(sim, 0.5);
+    const s = sim.mkEnemy('snapper', 600, 300); sim.enemies.push(s);
+    s.mode = 'charge'; s.attack = 'charge'; s.modeT = 0; s.vx = 0; s.vy = 330; s.hit = true;
+    run(sim, 1);
+    expect(s.falling > 0 || s.dead).toBe(true);
+  });
+
+  it('Bell Islands: the bell can be honked from the first island', () => {
+    const sim = at(ROOMS['reedmarsh-10']!);
+    sim.player.x = 505; sim.player.y = 265; sim.goose.x = 495; sim.goose.y = 265; sim.goose.state = 'held';
+    sim.honk({ x: 670, y: 320 });
+    expect(sim.room.gateClosed).toBe(false);
+  });
+
+  it("Heron's Approach: fling-yank over both gaps in the boardwalk", () => {
+    const sim = at(ROOMS['reedmarsh-11']!); fixRng(sim, 0.99);
+    expect(cross(sim, [414, 305], [600, 305])).toBe(600);
+    expect(sim.room.inPit(sim.player.x, sim.player.y, 6)).toBe(false);
+    expect(cross(sim, [754, 305], [940, 305])).toBe(940);
+    expect(sim.player.x).toBeGreaterThan(900);
+    expect(sim.room.inPit(sim.player.x, sim.player.y, 6)).toBe(false);
+  });
+});
+
+describe('the Heron Ferryman', () => {
+  function pool(seed = 9): Sim {
+    const sim = new Sim({ room: WILLOWMERE, seed });
+    sim.kit.findLeash('braided');
+    sim.enterRoom(ROOMS['reedmarsh-12']!, 'w');
+    sim.drainEvents();
+    return sim;
+  }
+
+  it('stands his ground in deep water and attacks with spear, darts, gusts and frog calls', () => {
+    const sim = pool();
+    const h = sim.enemies.find(e => e.kind === 'heron')!;
+    const seen = new Set<string>();
+    sim.player.x = 360; sim.player.y = 350;
+    for (let i = 0; i < 60 * 40; i++) {
+      sim.pack.water = 1; sim.pack.holes = 0; sim.player.dead = 0;   // keep Rocco up so we can watch
+      sim.step(STEP, { moveX: 0, moveY: 0, aimX: 605, aimY: 360 });
+      seen.add(h.mode);
+      if (i > 60 * 20) { sim.player.x = 570; sim.player.y = 345; sim.player.vx = sim.player.vy = 0; }   // stand on his rock (as if yanked over)
+    }
+    expect(h.x).toBe(605); expect(h.falling).toBe(0);
+    expect(seen.has('darts')).toBe(true);
+    expect(seen.has('spear')).toBe(true);
+    expect(seen.has('gust') || seen.has('call')).toBe(true);
+  });
+
+  it('a feather dart landing on Bimbo hurts; one landing elsewhere does not', () => {
+    const sim = pool(); fixRng(sim, 0.99);
+    sim.enemies = [];
+    sim.player.x = 300; sim.player.y = 350; sim.step(STEP, { moveX: 0, moveY: 0, aimX: 600, aimY: 350 });
+    sim.player.inv = 0;
+    const b = sim.packPoint(10);
+    sim.darts.push({ x0: 605, y0: 320, tx: 200, ty: 200, t: 0, T: 0.1 });
+    run(sim, 0.2, { moveX: 0, moveY: 0, aimX: 600, aimY: 350 });
+    expect(sim.pack.water).toBeGreaterThan(0.99);
+    sim.darts.push({ x0: 605, y0: 320, tx: b.x, ty: b.y, t: 0, T: 0.1 });
+    run(sim, 0.2, { moveX: 0, moveY: 0, aimX: 600, aimY: 350 });
+    expect(sim.pack.water).toBeLessThan(0.97);
+  });
+
+  it('shakes Biscuit off after a while', () => {
+    const sim = pool();
+    const h = sim.enemies.find(e => e.kind === 'heron')!;
+    sim.goose.state = 'latched'; sim.goose.target = h; sim.goose.ox = -1; sim.goose.oy = 0;
+    sim.player.x = 380; sim.player.y = 350;
+    run(sim, 2.2, { moveX: 0, moveY: 0, aimX: 605, aimY: 360 });
+    expect(sim.goose.state).not.toBe('latched');
+  });
+
+  it('beaten, he wakes as the Ferryman, stays, opens the way, and is remembered', () => {
+    const sim = pool();
+    const h = sim.enemies.find(e => e.kind === 'heron')!;
+    expect(sim.room.gateClosed).toBe(true);
+    sim.damage(h, 999);
+    expect(h.woke).toBeGreaterThan(0);
+    expect(sim.room.gateClosed).toBe(false);
+    run(sim, 5);
+    expect(sim.enemies.includes(h)).toBe(true);
+    sim.enterRoom(ROOMS['reedmarsh-11']!, 'e'); sim.enterRoom(ROOMS['reedmarsh-12']!, 'w');
+    expect(sim.room.gateClosed).toBe(false);
+    expect(sim.enemies.find(e => e.kind === 'heron')!.woke).toBeGreaterThan(0);
+  });
+
+  it('can be fought from the bank with the Braided Line', () => {
+    const sim = pool(); fixRng(sim, 0.99);
+    const h = sim.enemies.find(e => e.kind === 'heron')!; h.cd = 999;
+    sim.player.x = 374; sim.player.y = 350; sim.goose.state = 'held'; sim.goose.x = 360; sim.goose.y = 350;
+    const f = (o: object = {}) => sim.step(STEP, { moveX: 0, moveY: 0, aimX: 605, aimY: 360, ...o });
+    for (let i = 0; i < 10; i++) f();
+    f({ fling: true }); for (let i = 0; i < 40; i++) f();
+    expect(sim.goose.target).toBe(h);
+    expect(h.hp).toBeLessThan(h.max);
   });
 });
