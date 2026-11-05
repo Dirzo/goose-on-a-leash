@@ -14,6 +14,9 @@ import { ITEMS, breadById, isCatalyst, leashById, type BreadId, type ItemId, typ
 
 export type GooseState = 'held' | 'flying' | 'latched' | 'loose' | 'returning';
 export type { EnemyKind };
+
+/** How close Rocco must get before an entranced critter notices him. Room 01's pests see across the room. */
+const AGGRO: Partial<Record<EnemyKind, number>> = { frog: 160, snapper: 210 };
 const HEAVY: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['knight', 'snapper']);
 
 export interface Player {
@@ -72,7 +75,7 @@ const QUIPS = {
   fling: ['HONK!', 'Airborne goose', 'Yeet.', 'Go get em'],
   bite: ['CHOMP', 'The goose has chosen violence', 'Bite secured'],
   boing: ['BOING. Leash tight.', 'Leash limit!'],
-  refuse: ['The goose refuses.', 'Goose says no.', 'Not now, janitor.'],
+  refuse: ['The goose refuses.', 'Goose says no.', 'Not now, Rocco.'],
   pit: ['Down the hole!', 'Pit disposal complete', 'Bye bye'],
   splash: ['SPLASH! Into the pond.', 'Glub glub.', 'Back to the water with you.'],
   fall: ['You fell in. The goose laughs.'],
@@ -147,7 +150,7 @@ export class Sim {
     this.time = 0; this.won = false; this.clearT = 0; this.handled = 0;
     this.spawnT = 4; this.knightT = 0; this.clapperCd = 0; this.rang = false; this.bucketCd = 0;
     this.events.push({ type: 'reset' });
-    this.say(`${def.name}. The goose is already mad.`);
+    this.say(this.pack.enabled ? `${def.name}. Keep the koi wet. Biscuit is already mad.` : `${def.name}. The goose is already mad.`);
   }
 
   mkEnemy(kind: EnemyKind, x: number, y: number): Enemy {
@@ -464,7 +467,7 @@ export class Sim {
     const bk = room.def.bucket;
     this.bucketCd = Math.max(0, this.bucketCd - dt);
     if (bk && this.bucketCd <= 0 && Math.hypot(bk.x - p.x, bk.y - p.y) < 34) {
-      this.bucketCd = C.bucketCooldown; this.kit.mats.mop += 2; this.fx('pick', p.x, p.y - 18, { text: '+2 Mop String' });
+      this.bucketCd = C.bucketCooldown; this.kit.mats.mop += 2; this.fx('pick', p.x, p.y - 18, { text: '+2 Fishing Line' });
     }
 
     // respawns so there is something to farm
@@ -549,7 +552,7 @@ export class Sim {
       const [dx, dy, d] = dirTo(e, p);
       let ax = 0, ay = 0;
       const slow = g.state === 'latched' && g.target === e ? 0.35 : 1;
-      if (!e.stun && d < 300) { ax = dx * e.spd * slow; ay = dy * e.spd * slow; }
+      if (!e.stun && d < (AGGRO[e.kind] ?? 300)) { ax = dx * e.spd * slow; ay = dy * e.spd * slow; }
       // AI won't walk into the pit; knockback can push them in
       let nx = e.x + ax * dt, ny = e.y + ay * dt;
       if (room.inPit(nx, e.y, -e.r)) nx = e.x;
@@ -602,6 +605,9 @@ export class Sim {
         }
       }
       if (g.state === 'flying') for (const post of room.def.posts) {
+        // Biscuit flies past the post Rocco is standing beside, so a post at the end of a dock
+        // does not block flings out over the water.
+        if (Math.hypot(post.x - p.x, post.y - p.y) < post.r + 34) continue;
         if (Math.hypot(post.x - g.x, post.y - g.y) < post.r + 11) {
           g.state = 'latched'; g.target = { ...post, post: true }; g.ox = g.x - post.x; g.oy = g.y - post.y;
           this.say('Latched onto the post.');

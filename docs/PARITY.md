@@ -20,3 +20,10 @@ The M1 gate is "the Phaser build plays exactly like the prototype". Rules, numbe
 
 - Gamepad support (see README).
 - 25 automated tests, including determinism and a 10,000-fling fuzz test.
+
+## Deliberate changes after M1 (Willowmere Pond)
+
+- Biscuit no longer latches onto a post Rocco is standing beside (within post radius + 34). Without this,
+  a post at the end of a dock blocks every fling out over the water. Applies to Room 01 too.
+- Frogs and Old Snapper notice Rocco from 160 / 210 units instead of 300 (entranced critters). Bunnies and
+  knights in Room 01 keep 300.

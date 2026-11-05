@@ -51,6 +51,14 @@ describe('backpack', () => {
     expect(sim.pack.patches).toBe(1);
   });
 
+  it('one patch input sews exactly one patch', () => {
+    const sim = pond();
+    sim.pack.holes = 3; sim.kit.mats.fluff = 10;
+    sim.step(STEP, { moveX: 0, moveY: 0, aimX: 0, aimY: 0, patch: true });
+    expect(sim.pack.holes).toBe(2);
+    expect(sim.kit.mats.fluff).toBe(10 - C.patchCost);
+  });
+
   it('when the water runs out the koi faints and Rocco wakes at the last water', () => {
     const sim = pond();
     sim.pack.lastWater = { x: 425, y: 400 };
@@ -86,6 +94,30 @@ describe('Willowmere Pond', () => {
     sim.yank();
     run(sim, 1.5);
     expect(sim.player.x).toBeGreaterThan(770);
+    expect(sim.player.hp).toBe(5);
+  });
+
+  it('the real crossing: fling from the dock end at the island post, yank, land on the far bank', () => {
+    const sim = pond(5);
+    sim.tuning.strength = 3;
+    sim.player.x = 590; sim.player.y = 300; sim.goose.x = 570; sim.goose.y = 300;
+    const f = (o: object = {}) => sim.step(STEP, { moveX: 0, moveY: 0, aimX: 796, aimY: 300, ...o });
+    run(sim, 1);
+    f({ fling: true }); for (let i = 0; i < 30; i++) f();
+    expect(sim.goose.state).toBe('latched');
+    expect(sim.goose.target?.x).toBe(796);
+    f({ yank: true }); for (let i = 0; i < 90; i++) f();
+    expect(sim.player.x).toBeGreaterThan(770);
+    expect(sim.player.hp).toBe(5);
+    // and back to the dock post
+    sim.goose.state = 'held';
+    const b = (o: object = {}) => sim.step(STEP, { moveX: 0, moveY: 0, aimX: 610, aimY: 300, ...o });
+    run(sim, 1);
+    b({ fling: true }); for (let i = 0; i < 30; i++) b();
+    expect(sim.goose.target?.x).toBe(610);
+    b({ yank: true }); for (let i = 0; i < 90; i++) b();
+    expect(sim.player.x).toBeLessThan(642);
+    expect(sim.room.inPit(sim.player.x, sim.player.y, 6)).toBe(false);
     expect(sim.player.hp).toBe(5);
   });
 

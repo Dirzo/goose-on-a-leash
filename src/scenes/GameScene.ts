@@ -1,16 +1,27 @@
 import Phaser from 'phaser';
 import { STEP } from '../core/config';
 import { Sim } from '../core/sim';
+import { ROOMS, WILLOWMERE, type RoomDef } from '../data/rooms';
 import { Controls } from '../view/controls';
 import { Renderer, snapshot, type Snapshot } from '../view/render';
+import { ArtRenderer, SCREEN_H, SCREEN_W } from '../view/art';
+import { ROOM_ART, nearestFilter, preloadArt } from '../view/assets';
 
 /** Max steps per frame, so a long stall (tab switch) cannot spiral. */
 const MAX_STEPS = 8;
 
+/** `?room=room-01` opens the gray-box test room; Willowmere Pond is the default. */
+export function roomFromUrl(): RoomDef {
+  const id = new URLSearchParams(location.search).get('room') ?? '';
+  return (ROOMS as Record<string, RoomDef>)[id] ?? WILLOWMERE;
+}
+
+interface View { consume: Renderer['consume']; draw: Renderer['draw'] }
+
 export class GameScene extends Phaser.Scene {
   sim!: Sim;
   controls!: Controls;
-  private view!: Renderer;
+  private view!: View;
   private acc = 0;
   private prev: Snapshot | null = null;
   private lastNow = 0;
@@ -20,9 +31,19 @@ export class GameScene extends Phaser.Scene {
 
   constructor() { super('game'); }
 
+  preload(): void { preloadArt(this); }
+
   create(): void {
-    this.sim = new Sim({ seed: (Date.now() & 0x7fffffff) || 1 });
-    this.view = new Renderer(this);
+    nearestFilter(this, Phaser.Textures.FilterMode.NEAREST);
+    const def = roomFromUrl();
+    this.sim = new Sim({ seed: (Date.now() & 0x7fffffff) || 1, room: def });
+    if (ROOM_ART[def.id]) this.view = new ArtRenderer(this, this.sim);
+    else {
+      // gray-box room, scaled to fit the 16:9 canvas
+      const z = Math.min(SCREEN_W / def.width, SCREEN_H / def.height);
+      this.cameras.main.setZoom(z).centerOn(def.width / 2, def.height / 2);
+      this.view = new Renderer(this);
+    }
     this.controls = new Controls(this, this.game.canvas);
     this.view.consume(this.sim.drainEvents());
     this.onReady(this);

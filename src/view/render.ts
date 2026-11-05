@@ -12,12 +12,12 @@ export function snapshot(sim: Sim): Snapshot {
   return { px: sim.player.x, py: sim.player.y, gx: sim.goose.x, gy: sim.goose.y, enemies, rope: sim.rope.points.flatMap(p => [p.x, p.y]) };
 }
 
-const FONTS = {
+export const FONTS = {
   display: '"Bowlby One", "Arial Black", Impact, sans-serif',
   mono: '"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace',
   body: '"Atkinson Hyperlegible", system-ui, sans-serif',
 } as const;
-type Face = keyof typeof FONTS;
+export type Face = keyof typeof FONTS;
 
 const hex = (s: string): number => parseInt(s.replace('#', ''), 16);
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -26,15 +26,18 @@ interface ViewFx { kind: string; x: number; y: number; t: number; a?: number; co
 interface Quip { text: string; life: number }
 
 /** Reusable Text objects, one pool per font face, so frames do not allocate. */
-class TextPool {
+export class TextPool {
   private items: Phaser.GameObjects.Text[] = [];
   private used = 0;
-  constructor(private scene: Phaser.Scene, private face: Face, private depth: number) {}
+  /** `setup` runs once per new Text (camera assignment); `resolution` > 1 keeps text sharp under camera zoom. */
+  constructor(private scene: Phaser.Scene, private face: Face, private depth: number,
+    private setup: (t: Phaser.GameObjects.Text) => void = () => {}, private resolution = 0) {}
   begin(): void { this.used = 0; }
   get(str: string, x: number, y: number, size: number, color: string, alpha = 1, align: 'center' | 'left' | 'right' = 'center', bold = false): Phaser.GameObjects.Text {
     let t = this.items[this.used];
     if (!t) {
-      t = this.scene.add.text(0, 0, '', { fontFamily: FONTS[this.face], fontSize: `${size}px`, color }).setDepth(this.depth);
+      t = this.scene.add.text(0, 0, '', { fontFamily: FONTS[this.face], fontSize: `${size}px`, color, resolution: this.resolution }).setDepth(this.depth);
+      this.setup(t);
       this.items.push(t);
     }
     this.used++;
@@ -200,7 +203,7 @@ export class Renderer {
     if (leash.heavy) dashed(g, smooth, 5, 3); else strokeP(g, smooth, false);
     if (Math.hypot(G.x - P.x, G.y - P.y) > sim.leashLen() * 0.97) { g.lineStyle(1, 0xf2c230, 0.5); strokeP(g, smooth, false); }
 
-    // janitor
+    // the player (gray-box)
     const pl = sim.player;
     if (!(pl.inv > 0 && Math.floor(time * 16) % 2)) {
       const lift = pl.air ? 8 : 0, fx = pl.fx, fy = pl.fy;
@@ -337,16 +340,16 @@ export class Renderer {
 }
 
 /** Phaser types points as Vector2, but only reads .x/.y. */
-function fillP(g: Phaser.GameObjects.Graphics, pts: Vec[], close = true): void { g.fillPoints(pts as unknown as Phaser.Math.Vector2[], close); }
-function strokeP(g: Phaser.GameObjects.Graphics, pts: Vec[], close = false): void { g.strokePoints(pts as unknown as Phaser.Math.Vector2[], close); }
+export function fillP(g: Phaser.GameObjects.Graphics, pts: Vec[], close = true): void { g.fillPoints(pts as unknown as Phaser.Math.Vector2[], close); }
+export function strokeP(g: Phaser.GameObjects.Graphics, pts: Vec[], close = false): void { g.strokePoints(pts as unknown as Phaser.Math.Vector2[], close); }
 
-function quad(a: Vec, c: Vec, b: Vec, t: number): Vec {
+export function quad(a: Vec, c: Vec, b: Vec, t: number): Vec {
   const u = 1 - t;
   return { x: u * u * a.x + 2 * u * t * c.x + t * t * b.x, y: u * u * a.y + 2 * u * t * c.y + t * t * b.y };
 }
 
 /** Same smoothing as the prototype: quadratic curves through segment midpoints. */
-function smoothRope(pts: Vec[]): Vec[] {
+export function smoothRope(pts: Vec[]): Vec[] {
   const out: Vec[] = [pts[0]!];
   let start = pts[0]!;
   for (let i = 1; i < pts.length - 1; i++) {
@@ -359,7 +362,7 @@ function smoothRope(pts: Vec[]): Vec[] {
   return out;
 }
 
-function dashed(g: Phaser.GameObjects.Graphics, pts: Vec[], on: number, off: number): void {
+export function dashed(g: Phaser.GameObjects.Graphics, pts: Vec[], on: number, off: number): void {
   let draw = true, left = on;
   for (let i = 0; i < pts.length - 1; i++) {
     let a = pts[i]!; const b = pts[i + 1]!;

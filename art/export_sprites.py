@@ -1,7 +1,7 @@
 """
 Export the fine-resolution character art as sprite strips for the game.
 
-Writes public/assets/sprites/<name>.png (frames side by side) and public/assets/sprites/sprites.json:
+Writes src/assets/sprites/<name>.png (frames side by side) and src/assets/sprites/sprites.json:
   { name: { w, h, frames, anchor: [x, y], points: {name: [x, y]} } }
 `anchor` is the pixel that sits on the simulation position (the feet, or the body centre for a flying goose).
 `points` are attachment points in frame pixels (rod tip, neck, koi).
@@ -21,7 +21,7 @@ import biscuit_hd  # noqa: E402
 import critters_hd  # noqa: E402
 import rocco_hd  # noqa: E402
 
-OUT = os.path.join(HERE, '..', 'public', 'assets', 'sprites')
+OUT = os.path.join(HERE, '..', 'src', 'assets', 'sprites')
 os.makedirs(OUT, exist_ok=True)
 manifest = {}
 

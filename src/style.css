@@ -30,7 +30,7 @@ h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,5vw,44px);lin
 h1 span{color:var(--caution)}
 .tag{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--floor);background:var(--caution);padding:4px 8px;border-radius:3px}
 .stage{position:relative;border:3px solid var(--caution);border-radius:6px;background:#111;overflow:hidden;box-shadow:0 0 0 6px #111}
-#stage{width:100%;aspect-ratio:16/10;max-width:100%}
+#stage{width:100%;aspect-ratio:16/9;max-width:100%}
 #stage canvas{display:block;cursor:crosshair;touch-action:none;outline:none}
 .bench{display:grid;grid-template-columns:1.2fr 1fr;gap:16px}
 @media (max-width:720px){.bench{grid-template-columns:1fr}}

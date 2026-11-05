@@ -2,11 +2,11 @@ import type Phaser from 'phaser';
 import type { InputFrame } from '../core/sim';
 import type { Vec } from '../core/math';
 
-type Verb = 'fling' | 'yank' | 'honk' | 'letGo' | 'feed' | 'cycle';
+type Verb = 'fling' | 'yank' | 'honk' | 'letGo' | 'feed' | 'cycle' | 'patch';
 export type UiAction = 'book' | 'reset' | 'closeBook';
 
 const ARROWS = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright'];
-const GAME_KEYS = ['w', 'a', 's', 'd', ' ', 'e', 'q', 'f', 'r', 'b', 'c', ...ARROWS];
+const GAME_KEYS = ['w', 'a', 's', 'd', ' ', 'e', 'q', 'f', 'r', 'b', 'c', 'p', ...ARROWS];
 const DEADZONE = 0.22;
 
 /**
@@ -14,14 +14,15 @@ const DEADZONE = 0.22;
  * Verb presses are latched until a sim step consumes them, so a press is never lost
  * on a frame where no step runs, and never applied twice when several steps run.
  *
- * Keyboard (prototype layout): WASD/arrows move, Space honk, E yank, Q let go, F bread, C swap bread, B book, R reset.
+ * Keyboard (prototype layout): WASD/arrows move, Space honk, E yank, Q let go, F bread, C swap bread, P patch pack, B book, R reset.
  * Mouse: left click fling, right click yank, cursor aims.
  * Gamepad: left stick move, right stick aim, RT fling, LT or RB yank, A honk, B let go, X bread, Y swap bread,
- * Start book, Back reset.
+ * LB patch pack, Start book, Back reset.
  */
 export class Controls {
   private held = new Set<string>();
   private pending = new Set<Verb>();
+  /** Pointer position in screen pixels; converted to world space each frame, since the camera scrolls. */
   private mouse: Vec = { x: 480, y: 300 };
   private aimMode: 'mouse' | 'pad' = 'mouse';
   private padAim: Vec = { x: 1, y: 0 };
@@ -35,10 +36,10 @@ export class Controls {
     window.addEventListener('keyup', this.keyup);
     window.addEventListener('blur', this.clear);
     scene.input.mouse?.disableContextMenu();
-    scene.input.on('pointermove', (p: Phaser.Input.Pointer) => { this.mouse = { x: p.worldX, y: p.worldY }; this.aimMode = 'mouse'; });
+    scene.input.on('pointermove', (p: Phaser.Input.Pointer) => { this.mouse = { x: p.x, y: p.y }; this.aimMode = 'mouse'; });
     scene.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       this.canvas.focus();
-      this.mouse = { x: p.worldX, y: p.worldY }; this.aimMode = 'mouse';
+      this.mouse = { x: p.x, y: p.y }; this.aimMode = 'mouse';
       if (this.paused) return;
       if (p.rightButtonDown()) this.pending.add('yank'); else this.pending.add('fling');
     });
@@ -70,6 +71,7 @@ export class Controls {
     if (k === 'q') this.pending.add('letGo');
     if (k === 'f') this.pending.add('feed');
     if (k === 'c') this.pending.add('cycle');
+    if (k === 'p') this.pending.add('patch');
     if (k === 'b') this.onUi('book');
     if (k === 'r') this.onUi('reset');
   };
@@ -86,7 +88,7 @@ export class Controls {
     const ls = pad.leftStick;
     if (Math.hypot(ls.x, ls.y) > DEADZONE) this.aimMode = this.aimMode === 'pad' || Math.hypot(rs.x, rs.y) > 0.5 ? 'pad' : this.aimMode;
     const now: Record<string, boolean> = {
-      fling: pad.R2 > 0.5, yank: pad.L2 > 0.5 || pad.R1 > 0.5, honk: pad.A, letGo: pad.B, feed: pad.X, cycle: pad.Y,
+      fling: pad.R2 > 0.5, yank: pad.L2 > 0.5 || pad.R1 > 0.5, honk: pad.A, letGo: pad.B, feed: pad.X, cycle: pad.Y, patch: pad.L1 > 0.5,
       book: pad.isButtonDown(9), reset: pad.isButtonDown(8),
     };
     for (const [k, v] of Object.entries(now)) {
@@ -113,9 +115,9 @@ export class Controls {
     return l > 1 ? { x: x / l, y: y / l } : { x, y };
   }
 
-  /** Where verbs aim, in world space. Pad aim projects from the janitor along the right stick. */
+  /** Where verbs aim, in world space. Pad aim projects from Rocco along the right stick. */
   aim(player: Vec): Vec {
-    if (this.aimMode === 'mouse') return this.mouse;
+    if (this.aimMode === 'mouse') { const w = this.scene.cameras.main.getWorldPoint(this.mouse.x, this.mouse.y); return { x: w.x, y: w.y }; }
     const l = Math.hypot(this.padAim.x, this.padAim.y) || 1;
     return { x: player.x + (this.padAim.x / l) * 220, y: player.y + (this.padAim.y / l) * 220 };
   }

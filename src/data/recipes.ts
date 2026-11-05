@@ -14,17 +14,17 @@ export type Cost = Partial<Record<ItemId, number>>;
 export interface ItemDef { name: string; color: string; source: string }
 
 export const MATERIALS: Record<MaterialId, ItemDef> = {
-  mop: { name: 'Mop String', color: '#ddd5be', source: 'Mop bucket on the left wall. Refills every 15 s.' },
-  fluff: { name: 'Dust Fluff', color: '#8d8f96', source: 'Dust bunnies.' },
-  crust: { name: 'Old Crust', color: '#c98a3c', source: 'Dust bunnies, sometimes. Bunnies eat bread.' },
-  chain: { name: 'Chainmail Scrap', color: '#7c8794', source: 'Knights.' },
-  goo: { name: 'Pit Goo', color: '#5fbf6a', source: 'Splashes out of the pit when something falls in.' },
+  mop: { name: 'Fishing Line', color: '#ddd5be', source: 'The tackle box by the path. Restocks every 15 s.' },
+  fluff: { name: 'Reed Fiber', color: '#8db07a', source: 'Frogs carry it. Also patches the backpack: 2 per hole [P].' },
+  crust: { name: 'Old Crust', color: '#c98a3c', source: 'Frogs, sometimes. Frogs steal bread.' },
+  chain: { name: 'Shell Scute', color: '#7c8794', source: 'Old Snapper and other shelled brutes.' },
+  goo: { name: 'Pond Muck', color: '#5fbf6a', source: 'Splashes up when something falls in the water.' },
   down: { name: 'Goose Down', color: '#f4f1e8', source: 'The goose molts when a Fury ends without the leash snapping.' },
 };
 
 export const CATALYSTS: Record<CatalystId, ItemDef> = {
-  clapper: { name: 'Bell Clapper', color: '#f2c230', source: 'Honk the bell. The first ring always drops one.' },
-  crest: { name: "Fallen Knight's Crest", color: '#c94b3a', source: 'Defeat a knight. Pit kills do not count.' },
+  clapper: { name: 'Bell Clapper', color: '#f2c230', source: 'Honk the fishing bell. The first ring always drops one.' },
+  crest: { name: "Snapper's Crest", color: '#c94b3a', source: 'Defeat a heavy brute. Drownings do not count.' },
   egg: { name: 'Golden Egg', color: '#ffd84a', source: 'Sometimes laid when a Fury ends safely.' },
   tooth: { name: 'Goose Tooth', color: '#ffffff', source: 'Get bitten by a feral goose. Geese do not have teeth. Nobody knows.' },
 };
@@ -63,16 +63,16 @@ export interface LeashDef extends LeashStats {
 }
 
 export const LEASHES: readonly LeashDef[] = [
-  { id: 'mop', name: 'Mop-String Leash', build: 'any', cost: {}, str: 0, ropeColor: '#c9a46a',
-    effect: 'No bonuses.', lore: 'It is a mop. Tied to a goose.' },
-  { id: 'chain', name: 'Chainmail Leash', build: 'brawler', cost: { chain: 3, mop: 2 }, str: 2, ropeColor: '#9aa6b2', heavy: true,
-    effect: '+2 leash strength.', lore: 'Clanks. The goose hates the clanking.' },
+  { id: 'mop', name: 'Frayed Fishing Line', build: 'any', cost: {}, str: 0, ropeColor: '#c9a46a',
+    effect: 'No bonuses.', lore: 'Rated for trout. Not for geese.' },
+  { id: 'chain', name: 'Scute-Plate Leash', build: 'brawler', cost: { chain: 3, mop: 2 }, str: 2, ropeColor: '#9aa6b2', heavy: true,
+    effect: '+2 leash strength.', lore: 'Shell plates on a cord. Clacks. The goose hates the clacking.' },
   { id: 'bungee', name: 'Bungee Cord', build: 'flinger', cost: { fluff: 3, goo: 2, mop: 1 }, len: 90, fling: 1.25, yank: 1.4, tug: 0.5, ropeColor: '#5fbf6a',
-    effect: '+90 leash length. Fling ×1.25, yank ×1.4. Goose tugs on you are halved.', lore: 'Smells like the pit. Bounces like a dream.' },
+    effect: '+90 leash length. Fling ×1.25, yank ×1.4. Goose tugs on you are halved.', lore: 'Smells like the pond. Bounces like a dream.' },
   { id: 'bell', name: 'Bell-Ringer Lead', build: 'honker', cost: { chain: 2, mop: 2, clapper: 1 }, str: 1, honkR: 1.3, honkStrain: 0.4, ropeColor: '#f2c230',
     effect: '+1 strength. Honk range ×1.3. Each honk shakes off 40% of the leash strain.', lore: 'Every honk rings. Every ring soothes. Everyone else suffers.' },
-  { id: 'choke', name: 'Choke Chain of the Fallen Knight', build: 'brawler', cost: { chain: 4, crest: 1 }, str: 3, biteStun: 1, furyGain: 0.7, ropeColor: '#b0485a', heavy: true,
-    effect: '+3 strength. Bites stun for a full second. Fury builds 30% slower.', lore: 'The knight wore it as a necklace. The goose wears it better.' },
+  { id: 'choke', name: 'Snapper-Shell Choke Chain', build: 'brawler', cost: { chain: 4, crest: 1 }, str: 3, biteStun: 1, furyGain: 0.7, ropeColor: '#b0485a', heavy: true,
+    effect: '+3 strength. Bites stun for a full second. Fury builds 30% slower.', lore: 'Old Snapper wore it as a collar. The goose wears it better.' },
   { id: 'golden', name: 'Golden Tether', build: 'berserker', cost: { down: 2, chain: 1, egg: 1 }, str: 1, furyDur: 2, furyDmg: 3, strain: 0.5, ropeColor: '#ffd84a',
     effect: '+1 strength. Fury lasts twice as long. Furious bites hit ×3. Strain builds half as fast.', lore: 'Woven from his own feathers. He respects that.' },
   { id: 'toothed', name: 'The Toothed Leash', build: 'chaos', cost: { down: 2, fluff: 2, tooth: 1 }, noBite: true, strain: 2, ropeColor: '#e9e4d6',
@@ -84,8 +84,8 @@ export interface BreadDef { id: BreadId; name: string; build: BuildId; cost: Cos
 export const BREADS: readonly BreadDef[] = [
   { id: 'stale', name: 'Stale Crust', build: 'any', cost: { crust: 2 }, effect: 'Calms the goose. Clears Fury and strain.', lore: 'Also found lying around. Do not eat it yourself.' },
   { id: 'sour', name: 'Sourdough of Serenity', build: 'brawler', cost: { crust: 2, down: 1 }, effect: 'Calms, then Fury cannot build for 8 seconds.', lore: 'Bake with his own down so he feels heard.' },
-  { id: 'bagel', name: 'Chain Bagel', build: 'any', cost: { crust: 2, chain: 1 }, effect: 'Calms and reinforces the leash: +2 strength for 20 seconds.', lore: 'Crunchy. Structurally load-bearing.' },
-  { id: 'muffin', name: 'Fluff Muffin', build: 'any', cost: { crust: 1, fluff: 2 }, effect: 'Calms. The goose coughs up a heart for you: +1 HP.', lore: 'Do not ask where the heart came from.' },
+  { id: 'bagel', name: 'Scute Bagel', build: 'any', cost: { crust: 2, chain: 1 }, effect: 'Calms and reinforces the leash: +2 strength for 20 seconds.', lore: 'Crunchy. Structurally load-bearing.' },
+  { id: 'muffin', name: 'Reed Muffin', build: 'any', cost: { crust: 1, fluff: 2 }, effect: 'Calms. The goose coughs up a heart for you: +1 HP.', lore: 'Do not ask where the heart came from.' },
   { id: 'pepper', name: 'Ghost Pepper Roll', build: 'berserker', cost: { crust: 1, goo: 1 }, effect: 'Does NOT calm. Goose goes instantly FURIOUS.', lore: 'For when you want him angry on purpose.' },
   { id: 'bun', name: 'Clapper Bun', build: 'honker', cost: { crust: 2, clapper: 1 }, effect: 'Calms. His next 5 honks are mega honks.', lore: 'The clapper is baked inside. He swallows it. It rings.' },
 ];

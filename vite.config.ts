@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => ({
   build: {
     target: 'es2022',
     outDir: mode === 'cdn' ? 'dist-cdn' : 'dist',
-    assetsInlineLimit: 0,
+    assetsInlineLimit: mode === 'cdn' ? 100_000_000 : 0,
     chunkSizeWarningLimit: 2000,
   },
   test: {
