@@ -4,7 +4,7 @@
  */
 
 export type MaterialId = 'mop' | 'fluff' | 'crust' | 'chain' | 'goo' | 'down';
-export type CatalystId = 'clapper' | 'crest' | 'egg' | 'tooth';
+export type CatalystId = 'clapper' | 'crest' | 'egg' | 'tooth' | 'feather';
 export type ItemId = MaterialId | CatalystId;
 export type BuildId = 'any' | 'brawler' | 'honker' | 'flinger' | 'berserker' | 'chaos';
 export type LeashId = 'mop' | 'braided' | 'chain' | 'bungee' | 'bell' | 'choke' | 'golden' | 'toothed';
@@ -27,6 +27,7 @@ export const CATALYSTS: Record<CatalystId, ItemDef> = {
   crest: { name: "Snapper's Crest", color: '#c94b3a', source: 'Defeat a heavy brute. Drownings do not count.' },
   egg: { name: 'Golden Egg', color: '#ffd84a', source: 'Sometimes laid when a Fury ends safely.' },
   tooth: { name: 'Goose Tooth', color: '#ffffff', source: 'Get bitten by a feral goose. Geese do not have teeth. Nobody knows.' },
+  feather: { name: 'Golden Feather', color: '#ffd860', source: "Bosses drop them; a few hide in hard-to-reach spots. Spend them at Biscuit's shrine in Willowmere to learn traits." },
 };
 
 export const ITEMS: Record<ItemId, ItemDef> = { ...MATERIALS, ...CATALYSTS };

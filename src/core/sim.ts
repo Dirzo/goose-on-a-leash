@@ -10,6 +10,7 @@ import { Room } from './room';
 import { Rope } from './rope';
 import { ROOMS, ROOM_01, type Door, type EnemyKind, type RoomDef } from '../data/rooms';
 import { ITEMS, breadById, isCatalyst, leashById, type BreadId, type ItemId, type LeashId } from '../data/recipes';
+import { TRAITS, TRAIT_COST, traitById, type TraitId } from '../data/traits';
 
 // ---------------------------------------------------------------- types
 
@@ -28,7 +29,7 @@ export const HERON_HP = 40;
 const WAKE_TIME = 1.6;
 
 /** What a room remembers after you leave it. */
-export interface RoomMemory { gateOpen: boolean; bread: boolean[]; chest: boolean; rang: boolean; kits?: boolean[]; spools?: boolean[]; boss?: boolean }
+export interface RoomMemory { gateOpen: boolean; bread: boolean[]; chest: boolean; rang: boolean; kits?: boolean[]; spools?: boolean[]; feathers?: boolean[]; boss?: boolean }
 
 export interface Player {
   x: number; y: number; r: number; vx: number; vy: number;
@@ -114,7 +115,9 @@ export type SimEvent =
   | { type: 'won' }
   | { type: 'reset' }
   /** Rocco arrived in a room through a door (or a save was loaded). */
-  | { type: 'room'; id: string };
+  | { type: 'room'; id: string }
+  /** Rocco stepped up to Biscuit's shrine. */
+  | { type: 'shrine' };
 
 const QUIPS = {
   fling: ['HONK!', 'Airborne goose', 'Yeet.', 'Go get em'],
@@ -148,6 +151,9 @@ export class Sim {
   /** Sewing kits and twine spools already taken in this room. */
   kitsGot: boolean[] = [];
   spoolsGot: boolean[] = [];
+  feathersGot: boolean[] = [];
+  /** Standing at Biscuit's shrine (traits can be learned). */
+  atShrine = false;
   buff: Buffs = { noFury: 0, bagel: 0, mega: 0 };
   pack!: Pack;
   rope!: Rope;
@@ -182,9 +188,11 @@ export class Sim {
   str(): number { return this.tuning.strength + this.kit.stat('str') + (this.buff.bagel > 0 ? 2 : 0); }
   leashLen(): number { return this.tuning.leash + this.kit.stat('len'); }
   /** Goose damage multiplier from Goose Power. */
-  pw(): number { return 0.6 + 0.4 * this.tuning.power; }
+  /** Goose Power: the bench base plus one for every two traits Biscuit has learned. */
+  power(): number { return this.tuning.power + Math.floor(this.kit.traits.size / 2); }
+  pw(): number { return (0.6 + 0.4 * this.power()) * (this.kit.has('b1') ? 1.35 : 1); }
   /** Positive when the goose outclasses the leash. */
-  gap(): number { return this.tuning.power - this.str(); }
+  gap(): number { return this.power() - this.str(); }
   refuseChance(): number {
     const g = this.gap();
     return this.goose.furious > 0 ? clamp(0.3 + 0.18 * g, 0.05, 0.8) : clamp(0.1 * g, 0, 0.4);
@@ -358,6 +366,22 @@ export class Sim {
     } else this.say('The chest is empty. You already have this one.');
   }
 
+  /** Can Biscuit learn this trait now? Needs the shrine, a Golden Feather and the trait before it in the branch. */
+  canLearn(id: TraitId): boolean {
+    const t = traitById(id), k = this.kit;
+    if (k.has(id) || !this.atShrine || k.mats.feather < TRAIT_COST) return false;
+    return t.tier === 1 || k.has(TRAITS.find(o => o.branch === t.branch && o.tier === t.tier - 1)!.id);
+  }
+
+  learnTrait(id: TraitId): boolean {
+    if (!this.canLearn(id)) return false;
+    const before = this.power();
+    this.kit.mats.feather -= TRAIT_COST; this.kit.traits.add(id);
+    this.fx('chest', this.goose.x, this.goose.y - 20);
+    this.say(`Biscuit learned ${traitById(id).name}!` + (this.power() > before ? ` Goose Power is now ${this.power()}. Mind the leash.` : ''));
+    return true;
+  }
+
   /** True once the room's chest has been opened. */
   chestOpen(): boolean { return !!this.world[this.room.def.id]?.chest; }
 
@@ -366,7 +390,7 @@ export class Sim {
     if (!this.room) return;
     const id = this.room.def.id;
     this.world[id] = { gateOpen: !!this.room.def.gate && !this.room.gateClosed, bread: [...this.breadGot],
-      chest: this.world[id]?.chest ?? false, rang: this.rang, kits: [...this.kitsGot], spools: [...this.spoolsGot],
+      chest: this.world[id]?.chest ?? false, rang: this.rang, kits: [...this.kitsGot], spools: [...this.spoolsGot], feathers: [...this.feathersGot],
       boss: this.world[id]?.boss || this.enemies.some(e => BOSS.has(e.kind) && e.woke > 0) };
   }
 
@@ -382,6 +406,8 @@ export class Sim {
     this.breadGot = def.breadSpots.map((_, i) => mem?.bread[i] ?? false);
     this.kitsGot = (def.kits ?? []).map((_, i) => mem?.kits?.[i] ?? false);
     this.spoolsGot = (def.spools ?? []).map((_, i) => mem?.spools?.[i] ?? false);
+    this.feathersGot = (def.feathers ?? []).map((_, i) => mem?.feathers?.[i] ?? false);
+    this.atShrine = false;
     this.rope = new Rope(s);
     this.lastSafe = { ...s };
     this.spawnT = 4; this.knightT = 0; this.clapperCd = 0; this.rang = mem?.rang ?? false; this.bucketCd = 0;
@@ -420,7 +446,7 @@ export class Sim {
       const a = Math.atan2(dy, dx) + (this.rng() - 0.5) * 0.7;
       dx = Math.cos(a); dy = Math.sin(a);
     }
-    const fs = this.tuning.fling * this.kit.stat('fling');
+    const fs = this.tuning.fling * this.kit.stat('fling') * (this.kit.has('f1') ? 1.15 : 1);
     g.x = p.x + dx * 18; g.y = p.y + dy * 18; g.vx = dx * fs; g.vy = dy * fs;
     g.state = 'flying'; g.face = dx >= 0 ? 1 : -1;
     this.say(this.pick('fling'));
@@ -435,7 +461,7 @@ export class Sim {
     const t = g.target;
     if (isPost(t) || t.heavy) {
       p.pull = t; p.air = true;
-      this.say(isPost(t) ? 'Wheee!' : 'The knight drags you in. HEADBUTT incoming.');
+      this.say(isPost(t) ? 'Wheee!' : t.kind === 'knight' ? 'The knight drags you in. HEADBUTT incoming.' : 'Biscuit drags you across. HEADBUTT incoming!');
     } else {
       const [dx, dy] = dirTo(t, p);
       const ys = this.tuning.yank * this.kit.stat('yank') * 0.66;
@@ -447,13 +473,13 @@ export class Sim {
   honk(aim: Vec): void {
     const g = this.goose;
     if (this.won || this.player.dead || g.honkCd > 0 || g.state === 'loose') return;
-    g.honkCd = C.honkCooldown;
+    g.honkCd = C.honkCooldown * (this.kit.has('h3') ? 0.6 : 1);
     const mega = this.buff.mega > 0;
     if (mega) this.buff.mega--;
     const shed = this.kit.stat('honkStrain');
     if (shed) g.strain *= 1 - shed;
     const furyB = g.furious > 0 || mega;
-    const range = (furyB ? 220 : 155) * (0.85 + 0.15 * this.tuning.power) * this.kit.stat('honkR');
+    const range = (furyB ? 220 : 155) * (0.85 + 0.15 * this.power()) * this.kit.stat('honkR') * (this.kit.has('h1') ? 1.25 : 1);
     const cone = furyB ? 0.9 : 0.62;
     const [dx, dy] = dirTo(g, aim);
     const ang = Math.atan2(dy, dx);
@@ -463,8 +489,8 @@ export class Sim {
       if (!this.active(e)) continue;
       const ex = e.x - g.x, ey = e.y - g.y, d = Math.hypot(ex, ey);
       if (d < range + e.r && Math.abs(angDiff(Math.atan2(ey, ex), ang)) < cone) {
-        const k = (e.heavy ? 260 : 470) * (furyB ? 1.4 : 1) * (0.8 + 0.1 * this.tuning.power);
-        e.vx += (ex / (d || 1)) * k; e.vy += (ey / (d || 1)) * k; e.stun = Math.max(e.stun, 1.3);
+        const k = (e.heavy ? 260 : 470) * (furyB ? 1.4 : 1) * (0.8 + 0.1 * this.power());
+        e.vx += (ex / (d || 1)) * k; e.vy += (ey / (d || 1)) * k; e.stun = Math.max(e.stun, 1.3 + (this.kit.has('h2') ? 0.7 : 0));
         if (g.state === 'latched' && g.target === e) g.state = 'held';
       }
     }
@@ -521,7 +547,7 @@ export class Sim {
     const wasFeral = g.feral;
     if (id === 'pepper') {
       g.fury = 100;
-      if (g.furious <= 0) g.furious = C.furiousSeconds * this.kit.stat('furyDur');
+      if (g.furious <= 0) g.furious = this.furyTime();
       this.say('Ghost Pepper Roll. Oh no. Oh YES.');
       return;
     }
@@ -608,8 +634,12 @@ export class Sim {
   private addFury(v: number): void {
     const g = this.goose;
     if (g.furious > 0 || this.buff.noFury > 0) return;
-    g.fury = Math.min(100, g.fury + v * this.tuning.fury * this.kit.stat('furyGain'));
-    if (g.fury >= 100) { g.furious = C.furiousSeconds * this.kit.stat('furyDur'); this.say(this.pick('furious')); }
+    g.fury = Math.min(100, g.fury + v * this.tuning.fury * this.kit.stat('furyGain') * (this.kit.has('z1') ? 1.3 : 1));
+    if (g.fury >= 100) { g.furious = this.furyTime(); this.say(this.pick('furious')); }
+  }
+
+  /** Seconds a Fury lasts. */
+  furyTime(): number { return C.furiousSeconds * this.kit.stat('furyDur') + (this.kit.has('z2') ? 2 : 0);
   }
 
   nearestEnemy(x: number, y: number): Enemy | null {
@@ -637,11 +667,11 @@ export class Sim {
         this.world[this.room.def.id] = { ...(this.world[this.room.def.id] ?? { gateOpen: true, bread: [...this.breadGot], chest: false, rang: this.rang }), boss: true, gateOpen: true };
         this.say('The red drains from the Heron\'s eyes. "...Raccoon. I am the Ferryman. The way on is open."');
         // his gifts go straight into the satchel (wherever the fight ended), and he refills Bimbo
-        this.kit.mats.crest++; this.kit.mats.chain += 3; this.kit.mats.fluff += 4; this.kit.mats.egg++;
+        this.kit.mats.crest++; this.kit.mats.chain += 3; this.kit.mats.fluff += 4; this.kit.mats.egg++; this.kit.mats.feather += 2;
         this.pack.needles += C.kitNeedles; this.pack.water = 1;
         e.air = 0; e.x = e.hx; e.y = e.hy;
         this.puddles = [];
-        this.fx('pick', this.player.x, this.player.y - 46, { text: "Snapper's Crest, Golden Egg, 3 Shell Scute, 4 Twine, a sewing kit" });
+        this.fx('pick', this.player.x, this.player.y - 46, { text: "2 Golden Feathers, Snapper's Crest, Golden Egg, 3 Scute, 4 Twine, a sewing kit" });
         this.fx('chest', this.player.x, this.player.y - 20);
       } else this.say(e.heavy ? 'Old Snapper blinks. The red fades from his eyes.' : this.pick('wake'));
     } else { e.dead = true; this.fx('poof', e.x, e.y); }
@@ -675,7 +705,7 @@ export class Sim {
       pk.water = Math.max(0, pk.water - C.slurpSpill * amt);
       this.fx('splash', bk.x, bk.y - 34);
       if (pk.water > 0.3) this.say(this.pick('slurp'));
-    } else if (pk.holes < C.maxHoles && this.rng() < (heavy ? C.heavyHoleChance : C.holeChance) * side) {
+    } else if (pk.holes < C.maxHoles && this.rng() < (heavy ? C.heavyHoleChance : C.holeChance) * side * (this.kit.has('z3') && this.goose.furious > 0 ? 0.5 : 1)) {
       pk.holes++;
       this.fx('tear', bk.x, bk.y - 30);
       this.say(pk.holes === 1 ? 'RIP! It went for Bimbo and tore the pack. [P] to patch.' : `Another tear! ${pk.holes} leaking now.`);
@@ -750,6 +780,18 @@ export class Sim {
       this.fx('pick', p.x, p.y - 40, { text: `+${C.kitNeedles} needle uses` });
       this.say(this.pack.holes ? `Sewing kit! ${this.pack.holes} tear${this.pack.holes > 1 ? 's' : ''} to patch: press P.` : 'Sewing kit! Needle and thread for three patches.');
     });
+    (room.def.feathers ?? []).forEach((k, i) => {
+      if (this.feathersGot[i] || Math.hypot(k.x - p.x, k.y - p.y) > 24) return;
+      this.feathersGot[i] = true; this.kit.mats.feather++;
+      this.fx('chest', k.x, k.y - 10);
+      this.say(`✦ A Golden Feather! (${this.kit.mats.feather}) Spend it at Biscuit's shrine in Willowmere.`);
+    });
+    const sh = room.def.shrine;
+    if (sh) {
+      const near = Math.hypot(sh.x - p.x, sh.y - p.y) < 34;
+      if (near && !this.atShrine) { this.events.push({ type: 'shrine' }); this.say("Biscuit's shrine. He looks at it. He looks at you. He wants feathers."); }
+      this.atShrine = near;
+    }
     (room.def.spools ?? []).forEach((k, i) => {
       if (this.spoolsGot[i] || Math.hypot(k.x - p.x, k.y - p.y) > 24) return;
       this.spoolsGot[i] = true; this.kit.mats.fluff += C.spoolTwine;
@@ -805,12 +847,13 @@ export class Sim {
     const calmTug = g.furious <= 0 && this.gap() > 0;
     if (p.pull) {
       const t = p.pull, [dx, dy, d] = dirTo(p, t);
-      const ysp = T.yank * this.kit.stat('yank');
+      const ysp = T.yank * this.kit.stat('yank') * (this.kit.has('f3') ? 1.25 : 1);
       const tDead = !isPost(t) && (t.dead || t.woke > 0);
       if (d < t.r + p.r + 4 || tDead) {
         p.pull = null; p.air = false; p.vx *= 0.2; p.vy *= 0.2; g.state = 'held';
         if (!isPost(t) && t.heavy && !t.dead) {
-          this.damage(t, 2); t.stun = 1.6; t.vx += dx * 380; t.vy += dy * 380; this.say('HEADBUTT!');
+          const buddy = this.kit.has('b3');
+          this.damage(t, buddy ? 4 : 2); t.stun = buddy ? 2.4 : 1.6; t.vx += dx * 380; t.vy += dy * 380; this.say(buddy ? 'DOUBLE HEADBUTT!' : 'HEADBUTT!');
         }
       } else { p.vx = dx * ysp; p.vy = dy * ysp; }
     } else {
@@ -1165,7 +1208,7 @@ export class Sim {
       const drag = Math.exp(-1.6 * dt); g.vx *= drag; g.vy *= drag;
       for (const e of this.enemies) {
         if (!this.active(e)) continue;
-        if (Math.hypot(e.x - g.x, e.y - g.y) < e.r + 11) {
+        if (Math.hypot(e.x - g.x, e.y - g.y) < e.r + 11 + (this.kit.has('f2') ? 8 : 0)) {
           g.state = 'latched'; g.target = e; g.ox = g.x - e.x; g.oy = g.y - e.y;
           this.damage(e, this.pw()); e.stun = Math.max(e.stun, 0.3); this.addFury(14);
           this.say(this.pick('bite')); this.fx('chomp', g.x, g.y);
@@ -1193,7 +1236,7 @@ export class Sim {
           g.biteT -= dt;
           if (g.biteT <= 0) {
             g.biteT = 0.5;
-            t.stun = Math.max(t.stun, this.kit.stat('biteStun'));
+            t.stun = Math.max(t.stun, this.kit.stat('biteStun') + (this.kit.has('b2') ? 0.4 : 0));
             this.damage(t, (g.furious > 0 ? this.kit.stat('furyDmg') : 1) * 0.75 * this.pw());
             this.addFury(7);
           }
@@ -1215,7 +1258,7 @@ export class Sim {
       if (g.feral && !e) {
         // nothing left to bite nearby: the janitor will do
         const [dx, dy, d] = dirTo(g, p);
-        const sp = 215 + 12 * this.tuning.power;
+        const sp = 215 + 12 * this.power();
         g.vx = dx * sp; g.vy = dy * sp;
         if (d < p.r + 12) {
           g.biteT -= dt;
@@ -1225,7 +1268,7 @@ export class Sim {
               this.fx('chomp', p.x, p.y);
               if (this.rng() < 0.25) this.say('He chews the Toothed Leash instead of you.');
             } else if (p.inv <= 0) {
-              this.hurtPlayer(this.tuning.power >= 4 ? 2 : 1, false, g, 'bite');
+              this.hurtPlayer(this.power() >= 4 ? 2 : 1, false, g, 'bite');
               p.vx += dx * 260; p.vy += dy * 260;
               this.fx('chomp', p.x, p.y);
               if (this.kit.toothFirst || this.rng() < 0.4) { this.kit.toothFirst = false; this.drop('tooth', p.x, p.y); }

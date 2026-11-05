@@ -6,7 +6,7 @@ type Verb = 'fling' | 'yank' | 'honk' | 'letGo' | 'feed' | 'cycle' | 'patch';
 export type UiAction = 'book' | 'reset' | 'closeBook' | 'pack' | 'close' | 'patch';
 
 const ARROWS = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright'];
-const GAME_KEYS = ['w', 'a', 's', 'd', ' ', 'e', 'q', 'f', 'r', 'b', 'c', 'p', 'i', 'tab', ...ARROWS];
+const GAME_KEYS = ['w', 'a', 's', 'd', ' ', 'e', 'q', 'f', 'r', 'b', 'c', 'p', 'i', 'tab', 'm', ...ARROWS];
 const DEADZONE = 0.22;
 
 /**

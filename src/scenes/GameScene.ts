@@ -7,6 +7,7 @@ import { Renderer, snapshot, type Snapshot } from '../view/render';
 import { ArtRenderer, SCREEN_H, SCREEN_W } from '../view/art';
 import { ROOM_ART, nearestFilter, preloadArt } from '../view/assets';
 import { applySave, loadStoredSave, snapshotSave, storeSave } from '../core/save';
+import { sound } from '../view/audio';
 
 /** Max steps per frame, so a long stall (tab switch) cannot spiral. */
 const MAX_STEPS = 8;
@@ -26,6 +27,8 @@ export class GameScene extends Phaser.Scene {
   private acc = 0;
   private prev: Snapshot | null = null;
   private lastNow = 0;
+  /** Hit-stop: seconds left of a tiny freeze that sells a big hit. */
+  private hitStop = 0;
   /** Set by the UI layer: true while the recipe book is open. */
   paused = false;
   /** True when this session picked up from a save. */
@@ -33,6 +36,8 @@ export class GameScene extends Phaser.Scene {
   /** Saves are only written for world rooms, not the gray-box test room. */
   private get saving(): boolean { return !!this.sim.room.def.doors; }
   onReady: (scene: GameScene) => void = () => {};
+  /** Set by the UI: Rocco stepped up to Biscuit's shrine. */
+  onShrine: () => void = () => {};
 
   constructor() { super('game'); }
 
@@ -66,7 +71,8 @@ export class GameScene extends Phaser.Scene {
     this.lastNow = now;
     this.controls.paused = this.paused;
     this.controls.pollPad();
-    if (!this.paused) {
+    if (!this.paused && this.hitStop > 0) { this.hitStop -= dt; }
+    else if (!this.paused) {
       this.acc += dt;
       let steps = 0, first = true;
       while (this.acc >= STEP && steps < MAX_STEPS) {
@@ -77,8 +83,28 @@ export class GameScene extends Phaser.Scene {
       if (steps === MAX_STEPS) this.acc = 0;
       this.feed(this.sim.drainEvents());
     }
+    this.listen();
     const alpha = this.paused ? 1 : this.acc / STEP;
     this.view.draw(this.sim, this.paused ? null : this.prev, alpha, this.paused ? 0 : dt, this.controls.aim(this.sim.player), true);
+  }
+
+  private modes = new Map<number, string>();
+  /** Sounds that come from state, not events: critters winding up, the leash creak, the rain. */
+  private listen(): void {
+    const sim = this.sim;
+    for (const e of sim.enemies) {
+      const before = this.modes.get(e.id), now = e.mode;
+      if (before !== now) {
+        this.modes.set(e.id, now);
+        if (now === 'wind') sound.play(e.kind === 'frog' ? 'ribbit' : e.kind === 'snapper' ? 'hiss' : 'kraa');
+        if (now === 'lash') sound.play('tongue');
+        if (now === 'leap' || now === 'charge' || now === 'takeoff') sound.play('whoosh');
+        if (now === 'call') sound.play('kraa');
+      }
+    }
+    const g = sim.goose, taut = Math.hypot(g.x - sim.player.x, g.y - sim.player.y) > sim.leashLen() * 0.95 && sim.leashAttached;
+    sound.setStrain(this.paused ? 0 : Math.max(g.strain, taut ? 0.3 : 0));
+    sound.setRain(sim.storming && !this.paused);
   }
 
   /** R / the Reset button: back to where Rocco entered this room, hearts refilled. */
@@ -105,6 +131,19 @@ export class GameScene extends Phaser.Scene {
 
   private feed(events: ReturnType<Sim['drainEvents']>): void {
     if (events.some(e => e.type === 'room')) { this.prev = null; this.saveNow(); }
+    if (events.some(e => e.type === 'shrine')) this.onShrine();
+    const sim = this.sim;
+    for (const e of events) {
+      if (e.type === 'room') sound.play('door');
+      if (e.type !== 'fx') continue;
+      const bell = sim.room.def.bell;
+      const k = e.kind === 'ring' ? (bell && Math.hypot(bell.x - e.x, bell.y - e.y) < 20 ? 'bell' : 'spawn') : e.kind === 'pick' ? 'pick' : e.kind;
+      sound.play(k, sim.power());
+    }
+    for (const e of events) if (e.type === 'fx') {
+      const stop = e.kind === 'snap' ? 0.28 : e.kind === 'slam' ? 0.12 : e.kind === 'tear' ? 0.07 : e.kind === 'chomp' ? 0.045 : e.kind === 'wake' ? 0.08 : 0;
+      this.hitStop = Math.max(this.hitStop, stop);
+    }
     this.view.consume(events);
   }
 }

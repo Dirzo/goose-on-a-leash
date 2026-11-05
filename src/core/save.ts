@@ -6,6 +6,7 @@
 import { ROOMS } from '../data/rooms';
 import { BREADS, ITEMS, LEASHES, type BreadId, type ItemId, type LeashId } from '../data/recipes';
 import { C } from './config';
+import { TRAITS, type TraitId } from '../data/traits';
 import type { RoomMemory, Sim } from './sim';
 
 export const SAVE_KEY = 'goose-on-a-leash/save/v1';
@@ -16,7 +17,7 @@ export interface SaveData {
   door: string | null;
   hp: number;
   pack: { water: number; holes: number; patches: number; needles: number };
-  kit: { mats: Partial<Record<ItemId, number>>; owned: LeashId[]; leash: LeashId; bread: Partial<Record<BreadId, number>>; active: BreadId; toothFirst: boolean };
+  kit: { mats: Partial<Record<ItemId, number>>; owned: LeashId[]; leash: LeashId; bread: Partial<Record<BreadId, number>>; active: BreadId; toothFirst: boolean; traits?: TraitId[] };
   world: Record<string, RoomMemory>;
   savedAt: number;
 }
@@ -26,7 +27,7 @@ export function snapshotSave(sim: Sim): SaveData {
   return {
     v: 1, room: sim.room.def.id, door: sim.entryDoor, hp: sim.player.hp,
     pack: { water: sim.pack.water, holes: sim.pack.holes, patches: sim.pack.patches, needles: sim.pack.needles },
-    kit: { mats: { ...k.mats }, owned: [...k.owned], leash: k.leash, bread: { ...k.bread }, active: k.active, toothFirst: k.toothFirst },
+    kit: { mats: { ...k.mats }, owned: [...k.owned], leash: k.leash, bread: { ...k.bread }, active: k.active, toothFirst: k.toothFirst, traits: [...k.traits] },
     world: structuredClone({ ...sim.world }),
     savedAt: Date.now(),
   };
@@ -54,12 +55,13 @@ export function validateSave(raw: unknown): SaveData | null {
   for (const [id, m] of Object.entries(d.world ?? {})) {
     if (!ROOMS[id] || !m || typeof m !== 'object') continue;
     const bools = (a: unknown) => (Array.isArray(a) ? a.map(Boolean) : []);
-    world[id] = { gateOpen: !!m.gateOpen, chest: !!m.chest, rang: !!m.rang, bread: bools(m.bread), kits: bools(m.kits), spools: bools(m.spools) };
+    world[id] = { gateOpen: !!m.gateOpen, chest: !!m.chest, rang: !!m.rang, bread: bools(m.bread), kits: bools(m.kits), spools: bools(m.spools), feathers: bools(m.feathers), boss: !!m.boss };
   }
   return {
     v: 1, room: d.room, door, hp: Math.round(num(d.hp, 1, C.maxHp, C.maxHp)),
     pack: { water: num(d.pack?.water, 0.05, 1, 1), holes: Math.round(num(d.pack?.holes, 0, C.maxHoles, 0)), patches: Math.round(num(d.pack?.patches, 0, 99, 0)), needles: Math.round(num(d.pack?.needles, 0, 99, C.kitNeedles)) },
-    kit: { mats, owned, leash, bread, active, toothFirst: d.kit?.toothFirst !== false },
+    kit: { mats, owned, leash, bread, active, toothFirst: d.kit?.toothFirst !== false,
+      traits: Array.isArray(d.kit?.traits) ? d.kit!.traits.filter(t => TRAITS.some(x => x.id === t)) : [] },
     world, savedAt: num(d.savedAt, 0, 8.64e15, 0),
   };
 }
@@ -69,7 +71,7 @@ export function applySave(sim: Sim, s: SaveData): void {
   const k = sim.kit;
   Object.assign(k.mats, s.kit.mats);
   k.owned = new Set(s.kit.owned); k.leash = s.kit.leash;
-  Object.assign(k.bread, s.kit.bread); k.active = s.kit.active; k.toothFirst = s.kit.toothFirst;
+  Object.assign(k.bread, s.kit.bread); k.active = s.kit.active; k.toothFirst = s.kit.toothFirst; k.traits = new Set(s.kit.traits ?? []);
   sim.world = structuredClone(s.world);
   sim.pack.water = s.pack.water; sim.pack.holes = s.pack.holes; sim.pack.patches = s.pack.patches; sim.pack.needles = s.pack.needles;
   sim.player.hp = s.hp;

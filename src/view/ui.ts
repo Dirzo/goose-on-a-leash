@@ -4,7 +4,9 @@ import { BREADS, BUILDS, CATALYSTS, ITEMS, LEASHES, MATERIALS, breadById, type B
 import type { GameScene } from '../scenes/GameScene';
 import { applySave, clearStoredSave, decodeSave, encodeSave, snapshotSave } from '../core/save';
 import { ROOMS } from '../data/rooms';
+import { BRANCHES, TRAITS, type TraitId } from '../data/traits';
 import { ROOM_ART } from './assets';
+import { sound } from './audio';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const esc = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -63,6 +65,9 @@ export function mountUi(scene: GameScene): void {
     scene.game.canvas.focus();
   };
   $('b-room-restart').onclick = () => { if (open) closeBook(); scene.setPackOpen(false); scene.resetRoom(); scene.game.canvas.focus(); };
+  const soundBtn = $('b-sound'), soundLabel = () => { soundBtn.textContent = `Sound: ${sound.muted ? 'off' : 'on'} [M]`; };
+  soundLabel(); sound.onChange = soundLabel;
+  soundBtn.onclick = () => { sound.toggle(); scene.game.canvas.focus(); };
   $('b-game-reset').onclick = () => { clearStoredSave(); if (location.search) location.search = ''; else location.reload(); };
   setInterval(() => { if (document.activeElement !== pick) syncPick(); }, 1000);
 
@@ -90,7 +95,7 @@ export function mountUi(scene: GameScene): void {
   };
 
   // ---- recipe book
-  let open = false, tab: 'leash' | 'bread' | 'satchel' = 'leash';
+  let open = false, tab: 'leash' | 'bread' | 'satchel' | 'biscuit' = 'leash';
   const book = $('book'), body = $('book-body'), status = $('book-status');
   const chip = (b: BuildId) => `<span class="chip" style="--c:${BUILDS[b].color}">${BUILDS[b].name}</span>`;
   const ingList = (cost: Cost) => {
@@ -102,7 +107,7 @@ export function mountUi(scene: GameScene): void {
   function render(): void {
     document.querySelectorAll<HTMLButtonElement>('.book-tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
     const k = sim.kit;
-    status.innerHTML = `<span>Equipped: <b>${esc(k.leashDef.name)}</b></span><span>Leash strength: <b>${sim.str()}</b> vs Goose power: <b>${sim.tuning.power}</b></span><span>Throwing: <b>${esc(breadById(k.active).name)}</b></span>`;
+    status.innerHTML = `<span>Equipped: <b>${esc(k.leashDef.name)}</b></span><span>Leash strength: <b>${sim.str()}</b> vs Goose power: <b>${sim.power()}</b></span><span>Throwing: <b>${esc(breadById(k.active).name)}</b></span>`;
     if (tab === 'leash') {
       body.innerHTML = '<div class="recipes">' + LEASHES.map(r => {
         const own = k.owned.has(r.id), eq = k.leash === r.id;
@@ -117,6 +122,21 @@ export function mountUi(scene: GameScene): void {
         const n = k.bread[r.id], act = k.active === r.id;
         return `<article class="rc${act ? ' equipped' : ''}"><div class="rc-top"><h3>${esc(r.name)}</h3>${chip(r.build)}</div><p class="rc-fx">${esc(r.effect)}</p><p class="rc-lore">${esc(r.lore)}</p>${ingList(r.cost)}<div class="rc-act"><button type="button" class="primary" data-craft-bread="${r.id}" ${k.canAfford(r.cost) ? '' : 'disabled'}>Bake</button>${act ? '<button type="button" disabled>Ready to throw</button>' : `<button type="button" data-ready="${r.id}" ${n ? '' : 'disabled'}>Ready to throw</button>`}<span class="count">In satchel: ${n}</span></div></article>`;
       }).join('') + '</div>';
+    } else if (tab === 'biscuit') {
+      const bonus = sim.power() - sim.tuning.power;
+      const head = `<p class="biscuit-head">Golden Feathers: <b>${k.mats.feather}</b> · Goose Power <b>${sim.power()}</b>` +
+        (bonus ? ` (bench ${sim.tuning.power} + ${bonus} from traits)` : '') + ` · Leash strength <b>${sim.str()}</b>` +
+        (sim.gap() > 0 ? ' · <span class="warn">Biscuit is stronger than his leash: craft a better one.</span>' : '') + '</p>' +
+        `<p class="biscuit-where">${sim.atShrine ? 'You are at the shrine. Pick a trait.' : "Learn traits at Biscuit's shrine in Willowmere Pond (by the path, south of the start)."} Every two traits add one Goose Power.</p>`;
+      body.innerHTML = head + '<div class="branches">' + BRANCHES.map(br => '<div class="branch">' + chip(br) +
+        TRAITS.filter(t => t.branch === br).map(t => {
+          const has = k.has(t.id), can = sim.canLearn(t.id);
+          const prev = TRAITS.find(o => o.branch === br && o.tier === t.tier - 1);
+          const locked = !has && prev && !k.has(prev.id);
+          const btn = has ? '<button type="button" disabled>Learned</button>'
+            : `<button type="button" class="primary" data-learn="${t.id}" ${can ? '' : 'disabled'}>${locked ? `Needs ${esc(prev!.name)}` : sim.atShrine ? 'Learn · 1 ✦' : 'At the shrine · 1 ✦'}</button>`;
+          return `<article class="rc trait${has ? ' equipped' : ''}${locked ? ' locked' : ''}"><div class="rc-top"><h3>${esc(t.name)}</h3><span class="tier">${'I'.repeat(t.tier)}</span></div><p class="rc-fx">${esc(t.effect)}</p><p class="rc-lore">${esc(t.lore)}</p><div class="rc-act">${btn}</div></article>`;
+        }).join('') + '</div>').join('') + '</div>';
     } else {
       const tile = (id: ItemId, cat: boolean) => { const m = ITEMS[id]; return `<div class="mat${cat ? ' cat' : ''}" style="--c:${m.color}"><i></i><b>${esc(m.name)}</b><span>${k.mats[id]}</span><small>${esc(m.source)}</small></div>`; };
       body.innerHTML = '<h4>Materials</h4><div class="satchel">' + (Object.keys(MATERIALS) as ItemId[]).map(id => tile(id, false)).join('') +
@@ -132,6 +152,7 @@ export function mountUi(scene: GameScene): void {
     if (d.equip) sim.equipLeash(d.equip as never);
     if (d.craftBread) sim.craftBread(d.craftBread as never);
     if (d.ready) sim.kit.active = d.ready as never;
+    if (d.learn) { sim.learnTrait(d.learn as TraitId); scene.saveNow(); }
     render();
   });
   document.querySelectorAll<HTMLButtonElement>('.book-tabs [data-tab]').forEach(b => b.addEventListener('click', () => { tab = b.dataset.tab as typeof tab; render(); }));
@@ -146,6 +167,9 @@ export function mountUi(scene: GameScene): void {
   }
   $('book-close').onclick = closeBook;
   book.addEventListener('click', e => { if (e.target === book) closeBook(); });
+
+  // the shrine opens the book on Biscuit's page
+  scene.onShrine = () => { if (!open) { scene.setPackOpen(false); tab = 'biscuit'; openBook(); } };
 
   scene.controls.onUi = a => {
     if (a === 'book') { if (open) closeBook(); else { scene.setPackOpen(false); openBook(); } }

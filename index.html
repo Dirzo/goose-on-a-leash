@@ -13,7 +13,7 @@
 <div class="wrap">
   <header>
     <h1>Goose <span>on a</span> Leash</h1>
-    <span class="tag">Act 1 · Willowmere + all of Reedmarsh · playtest</span>
+    <span class="tag">Act 1 · Willowmere + Reedmarsh · traits + sound</span>
   </header>
 
   <div class="stage"><div id="stage"></div></div>
@@ -27,6 +27,7 @@
         <button id="b-room-go" type="button">Go</button>
         <button id="b-room-restart" type="button">Restart room [R]</button>
         <button id="b-game-reset" type="button">Reset game</button>
+        <button id="b-sound" type="button">Sound: on [M]</button>
       </div>
       <p class="note" id="room-note">Jumping keeps your satchel. Rooms past The Braided Line give you the Braided Line if you don't have it yet. Reset game wipes the save and starts again at Willowmere.</p>
     </section>
@@ -43,7 +44,9 @@
         <dt>Bimbo</dt><dd><b>Bimbo the Moon Koi's water is your life.</b> Hits splash water out of the backpack or tear it, and every tear makes it leak faster. Stand on a shoreline to refill. If the water runs out, Bimbo faints and you restart the room.</dd>
         <dt><kbd>P</kbd></dt><dd><b>Patch a tear.</b> Costs one needle use (sewing kits hold three) and one twine. Out of needle? Race to the next sewing kit.</dd>
         <dt><kbd>I</kbd> / <kbd>Tab</kbd></dt><dd><b>Backpack:</b> Bimbo, the patches you've sewn, the leak rate and your supplies. Pauses the game; press <kbd>P</kbd> there to patch.</dd>
-        <dt><kbd>B</kbd></dt><dd><b>Recipe book.</b> Craft leashes and breads. Pauses the game.</dd>
+        <dt><kbd>B</kbd></dt><dd><b>Recipe book.</b> Craft leashes and breads, and see Biscuit's traits. Pauses the game.</dd>
+        <dt>Shrine</dt><dd><b>Biscuit's shrine</b> in Willowmere: spend Golden Feathers (from bosses, and a few hidden spots) on traits. Every two traits add one Goose Power.</dd>
+        <dt><kbd>M</kbd></dt><dd>Sound on / off</dd>
         <dt>Walk over leash</dt><dd>Grab the trailing leash of a feral or loose goose.</dd>
         <dt><kbd>R</kbd></dt><dd>Restart the room from the door you came in by (satchel, leashes and pack carry over)</dd>
         <dt>Doors</dt><dd>Walk off the edge of a room through a gap in the trees. Gates open when Biscuit honks the room's bell.</dd>
@@ -89,6 +92,7 @@
       <button type="button" role="tab" data-tab="leash" aria-selected="true">Leashes</button>
       <button type="button" role="tab" data-tab="bread" aria-selected="false">Breads</button>
       <button type="button" role="tab" data-tab="satchel" aria-selected="false">Satchel</button>
+      <button type="button" role="tab" data-tab="biscuit" aria-selected="false">Biscuit ✦</button>
     </div>
     <div id="book-status" class="status"></div>
     <div id="book-body"></div>

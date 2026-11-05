@@ -2,6 +2,7 @@ import {
   BREADS, ITEMS, LEASHES, breadById, leashById,
   type BreadId, type Cost, type ItemId, type LeashDef, type LeashId, type LeashStats,
 } from '../data/recipes';
+import type { TraitId } from '../data/traits';
 
 const NEUTRAL: Required<Omit<LeashStats, 'noBite'>> & { noBite: boolean } = {
   str: 0, len: 0, fling: 1, yank: 1, tug: 1, honkR: 1, honkStrain: 0,
@@ -16,6 +17,8 @@ export class Kit {
   bread: Record<BreadId, number>;
   active: BreadId;
   toothFirst: boolean;
+  /** Biscuit's learned traits (see data/traits.ts). */
+  traits: Set<TraitId>;
 
   constructor() {
     this.mats = Object.fromEntries(Object.keys(ITEMS).map(k => [k, 0])) as Record<ItemId, number>;
@@ -26,7 +29,10 @@ export class Kit {
     this.bread.stale = 1;
     this.active = 'stale';
     this.toothFirst = true;
+    this.traits = new Set<TraitId>();
   }
+
+  has(t: TraitId): boolean { return this.traits.has(t); }
 
   get leashDef(): LeashDef { return leashById(this.leash); }
 

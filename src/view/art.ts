@@ -56,6 +56,8 @@ export class ArtRenderer {
   private flash = 0;
   private bellSwing = 0;
   private cam: Vec | null = null;
+  /** Squash-and-stretch springs (0 = rest). */
+  private sqB = 0; private sqR = 0; private wasAir = false; private snapFlash = 0; private power = 2;
 
   constructor(private scene: Phaser.Scene, sim: Sim) {
     const main = scene.cameras.main;
@@ -129,7 +131,9 @@ export class ArtRenderer {
       else if (e.type === 'fx') {
         this.fx.push({ kind: e.kind, x: e.x, y: e.y, t: 0, a: e.a, cone: e.cone, range: e.range, text: e.text });
         const cam = this.scene.cameras.main;
-        if (e.kind === 'snap') cam.shake(260, 0.006);
+        if (e.kind === 'snap') { cam.shake(320, 0.009); this.snapFlash = 1; }
+        if (e.kind === 'chomp') { this.sqB = 1; cam.shake(70, 0.0012 * this.power); }
+        if (e.kind === 'tear' || e.kind === 'splash') this.sqR = Math.max(this.sqR, e.kind === 'tear' ? 1 : 0.5);
         if (e.kind === 'tear') cam.shake(120, 0.003);
         if (e.kind === 'ring') this.bellSwing = 1;
         if (e.kind === 'faint') this.flash = 1;
@@ -147,6 +151,8 @@ export class ArtRenderer {
     this.quips = this.quips.filter(q => q.life > 0);
     for (const f of this.fx) f.t += dt;
     this.fx = this.fx.filter(f => f.t < (f.kind === 'faint' ? 1.6 : 0.8));
+    this.power = sim.power();
+    this.sqB = Math.max(0, this.sqB - dt * 5); this.sqR = Math.max(0, this.sqR - dt * 4); this.snapFlash = Math.max(0, this.snapFlash - dt * 3);
     this.banner -= dt; this.flash = Math.max(0, this.flash - dt * 0.8); this.bellSwing = Math.max(0, this.bellSwing - dt * 0.7);
     this.wtext.begin(); this.beginExtra(); for (const p of [...Object.values(this.htext), ...Object.values(this.utext)]) p.begin();
     if (sim.room.def.id !== this.roomId) this.setRoom(sim);
@@ -294,6 +300,34 @@ export class ArtRenderer {
       g.fillStyle(0xd9c08a, 1); g.fillRect(x - 4, y - 4, 8, 8);
       g.fillStyle(0xb09460, 1); for (let yy2 = y - 3; yy2 < y + 4; yy2 += 2) g.fillRect(x - 4, yy2, 8, 1);
     });
+    // Golden Feathers: hidden, glinting
+    const feather = (gfx: Phaser.GameObjects.Graphics, x: number, y: number) => {
+      gfx.fillStyle(0x1a1522, 1); gfx.fillTriangle(x - 4, y + 7, x, y - 9, x + 4, y + 7);
+      gfx.fillStyle(0xffd860, 1); gfx.fillTriangle(x - 3, y + 6, x, y - 8, x + 3, y + 6);
+      gfx.fillStyle(0xfff4c0, 1); gfx.fillRect(x, y - 6, 1, 12);
+    };
+    (def.feathers ?? []).forEach((k2, i) => {
+      if (sim.feathersGot[i]) return;
+      const y = Math.round(k2.y + Math.sin(time * 2.5 + k2.x) * 2);
+      g.fillStyle(0xffd860, 0.18 + 0.1 * Math.sin(time * 5)); g.fillCircle(k2.x, y, 12);
+      feather(g, k2.x, y);
+      if (Math.floor(time * 3 + k2.x) % 4 === 0) { g.fillStyle(0xffffff, 1); g.fillRect(k2.x + 5, y - 9, 1, 3); g.fillRect(k2.x + 4, y - 8, 3, 1); }
+    });
+    // Biscuit's shrine: a mossy stone with a golden feather floating over it
+    const sh = def.shrine;
+    if (sh) {
+      g.fillStyle(0x000000, 0.35); g.fillEllipse(sh.x + 2, sh.y + 12, 40, 10);
+      g.fillStyle(0x1a1522, 1); g.fillRect(sh.x - 15, sh.y - 14, 30, 26);
+      g.fillStyle(0x565666, 1); g.fillRect(sh.x - 14, sh.y - 13, 28, 24);
+      g.fillStyle(0x7a7a8c, 1); g.fillRect(sh.x - 14, sh.y - 13, 28, 5);
+      g.fillStyle(0x4c7454, 1); g.fillRect(sh.x - 14, sh.y - 13, 10, 3); g.fillRect(sh.x + 6, sh.y + 6, 8, 3);
+      g.fillStyle(0xf6f1e6, 0.85); g.fillEllipse(sh.x - 2, sh.y + 2, 12, 8); g.fillRect(sh.x + 2, sh.y - 6, 3, 8); g.fillCircle(sh.x + 4, sh.y - 7, 2.5);   // goose carving
+      g.fillStyle(0xf08a24, 0.9); g.fillRect(sh.x + 6, sh.y - 8, 3, 2);
+      const fy = sh.y - 30 + Math.round(Math.sin(time * 2) * 3);
+      g.fillStyle(0xffd860, 0.2 + 0.12 * Math.sin(time * 3)); g.fillCircle(sh.x, fy, 14);
+      feather(g, sh.x, fy);
+      this.wt("Biscuit's Shrine", sh.x, sh.y - 48, 7, '#ffd860', 0.75 + 0.25 * Math.sin(time * 2), 'mono');
+    }
     // bread loaves
     def.breadSpots.forEach((b, i) => {
       if (sim.breadGot[i]) return;
@@ -328,6 +362,10 @@ export class ArtRenderer {
     this.rocco.setFlipX(this.faceL).setPosition(Math.round(P.x), Math.round(P.y - lift)).setDepth(P.y);
     this.rocco.setAlpha(pl.inv > 0 && Math.floor(time * 16) % 2 ? 0.35 : 1);
     this.rocco.setAngle(pl.dead > 0 ? (this.faceL ? 90 : -90) : 0);
+    if (this.wasAir && !pl.air) this.sqR = 1;           // landing from a yank
+    this.wasAir = pl.air;
+    const sr = Math.sin(this.sqR * Math.PI) * 0.18;
+    this.rocco.setScale(1 + sr, pl.air ? 1.08 : 1 - sr);
     g.fillStyle(0x000000, 0.35); g.fillEllipse(P.x + 1, P.y + 1, 24, 7);
     const tip = point(strip, 'rodTip', this.faceL), koi = point(strip, 'koi', this.faceL);
     const tipW = { x: Math.round(P.x) + tip.x, y: Math.round(P.y - lift) + tip.y };
@@ -351,6 +389,8 @@ export class ArtRenderer {
     this.show(this.biscuit, bstrip, Math.floor(time * (flying ? 16 : waddle ? 12 : 6)));
     const glift = go.state === 'flying' ? 10 : 0;
     this.biscuit.setFlipX(bflip).setPosition(Math.round(G.x), Math.round(G.y - glift)).setDepth(G.y);
+    const sb = Math.sin(this.sqB * Math.PI) * 0.22, stretch = go.state === 'flying' ? 0.1 : 0;
+    this.biscuit.setScale(1 + sb + stretch, 1 - sb - stretch * 0.6);
     const furious = go.furious > 0;
     if (go.feral) this.biscuit.setTint(Math.floor(time * 8) % 2 ? 0xff6a5a : 0xff9a8a);
     else if (furious) this.biscuit.setTint(0xffc4b8);
@@ -566,7 +606,7 @@ export class ArtRenderer {
     panel(fx0 - 14, 12, 348, 92);
     this.ht('mono', go.furious > 0 ? 'FURIOUS' : 'GOOSE FURY', W / 2, fy + 4, 12, go.furious > 0 ? '#e05a47' : '#9aa3a6', 1, 'center', true);
     g.fillStyle(0x1a1522, 1); g.fillRect(fx0, fy + 10, 320, 14);
-    const v = go.furious > 0 ? go.furious / (5 * sim.kit.stat('furyDur')) : go.fury / 100;
+    const v = go.furious > 0 ? go.furious / sim.furyTime() : go.fury / 100;
     g.fillStyle(go.furious > 0 ? (Math.floor(time * 8) % 2 ? 0xe05a47 : 0xf08a24) : 0xf2c230, 1); g.fillRect(fx0 + 2, fy + 12, 316 * Math.min(1, v), 10);
     g.fillStyle(0x1a1522, 1); g.fillRect(fx0, fy + 30, 320, 8);
     g.fillStyle(go.strain > 0.7 && Math.floor(time * 10) % 2 ? 0xe05a47 : 0xc9a46a, 1); g.fillRect(fx0 + 2, fy + 32, 316 * Math.min(1, go.strain), 4);
@@ -623,6 +663,7 @@ export class ArtRenderer {
       if (sim.room.def.subtitle) this.ht('body', sim.room.def.subtitle, W / 2, 234, 18, '#c9a46a', a, 'center', true);
     }
     if (this.flash > 0) { g.fillStyle(0x05040a, Math.min(0.85, this.flash)); g.fillRect(0, 0, W, H); }
+    if (this.snapFlash > 0) { g.fillStyle(0xffffff, this.snapFlash * 0.5); g.fillRect(0, 0, W, H); }
     if (this.packOpen && sim.pack.enabled) this.drawPackUi(sim); else this.showPackUi(false);
     if (sim.won) {
       g.fillStyle(0x0b0a10, 0.78); g.fillRect(0, 0, W, H);

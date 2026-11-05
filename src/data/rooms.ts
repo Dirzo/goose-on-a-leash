@@ -52,6 +52,10 @@ export interface RoomDef {
   /** Sewing kits (needle uses for patching) and twine spools lying in the room, each picked up once. */
   kits?: Vec[];
   spools?: Vec[];
+  /** Golden Feathers hidden in the room, each picked up once. */
+  feathers?: Vec[];
+  /** Biscuit's shrine (Willowmere): stand by it to learn traits. */
+  shrine?: Vec;
   /** A tackle chest holding a leash, opened once. */
   chest?: { x: number; y: number; leash: LeashId };
   /** 'rain': a storm while the boss is up: puddles slow Rocco, refills are slow and the pack drains faster. */

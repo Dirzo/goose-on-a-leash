@@ -148,6 +148,7 @@ ROOMS.append(room(
     enemies=[frog(110, 100), frog(160, 500), frog(1110, 180), frog(1130, 460)],
     bread=[{'x': 630, 'y': 372}, {'x': 120, 'y': 120}],
     kits=[{'x': 1180, 'y': 540}], spools=[{'x': 110, 'y': 400}],
+    feathers=[{'x': 585, 'y': 330}],                       # on island B
     lantern={'x': 226, 'y': 250},
     paths=[[[66, 300], [236, 300]], [[984, 310], [1214, 310]]],
 ))
@@ -255,6 +256,7 @@ ROOMS.append(room(
     enemies=[frog(640, 225), frog(370, 455), frog(940, 315), frog(675, 440)],
     bread=[{'x': 1150, 'y': 580}],
     spools=[{'x': 660, 'y': 115}, {'x': 811, 'y': 300}],
+    feathers=[{'x': 960, 'y': 300}],                       # the frog island off the last boardwalk
     lantern={'x': 1110, 'y': 470},
     paths=[[[66, 320], [196, 315]], [[1084, 505], [1180, 505], [1180, 215], [1214, 215]]],
 ))
@@ -292,6 +294,7 @@ ROOMS.append(room(
     enemies=[snapper(520, 280), snapper(900, 330), snapper(1100, 230)],
     bread=[{'x': 760, 'y': 360}],
     kits=[{'x': 640, 'y': 200}], spools=[{'x': 180, 'y': 350}],
+    feathers=[{'x': 448, 'y': 102}],                       # on the north island by the escape post
     lantern={'x': 640, 'y': 190},
     paths=[[[66, 280], [1214, 280]]],
 ))
@@ -321,6 +324,7 @@ ROOMS.append(room(
     enemies=[frog(150, 150), frog(150, 500), frog(1000, 180), frog(1010, 470)],
     bread=[{'x': 1000, 'y': 330}],
     spools=[{'x': 120, 'y': 330}],
+    feathers=[{'x': 650, 'y': 372}],                       # on the bell island
     lantern={'x': 260, 'y': 250},
     paths=[[[66, 320], [276, 310]], [[924, 330], [1054, 320]]],
 ))
