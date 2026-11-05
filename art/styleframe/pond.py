@@ -271,14 +271,11 @@ shadow(RX + 4, RY + 30, 18, 3, 0.5)
 shadow(GX + 12, GY + 34, 10, 2, 0.65)
 for (fx, fy) in frogs: shadow(fx + 6, fy + 8, 6, 2, 0.55)
 
-# the fish-jar backpack with the Moon Koi, behind Rocco's left shoulder
-sprites.draw_jar(lambda x, y, c, emit=False: put(x, y, c, emit=emit, spr=True), RX - 14, RY + 8)
-# striped tail curling out below the jar
-for i in range(6):
-    ty = RY + 29 - i; tx = RX + 4 - i
-    for k in range(4): put(tx - k, ty, 'MASK' if (i // 2) % 2 else 'FUR2', spr=True)
-    put(tx - 4, ty, 'OUT', spr=True); put(tx + 1, ty, 'OUT', spr=True)
+# the backpack with the Moon Koi sticking out, one patch sewn on and one fresh hole dripping
+_put = lambda x, y, c, emit=False: put(x, y, c, emit=emit, spr=True)
+sprites.draw_backpack(_put, RX - 10, RY + 12, patches=[(10, 13)], holes=[(4, 11)], water=0.75, with_koi=False)
 blit(sprites.ROCCO, RX, RY, {k: v for k, v in sprites.ROCCO_KEYS.items()}, emit_keys=sprites.ROCCO_EMIT)
+sprites.draw_koi(_put, RX - 10, RY + 12, water=0.75)    # peeking over his shoulder
 blit(GOOSE_FLY, GX, GY, GK, emit_keys='E')
 for (fx, fy) in frogs:
     blit(FROG, fx, fy, FK, emit_keys='R', flip=fx > 150)
@@ -313,7 +310,7 @@ def add_light(cx, cy, radius, color, power, bands=7):
 
 add_light(MX, MY, 280, (0.95, 0.18, 0.24), 0.7)               # blood-moon key light
 add_light(201, 100, 66, (1.0, 0.66, 0.32), 1.25)                 # dock lantern
-add_light(RX - 5, RY + 18, 26, (0.7, 0.9, 1.0), 0.8)          # the koi's glow
+add_light(RX - 2, RY + 6, 24, (0.8, 0.92, 1.0), 0.75)          # the koi's moon glow
 for (fx, fy) in fireflies: add_light(fx, fy, 7, (0.8, 1.0, 0.5), 0.6, bands=3)
 
 lit = base * np.clip(light, 0, 1.6)
