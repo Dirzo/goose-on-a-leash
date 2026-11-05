@@ -3,6 +3,8 @@ import { DEFAULT_TUNING, TUNING_RANGES, type Tuning } from '../core/config';
 import { BREADS, BUILDS, CATALYSTS, ITEMS, LEASHES, MATERIALS, breadById, type BuildId, type Cost, type ItemId } from '../data/recipes';
 import type { GameScene } from '../scenes/GameScene';
 import { applySave, clearStoredSave, decodeSave, encodeSave, snapshotSave } from '../core/save';
+import { ROOMS } from '../data/rooms';
+import { ROOM_ART } from './assets';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const esc = (t: string) => t.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -32,6 +34,37 @@ export function mountUi(scene: GameScene): void {
   $('b-stock').onclick = () => { sim.kit.stockAll(5); if (open) render(); };
   $('b-empty').onclick = () => { sim.kit.emptyAll(); if (open) render(); };
   $('b-book').onclick = () => openBook();
+
+  // ---- room selection and reset
+  const order = Object.values(ROOMS).sort((a, b) => rank(a.id) - rank(b.id));
+  function rank(id: string): number { return id === 'willowmere' ? 0 : id.startsWith('reedmarsh-') ? +id.slice(10) : 99; }
+  const pick = $<HTMLSelectElement>('room-pick');
+  pick.innerHTML = order.map(r => {
+    const tag = r.id === 'willowmere' ? 'Hub' : r.id.startsWith('reedmarsh-') ? `Reedmarsh ${r.id.slice(10)}` : 'Test';
+    return `<option value="${r.id}">${tag} · ${esc(r.name)}${r.boss ? ' (boss)' : ''}${r.id === 'room-01' ? ' (gray-box prototype)' : ''}</option>`;
+  }).join('');
+  const syncPick = () => { pick.value = scene.sim.room.def.id; };
+  syncPick();
+  $('b-room-go').onclick = () => {
+    const def = ROOMS[pick.value];
+    if (!def) return;
+    const artNow = !!ROOM_ART[scene.sim.room.def.id], artThere = !!ROOM_ART[def.id];
+    if (artNow !== artThere) {            // switching between the painted world and the gray-box room needs a reload
+      location.search = `?room=${def.id}`;
+      return;
+    }
+    if (open) closeBook();
+    scene.setPackOpen(false);
+    if (rank(def.id) >= 6 && rank(def.id) < 99) scene.sim.kit.findLeash('braided');
+    const entry = def.doors?.find(d => d.to !== 'END' && rank(d.to) < rank(def.id))?.id ?? null;
+    scene.sim.enterRoom(def, entry, true);
+    scene.saveNow();
+    $('room-note').textContent = `Jumped to ${def.name}.`;
+    scene.game.canvas.focus();
+  };
+  $('b-room-restart').onclick = () => { if (open) closeBook(); scene.setPackOpen(false); scene.resetRoom(); scene.game.canvas.focus(); };
+  $('b-game-reset').onclick = () => { clearStoredSave(); if (location.search) location.search = ''; else location.reload(); };
+  setInterval(() => { if (document.activeElement !== pick) syncPick(); }, 1000);
 
   // ---- saves
   const saveStatus = $('save-status'), codeIn = $<HTMLInputElement>('save-code');

@@ -19,6 +19,17 @@
   <div class="stage"><div id="stage"></div></div>
 
   <div class="bench">
+    <section class="card" style="grid-column:1/-1">
+      <h2>Rooms</h2>
+      <div class="row" style="align-items:center">
+        <label for="room-pick" style="font-size:14px">Jump to</label>
+        <select id="room-pick" style="flex:1 1 240px;min-width:0;font:inherit;font-size:14px;background:var(--floor);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:7px 9px"></select>
+        <button id="b-room-go" type="button">Go</button>
+        <button id="b-room-restart" type="button">Restart room [R]</button>
+        <button id="b-game-reset" type="button">Reset game</button>
+      </div>
+      <p class="note" id="room-note">Jumping keeps your satchel. Rooms past The Braided Line give you the Braided Line if you don't have it yet. Reset game wipes the save and starts again at Willowmere.</p>
+    </section>
     <section class="card">
       <h2>Controls</h2>
       <dl class="keys">
