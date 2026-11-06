@@ -1,3 +1,6 @@
+import { addTime, basementRun, count, trackQuits } from '../view/analytics';
+import { playerName, recordRun, type BasementRun } from '../view/leaderboard';
+import { SETTINGS } from '../view/settings';
 import Phaser from 'phaser';
 import { STEP } from '../core/config';
 import { Sim, type ShopItem } from '../core/sim';
@@ -55,6 +58,10 @@ export class GameScene extends Phaser.Scene {
   onFerry: () => void = () => {};
   /** Set by the UI: Rocco honked at a shop counter. */
   onShop: () => void = () => {};
+  /** The Infinite Basement: a run ended (the UI shows the leaderboard). */
+  onBasementOver: (r: BasementRun, rank: number) => void = () => {};
+  /** Where to go back to when Rocco takes the stairs up out of the Basement. */
+  private basementFrom: { room: string; door: string | null } | null = null;
 
   constructor() { super('game'); }
 
@@ -64,6 +71,7 @@ export class GameScene extends Phaser.Scene {
     nearestFilter(this, Phaser.Textures.FilterMode.NEAREST);
     const forced = roomFromUrl();
     this.sim = new Sim({ seed: (Date.now() & 0x7fffffff) || 1, room: forced ?? WILLOWMERE, difficulty: this.difficulty });
+    trackQuits(() => this.sim.room.def.id);
     const saved = forced ? null : loadStoredSave();
     if (saved) { applySave(this.sim, saved); this.resumed = true; }
     const def = this.sim.room.def;
@@ -77,7 +85,7 @@ export class GameScene extends Phaser.Scene {
     this.controls = new Controls(this, this.game.canvas);
     this.cinema.onCue = c => {
       if (c.sound) sound.play(c.sound as Parameters<typeof sound.play>[0]);
-      if (c.shake) this.cameras.main.shake(c.shake * 1000, 0.012);
+      if (c.shake && SETTINGS.shake) this.cameras.main.shake(c.shake * 1000, 0.012);
       if (c.act) this.stageAct(c.act);
     };
     this.cinema.onEnd = id => {
@@ -97,6 +105,7 @@ export class GameScene extends Phaser.Scene {
     const now = performance.now();
     const dt = this.lastNow ? Math.min(0.25, (now - this.lastNow) / 1000) : STEP;
     this.lastNow = now;
+    if (!this.paused && document.visibilityState === 'visible') addTime(this.sim.room.def.id, dt);
     if (this.movie?.active) { this.movie.update(dt); for (const s of this.movie?.sounds ?? []) sound.play(s as Parameters<typeof sound.play>[0]); if (this.movie) this.movie.sounds = []; }
     const chasing = this.prologue?.logic.phase === 'chase';
     const film = this.cinema.active || !!this.movie?.active, pro = !!this.prologue?.active && !chasing;
@@ -326,13 +335,43 @@ export class GameScene extends Phaser.Scene {
   patchFromPack(): void { this.sim.patchPack(); this.feed(this.sim.drainEvents()); }
 
   /** Write the autosave now (also done on every room arrival). */
-  saveNow(): boolean { return this.saving && storeSave(snapshotSave(this.sim)); }
+  saveNow(): boolean { return this.saving && !this.sim.room.def.endless && storeSave(snapshotSave(this.sim)); }
+
+  /** Down into the Infinite Basement (the save stays where Rocco was). */
+  enterBasement(): void {
+    if (this.sim.room.def.endless) return;
+    this.saveNow();
+    this.basementFrom = { room: this.sim.room.def.id, door: this.sim.entryDoor };
+    this.setPackOpen(false);
+    this.sim.enterRoom(ROOMS.basement!, 'up', true);
+    this.feed(this.sim.drainEvents());
+  }
+  /** Back up the stairs to wherever Rocco came down from (or the hub). */
+  leaveBasement(): void {
+    if (!this.sim.room.def.endless) return;
+    const from = this.basementFrom ?? { room: 'willowmere', door: null };
+    this.basementFrom = null;
+    this.sim.enterRoom(ROOMS[from.room] ?? ROOMS.willowmere!, from.door, true);
+    this.feed(this.sim.drainEvents());
+  }
 
   private feed(events: ReturnType<Sim['drainEvents']>): void {
+    const here = this.sim.room.def.id;
+    for (const e of events) {
+      if (e.type === 'room') count('rooms', here);
+      else if (e.type === 'fx' && e.kind === 'snap') count('snaps', here);
+      else if (e.type === 'fx' && e.kind === 'faint') count('deaths', here);
+      else if (e.type === 'basementOver') basementRun(e.floor);
+    }
     if (events.some(e => e.type === 'room')) { this.prev = null; this.saveNow(); }
     if (events.some(e => e.type === 'shrine')) this.onShrine();
     if (events.some(e => e.type === 'ferry')) this.onFerry();
     if (events.some(e => e.type === 'shop')) this.onShop();
+    if (events.some(e => e.type === 'leaveBasement')) this.time.delayedCall(0, () => this.leaveBasement());
+    for (const e of events) if (e.type === 'basementOver') {
+      const run: BasementRun = { name: playerName(), floor: e.floor, kills: e.kills, time: Math.round(e.time), diff: this.difficulty, at: Date.now() };
+      this.onBasementOver(run, recordRun(run));
+    }
     for (const e of events) if (e.type === 'sound') sound.play(e.kind);
     if (events.some(e => e.type === 'morays')) this.pendingCine = 'moray-out';
     for (const e of events) if (e.type === 'seal') this.pendingCine = `seal-${e.id}`;

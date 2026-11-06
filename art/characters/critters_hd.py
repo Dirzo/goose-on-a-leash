@@ -152,6 +152,40 @@ def squirrel(blink=False, awake=False, pose='idle'):
     L.append(eye)
     return composite(L)
 
+FXPAL = {k: hx(v) for k, v in {
+    'X0': '5a2410', 'X1': '9a4418', 'X2': 'd0702a', 'X3': 'f0a050', 'XW': 'f6eee0', 'XK': '1a1210', 'NOSE': '15111c',
+    'FR': 'ff3a3a', 'FR2': 'ffb0a0', 'BW': 'f8f4ec', 'BK': '15111c',
+}.items()}
+def fox(blink=False, awake=False, pose='idle'):
+    """A Hollowbark fox: lean, russet, white-tipped brush, black socks. Poses: idle, crouch (tail up, the dart
+    is coming), run (stretched out, mid-bound). Faces right."""
+    w, h = 44, 30
+    L = []
+    low = pose == 'crouch'; run = pose == 'run'
+    by = 18 if not low else 20
+    tail = Layer('tail', w, h, FXPAL)
+    if low: tail.poly([(12, by - 2), (4, by - 14), (2, by - 10), (8, by + 1)], 'X1'); tail.ell(3, by - 13, 2.5, 2.5, 'XW')
+    elif run: tail.poly([(10, by - 1), (0, by - 4), (1, by + 1), (10, by + 3)], 'X1'); tail.ell(1, by - 1, 2.5, 2, 'XW')
+    else: tail.ell(7, by + 4, 6, 3.5, 'X1'); tail.ell(2, by + 5, 2.5, 2, 'XW')
+    L.append(tail)
+    body = Layer('body', w, h, FXPAL)
+    body.ell(20, by, 10 if not run else 12, 5 if not low else 4, 'X2'); body.ell(21, by + 2, 6, 2.5, 'X3')
+    legs = [(13, 28), (17, 28), (25, 28), (29, 28)] if not run else [(9, 25), (14, 27), (29, 27), (35, 24)]
+    for (lx, ly) in legs: body.line([(min(max(lx, 12), 30), by + 3), (lx, ly)], 'X1', 2); body.rect(lx - 1, ly - 1, lx + 1, ly, 'XK')
+    hx_, hy = (32, by - 4) if not low else (33, by - 1)
+    if run: hx_, hy = 35, by - 3
+    body.ell(hx_, hy, 5, 4, 'X2'); body.poly([(hx_ + 3, hy - 1), (hx_ + 10, hy + 2), (hx_ + 3, hy + 3)], 'X2')
+    body.poly([(hx_ + 2, hy + 1), (hx_ + 10, hy + 2), (hx_ + 3, hy + 4)], 'XW'); body.px(hx_ + 10, hy + 2, 'NOSE')
+    body.poly([(hx_ - 4, hy - 2), (hx_ - 3, hy - 9), (hx_, hy - 3)], 'X1'); body.poly([(hx_ - 1, hy - 3), (hx_ + 1, hy - 9), (hx_ + 3, hy - 3)], 'X1')
+    body.px(hx_ - 3, hy - 6, 'XK'); body.px(hx_ + 1, hy - 6, 'XK')
+    L.append(body)
+    eye = Layer('eye', w, h, FXPAL)
+    ex, ey = hx_ + 2, hy - 1
+    if blink: eye.line([(ex - 1, ey), (ex + 1, ey)], 'XK')
+    else: eye.rect(ex, ey, ex + 1, ey, 'BK' if awake else 'FR'); eye.px(ex, ey, 'BW' if awake else 'FR2')
+    L.append(eye)
+    return composite(L)
+
 def badger(blink=False, awake=False, pose='idle'):
     """A badger: low and broad, striped face, digging claws. Dig pose: nose down, dirt flying."""
     w, h = 60, 38

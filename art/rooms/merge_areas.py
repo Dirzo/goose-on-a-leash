@@ -39,6 +39,7 @@ AREAS = [
     ('castle-4', 'The Lava Keep', 'Castle Honkmore · the third wing', ['castle-8', 'castle-9', 'castle-10']),
     ('castle-5', 'The Throne Room', 'Castle Honkmore · the Swan Queen', ['castle-11']),
     ('castle-6', 'The Blood Moat', 'Castle Honkmore · the Blood Shark', ['castle-12']),
+    ('basement', 'The Infinite Basement', 'Under the old mill · endless', ['basement']),
 ]
 ROOM_TO_AREA = {r: a for a, _, _, rs in AREAS for r in rs}
 
@@ -133,7 +134,7 @@ def merge(area_id, name, subtitle, ids):
             if R.get(k):
                 assert not out.get(k), f'{area_id}: two {k}s'
                 out[k] = shift_pt(R[k], ox, oy)
-        for k in ('biome', 'lightKind', 'heavyKind', 'weather', 'stormRefill', 'stormDrain', 'ventSpawns', 'boss', 'winText', 'tiles', 'sealGate', 'blood'):
+        for k in ('biome', 'lightKind', 'heavyKind', 'weather', 'stormRefill', 'stormDrain', 'ventSpawns', 'boss', 'winText', 'tiles', 'sealGate', 'blood', 'endless'):
             if k in R and R[k] is not None: out[k] = R[k]
         # doors that leave the area, and the border walls around this room with openings cut
         gaps = {s: list(opens.get((i, s), [])) for s in 'NSWE'}

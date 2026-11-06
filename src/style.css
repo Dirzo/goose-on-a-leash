@@ -125,3 +125,35 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--caution);outlin
 .fish-card.unknown .pic img{filter:brightness(0);opacity:.35}
 .fish-card b{display:block}
 .fish-card small{display:block;opacity:.75}
+
+.settings-toggles{display:flex;flex-direction:column;gap:8px;margin:12px 0}
+.settings-toggles label{display:flex;gap:8px;align-items:center;font-size:15px}
+.settings-h{font-size:13px;letter-spacing:.08em;text-transform:uppercase;margin:14px 0 6px}
+.settings-h small{text-transform:none;letter-spacing:0;opacity:.7}
+.settings-keys{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px;margin-bottom:12px}
+.settings-keys button{display:flex;justify-content:space-between;width:100%}
+.settings-keys button.listening{outline:2px solid var(--accent,#f2c230)}
+
+/* The tackle journal: a battered field book. Pixel-stepped corners, a stitched spine, ruled pages, stamped cards. */
+#journal .book-inner, #shop .book-inner, #settings .book-inner{
+  border-radius:0;position:relative;
+  background:repeating-linear-gradient(180deg,transparent 0 27px,rgba(90,70,40,.13) 27px 28px),var(--paper);
+  box-shadow:0 0 0 4px #3a2a1a,0 0 0 8px #6e5232,4px 4px 0 8px #1a1208,inset 0 0 0 2px rgba(255,255,255,.25);
+  clip-path:polygon(0 8px,8px 8px,8px 0,calc(100% - 8px) 0,calc(100% - 8px) 8px,100% 8px,100% calc(100% - 8px),calc(100% - 8px) calc(100% - 8px),calc(100% - 8px) 100%,8px 100%,8px calc(100% - 8px),0 calc(100% - 8px));
+}
+#journal .book-inner{padding-left:44px}
+#journal .book-inner::before{content:"";position:absolute;left:14px;top:12px;bottom:12px;width:6px;
+  background:repeating-linear-gradient(180deg,#8a2a1a 0 8px,transparent 8px 16px)}
+#journal .book-head h2{letter-spacing:.02em;text-shadow:2px 2px 0 rgba(0,0,0,.12)}
+.journal-list h3{border-bottom:2px dashed rgba(90,70,40,.35);padding-bottom:4px}
+.fish-card{border-radius:0;border:2px solid #6e5232;box-shadow:3px 3px 0 rgba(58,42,26,.35);background:rgba(255,250,235,.6)}
+.fish-card.unknown{border-style:dashed;background:rgba(255,250,235,.25)}
+.fish-card b{font-family:var(--display);font-weight:400;font-size:15px}
+
+#basement .book-inner{border-radius:0;box-shadow:0 0 0 4px #2a2030,0 0 0 8px #54465e,4px 4px 0 8px #120c16}
+.basement-name{display:flex;gap:8px;align-items:center;margin:10px 0;font-size:14px}
+.basement-name input{font:inherit;padding:4px 8px;border:2px solid var(--paper-line);background:#fffaf0;color:var(--paper-ink)}
+.basement-board{margin:8px 0 14px;padding-left:28px;font-family:var(--mono);font-size:13px;line-height:1.9}
+.basement-board li.me{background:rgba(242,194,48,.35)}
+.basement-board .empty{list-style:none;margin-left:-28px;opacity:.7;font-family:inherit}
+.stats-out{max-height:240px;overflow:auto;font-size:12px;background:var(--floor);border:1px solid var(--line);padding:8px;white-space:pre-wrap}

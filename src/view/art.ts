@@ -3,6 +3,7 @@
  * and a screen-space HUD. The world is drawn at 640x360 native pixels (camera zoom 2 on a
  * 1280x720 canvas) and follows Rocco; the HUD has its own camera at 1280x720 so text stays sharp.
  */
+import { SETTINGS } from './settings';
 import Phaser from 'phaser';
 import { BREADS, ITEMS, MATERIALS, isCatalyst, type ItemId } from '../data/recipes';
 import { C } from '../core/config';
@@ -24,7 +25,7 @@ const hex = (s: string): number => parseInt(s.replace('#', ''), 16);
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 interface ViewFx { kind: string; x: number; y: number; t: number; a?: number; cone?: number; range?: number; text?: string }
-interface Quip { text: string; life: number }
+interface Quip { text: string; life: number; bimbo?: boolean }
 interface Drip { x: number; y: number; z: number; vz: number; life: number }
 
 const HEART = ['.XX.XX.', 'XXXXXXX', 'XXXXXXX', '.XXXXX.', '..XXX..', '...X...'];
@@ -165,22 +166,33 @@ export class ArtRenderer {
     s.setFrame(frame % SPRITES[strip]!.frames);
   }
 
+  /** Cracked fishing glasses: hairline cracks across the screen corners, and a red seep while he stumbles. */
+  private drawGlasses(sim: Sim, g: Phaser.GameObjects.Graphics, W: number, H: number): void {
+    const n = sim.glassCracks;
+    if (!n) return;
+    const CR = [[[0, 90], [70, 120], [110, 190], [150, 210]], [[W, 60], [W - 80, 110], [W - 120, 90], [W - 190, 160]], [[0, H - 80], [90, H - 120], [130, H - 60], [210, H - 100]]];
+    g.lineStyle(2, 0xdfe8ee, 0.45);
+    for (let i = 0; i < n; i++) { const c = CR[i]!; g.beginPath(); g.moveTo(c[0]![0]!, c[0]![1]!); for (const p of c.slice(1)) g.lineTo(p[0]!, p[1]!); g.strokePath(); g.lineBetween(c[1]![0]!, c[1]![1]!, c[1]![0]! + 24, c[1]![1]! + 40); }
+    if (sim.stumble > 0) { const a = Math.min(1, sim.stumble) * 0.28; g.fillStyle(0x8a0f1a, a); g.fillRect(0, 0, W, 40); g.fillRect(0, H - 40, W, 40); g.fillRect(0, 0, 40, H); g.fillRect(W - 40, 0, 40, H); }
+  }
+
   consume(events: SimEvent[]): void {
     for (const e of events) {
       if (e.type === 'say') this.quips.push({ text: e.text, life: 2.6 });
+      else if (e.type === 'bimbo') this.quips.push({ text: `Bimbo: ${e.text}`, life: 4.2, bimbo: true });
       else if (e.type === 'hint') { this.hintText = e.text; this.hintT = 6; }
       else if (e.type === 'fx') {
         this.fx.push({ kind: e.kind, x: e.x, y: e.y, t: 0, a: e.a, cone: e.cone, range: e.range, text: e.text });
         this.atmo.flashAt(e.kind, e.x, e.y);
         const cam = this.scene.cameras.main;
-        if (e.kind === 'snap') { cam.shake(320, 0.009); this.snapFlash = 1; }
-        if (e.kind === 'chomp') { this.sqB = 1; cam.shake(70, 0.0012 * this.power); }
+        if (e.kind === 'snap') { SETTINGS.shake && cam.shake(320, 0.009); if (SETTINGS.flashes) this.snapFlash = 1; }
+        if (e.kind === 'chomp') { this.sqB = 1; SETTINGS.shake && cam.shake(70, 0.0012 * this.power); }
         if (e.kind === 'tear' || e.kind === 'splash') this.sqR = Math.max(this.sqR, e.kind === 'tear' ? 1 : 0.5);
-        if (e.kind === 'tear' || (e.kind === 'splash' && Math.hypot(e.x - this.lastP.x, e.y + 34 - this.lastP.y) < 40)) this.atmo.hurtFlash = e.kind === 'tear' ? 1 : 0.6;
-        if (e.kind === 'tear') cam.shake(120, 0.003);
+        if (e.kind === 'tear' || (e.kind === 'splash' && Math.hypot(e.x - this.lastP.x, e.y + 34 - this.lastP.y) < 40)) this.atmo.hurtFlash = (e.kind === 'tear' ? 1 : 0.6) * (SETTINGS.flashes ? 1 : 0.25);
+        if (e.kind === 'tear') SETTINGS.shake && cam.shake(120, 0.003);
         if (e.kind === 'ring') this.bellSwing = 1;
         if (e.kind === 'faint') this.flash = 1;
-        if (e.kind === 'slam') cam.shake(300, 0.008);
+        if (e.kind === 'slam') SETTINGS.shake && cam.shake(300, 0.008);
       } else if (e.type === 'reset') { this.fx = []; this.drips = []; this.puddles = []; this.cam = null; }
       else if (e.type === 'room') this.flash = Math.max(this.flash, 0.45);
     }
@@ -581,14 +593,14 @@ export class ArtRenderer {
       if (e.dead) continue;
       alive.add(e.id);
       let s = this.foes.get(e.id);
-      if (!s) { s = this.worldIgnore(this.scene.add.sprite(0, 0, ({ snapper: 'snapper', elder: 'snapper', heron: 'heron', squirrel: 'squirrel', badger: 'badger', king: 'king', crab: 'crab', gull: 'gull', gullbeard: 'gullbeard', eel: 'eel', turtle: 'turtle', bellhop: 'bellhop', pelican: 'pelican', mimic: 'crab', blackswan: 'blackswan', queen: 'queen' } as Record<string, string>)[e.kind] ?? 'frog')); this.foes.set(e.id, s); }
+      if (!s) { s = this.worldIgnore(this.scene.add.sprite(0, 0, ({ snapper: 'snapper', elder: 'snapper', heron: 'heron', squirrel: 'squirrel', fox: 'fox', badger: 'badger', king: 'king', crab: 'crab', gull: 'gull', gullbeard: 'gullbeard', eel: 'eel', turtle: 'turtle', bellhop: 'bellhop', pelican: 'pelican', mimic: 'crab', blackswan: 'blackswan', queen: 'queen' } as Record<string, string>)[e.kind] ?? 'frog')); this.foes.set(e.id, s); }
       const { x, y } = EP(e);
       const awake = e.woke > 0 || (e.stun > 0 && e.kind !== 'snapper');
       const kind = e.kind === 'heron' ? (e.woke > 0 ? 'heron_awake' : 'heron')
         : e.kind === 'snapper' ? (e.woke > 0 ? 'snapper_awake' : 'snapper') : awake ? 'frog_awake' : 'frog';
       const blink = ((time * 1.1 + e.id * 0.37) % 3.2) < 0.14;
       if (e.kind === 'elder') { this.drawElder(sim, e, s, x, y, time); continue; }
-      if (e.kind === 'squirrel' || e.kind === 'badger' || e.kind === 'king') {
+      if (e.kind === 'squirrel' || e.kind === 'fox' || e.kind === 'badger' || e.kind === 'king') {
         this.drawWoodsCritter(sim, e, s, x, y, time);
         continue;
       }
@@ -833,7 +845,8 @@ export class ArtRenderer {
     const v = go.furious > 0 ? go.furious / sim.furyTime() : go.fury / 100;
     g.fillStyle(go.furious > 0 ? (Math.floor(time * 8) % 2 ? 0xe05a47 : 0xf08a24) : 0xf2c230, 1); g.fillRect(fx0 + 2, fy + 12, 316 * Math.min(1, v), 10);
     g.fillStyle(0x1a1522, 1); g.fillRect(fx0, fy + 30, 320, 8);
-    g.fillStyle(go.strain > 0.7 && Math.floor(time * 10) % 2 ? 0xe05a47 : 0xc9a46a, 1); g.fillRect(fx0 + 2, fy + 32, 316 * Math.min(1, go.strain), 4);
+    g.fillStyle(go.strain > 0.7 && Math.floor(time * 10) % 2 ? (SETTINGS.colourSafe ? 0xffffff : 0xe05a47) : (SETTINGS.colourSafe ? 0x3a8ee0 : 0xc9a46a), 1); g.fillRect(fx0 + 2, fy + 32, 316 * Math.min(1, go.strain), 4);
+    if (SETTINGS.colourSafe && go.strain > 0.7) { g.fillStyle(0x0b0a10, 1); for (let sx = fx0 + 6; sx < fx0 + 2 + 316 * Math.min(1, go.strain); sx += 10) g.fillRect(sx, fy + 32, 3, 4); this.ht('mono', go.strain > 0.92 ? 'SNAP!' : 'STRAIN', fx0 + 330, fy + 36, 11, '#ffffff', 1, 'left', true); }
     this.ht('mono', `STRAIN · POWER ${sim.tuning.power} vs LEASH ${sim.str()}`, fx0, fy + 56, 11, sim.gap() > 0 ? '#e05a47' : '#9aa3a6', 1, 'left', true);
     this.ht('mono', sim.kit.leashDef.name.toUpperCase() + (sim.buff.bagel > 0 ? ' +BAGEL' : ''), fx0, fy + 70, 11, '#c9a46a', 1, 'left', true);
 
@@ -883,10 +896,12 @@ export class ArtRenderer {
     // quips
     this.quips.forEach((q, i) => {
       const a = Math.min(1, q.life / 0.5), y = H - 110 - (this.quips.length - 1 - i) * 30;
-      const t = this.ht('body', q.text, W / 2, y, 18, '#e9e4d6', a, 'center', true);
-      g.fillStyle(0x0b0a10, 0.75 * a); g.fillRect(W / 2 - t.width / 2 - 12, y - 18, t.width + 24, 27);
+      const t = this.ht('body', q.text, W / 2, y, 18, q.bimbo ? '#9fe8e0' : '#e9e4d6', a, 'center', true);
+      g.fillStyle(q.bimbo ? 0x0a1a1c : 0x0b0a10, 0.78 * a); g.fillRect(W / 2 - t.width / 2 - 12, y - 18, t.width + 24, 27);
+      if (q.bimbo) { g.fillStyle(0x6fd6c8, a); g.fillRect(W / 2 - t.width / 2 - 12, y - 18, 3, 27); }
     });
 
+    this.drawGlasses(sim, g, W, H);
     this.drawFishHud(sim, g, panel, W, H);
     if (this.wtWave) { panel(W / 2 - 110, 124, 220, 30); this.ht('mono', this.wtWave, W / 2, 144, 13, '#ff8a6a', 0.8 + 0.2 * Math.sin(this.time * 6), 'center', true); }
 
@@ -1057,7 +1072,7 @@ export class ArtRenderer {
   private drawElder(sim: Sim, e: Enemy, s: Phaser.GameObjects.Sprite, x: number, y: number, time: number): void {
     const g = this.floor, f = this.fxg, awake = e.woke > 0, SC = 1.8;
     this.show(s, awake ? 'snapper_awake' : 'snapper', e.mode === 'wind' || e.mode === 'charge' ? 1 : 0);
-    const flip = e.mode === 'charge' ? e.hx < 0 : sim.player.x < x;
+    const flip = e.mode === 'charge' ? e.hx < 0 : e.kind === 'fox' && e.mode === 'escape' ? sim.player.x > x : sim.player.x < x;
     const pant = e.mode === 'tired' ? Math.sin(time * 14) * 0.06 : 0;
     const rear = e.mode === 'wind' ? Math.min(1, e.modeT / 0.5) * 0.22 : 0;
     const flipped = e.mode === 'flipped';
@@ -1394,6 +1409,7 @@ export class ArtRenderer {
     });
     const w = def.waves;
     if (w && !sim.waveDone && sim.waveSpawned > 0) this.wtWave = `GUARDS · ${sim.waveLeft()} LEFT`;
+    else if (sim.room.def.endless) this.wtWave = sim.floor === 0 || sim.floorT > 0 ? (sim.floor ? `FLOOR ${sim.floor} CLEAR · NEXT IN ${Math.ceil(sim.floorT)}` : 'THE INFINITE BASEMENT') : `FLOOR ${sim.floor} · ${sim.basementLeft()} LEFT`;
     else this.wtWave = '';
   }
   wtWave = '';
@@ -1558,12 +1574,13 @@ export class ArtRenderer {
     let frame = blink ? 1 : 0;
     if (!awake) {
       if (e.kind === 'squirrel' && e.mode === 'wind') frame = 2;
+      if (e.kind === 'fox') frame = e.mode === 'wind' ? 2 : e.mode === 'dart' || e.mode === 'escape' || e.mode === 'sidestep' || Math.hypot(e.vx, e.vy) > 120 ? 3 : frame;
       if (e.kind === 'badger' && (e.mode === 'wind' || e.mode === 'surface')) frame = 2;
       if (king) frame = e.mode === 'wind' ? (e.attack === 'charge' ? 3 : 2) : e.mode === 'charge' ? 3 : e.mode === 'dazed' ? 4 : frame;
     }
     this.show(s, strip, frame);
     const hop = e.kind === 'squirrel' && Math.hypot(e.vx, e.vy) + (e.mode === 'stalk' ? 30 : 0) > 20 ? -Math.abs(Math.sin(time * 12 + e.id)) * 3 : 0;
-    const flip = e.mode === 'charge' ? e.hx < 0 : sim.player.x < x;
+    const flip = e.mode === 'charge' ? e.hx < 0 : e.kind === 'fox' && e.mode === 'escape' ? sim.player.x > x : sim.player.x < x;
     s.setVisible(!under).setPosition(Math.round(x), Math.round(y + hop)).setDepth(y).setFlipX(flip)
       .setAlpha(awake && !king ? Math.min(1, (1.6 - e.woke) / 0.5) : 1);
     const tell = e.mode === 'wind' && Math.floor(e.modeT * 16) % 2 === 0;
@@ -1575,7 +1592,8 @@ export class ArtRenderer {
       if (Math.floor(time * 20) % 2) { f.fillStyle(0x7a6040, 0.8); f.fillCircle(x + (Math.random() - 0.5) * w, y - 4, 2); }
       return;
     }
-    g.fillStyle(0x000000, 0.35); g.fillEllipse(x, y + 2, king ? 90 : e.kind === 'badger' ? 44 : 18, king ? 18 : 8);
+    g.fillStyle(0x000000, 0.35); g.fillEllipse(x, y + 2, king ? 90 : e.kind === 'badger' ? 44 : e.kind === 'fox' ? 30 : 18, king ? 18 : 8);
+    if (e.loot && !awake) { f.fillStyle(0xf2c230, 0.6 + 0.4 * Math.sin(time * 10)); f.fillRect(Math.round(x + 14), Math.round(y - 20), 5, 4); this.wt('thief!', x, y - 34, 8, '#ffd27a', 1); }
     if (awake) {
       if (king && e.woke < 6) this.wt('The Burrow King', x, y - 84, 9, '#c8e0a0', Math.min(1, 6 - e.woke));
       if (!king) for (let i = 0; i < 2; i++) { const t = (e.woke * 1.3 + i * 0.5) % 1; f.fillStyle(0xff8aa8, 1 - t); f.fillRect(Math.round(x + (i ? 5 : -5)), Math.round(y - 30 - t * 14), 3, 2); }

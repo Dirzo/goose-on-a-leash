@@ -1,4 +1,7 @@
 /** DOM layer: tuning bench and recipe book. Reads and writes the sim; never draws the game. */
+import { count, exportStats, top, STATS } from './analytics';
+import { loadBoard, playerName, setPlayerName, type BasementRun } from './leaderboard';
+import { ACTION_NAMES, DEFAULT_KEYS, SETTINGS, bind, keyLabel, saveSettings, type Action } from './settings';
 import { DEFAULT_TUNING, DIFFICULTY, TUNING_RANGES, type Difficulty, type Tuning } from '../core/config';
 import { BREADS, BUILDS, CATALYSTS, ITEMS, LEASHES, MATERIALS, breadById, type BuildId, type Cost, type ItemId } from '../data/recipes';
 import type { GameScene } from '../scenes/GameScene';
@@ -43,7 +46,7 @@ export function mountUi(scene: GameScene): void {
   function rank(id: string): number { return id === 'willowmere' ? 0 : id.startsWith('reedmarsh-') ? +id.slice(10) : id.startsWith('hollowbark-') ? 10 + +id.slice(11) : id.startsWith('driftwood-') ? 20 + +id.slice(10) : id.startsWith('tide-') ? 30 + +id.slice(5) : id.startsWith('castle-') ? 40 + +id.slice(7) : 99; }
   const pick = $<HTMLSelectElement>('room-pick');
   pick.innerHTML = order.map(r => {
-    const tag = r.id === 'willowmere' ? 'Hub' : r.id.startsWith('reedmarsh-') ? `Reedmarsh ${r.id.slice(10)}` : r.id.startsWith('hollowbark-') ? `Hollowbark ${r.id.slice(11)}` : r.id.startsWith('driftwood-') ? `Driftwood ${r.id.slice(10)}` : r.id.startsWith('tide-') ? `Tide Caves ${r.id.slice(5)}` : r.id.startsWith('castle-') ? `Castle ${r.id.slice(7)}` : 'Test';
+    const tag = r.id === 'willowmere' ? 'Hub' : r.id.startsWith('reedmarsh-') ? `Reedmarsh ${r.id.slice(10)}` : r.id.startsWith('hollowbark-') ? `Hollowbark ${r.id.slice(11)}` : r.id.startsWith('driftwood-') ? `Driftwood ${r.id.slice(10)}` : r.id.startsWith('tide-') ? `Tide Caves ${r.id.slice(5)}` : r.id.startsWith('castle-') ? `Castle ${r.id.slice(7)}` : r.id === 'basement' ? 'Endless' : 'Test';
     return `<option value="${r.id}">${tag} · ${esc(r.name)}${r.boss ? ' (boss)' : ''}${r.id === 'room-01' ? ' (gray-box prototype)' : ''}</option>`;
   }).join('');
   const syncPick = () => { pick.value = scene.sim.room.def.id; };
@@ -159,9 +162,9 @@ export function mountUi(scene: GameScene): void {
     const b = (e.target as HTMLElement).closest('button');
     if (!b || b.disabled) return;
     const d = b.dataset;
-    if (d.craftLeash) sim.craftLeash(d.craftLeash as never);
+    if (d.craftLeash && sim.craftLeash(d.craftLeash as never)) count('crafts', d.craftLeash);
     if (d.equip) sim.equipLeash(d.equip as never);
-    if (d.craftBread) sim.craftBread(d.craftBread as never);
+    if (d.craftBread && sim.craftBread(d.craftBread as never)) count('crafts', d.craftBread);
     if (d.ready) sim.kit.active = d.ready as never;
     if (d.learn) { sim.learnTrait(d.learn as TraitId); scene.saveNow(); }
     render();
@@ -231,6 +234,73 @@ export function mountUi(scene: GameScene): void {
   // the shrine opens the book on Biscuit's page
   scene.onShrine = () => { if (!open) { scene.setPackOpen(false); tab = 'biscuit'; openBook(); } };
 
+  // playtest stats: local only; copy them into a bug report
+  $('b-stats').onclick = async () => {
+    const out = $('stats-out');
+    if (!out.hidden) { out.hidden = true; return; }
+    const mins = (s: number) => `${Math.round(s / 60)} min`;
+    const list = (k: 'deaths' | 'snaps' | 'time' | 'quits') => top(k).map(([r, n]) => `${r} ${k === 'time' ? mins(n) : n}`).join(', ') || 'none yet';
+    const crafts = Object.values(STATS.crafts).reduce((a, b) => a + b, 0);
+    out.textContent = `Most faints: ${list('deaths')}\nMost snaps: ${list('snaps')}\nMost time: ${list('time')}\nSessions ended in: ${list('quits')}\nCrafted: ${crafts} · Deepest Basement floor: ${STATS.basementBest}\n\n${exportStats()}`;
+    out.hidden = false;
+    try { await navigator.clipboard.writeText(exportStats()); $('room-note').textContent = 'Playtest stats copied to the clipboard (they never leave this browser otherwise).'; } catch { $('room-note').textContent = 'Playtest stats shown below. Nothing is sent anywhere.'; }
+  };
+
+  // the Infinite Basement: the way down, and the board of deepest runs
+  const bdlg = $('basement'), board = $('basement-board'), bname = $<HTMLInputElement>('basement-name');
+  let basementOpen = false;
+  const mmss = (t: number) => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
+  function drawBoard(mine?: BasementRun): void {
+    const rows = loadBoard();
+    board.innerHTML = rows.length ? rows.map(r => `<li class="${mine && r.at === mine.at ? 'me' : ''}">${esc(r.name)} · Floor ${r.floor} · ${r.kills} beaten · ${mmss(r.time)} · ${esc(DIFFICULTY[r.diff as Difficulty]?.name ?? r.diff)}</li>`).join('')
+      : '<li class="empty">No runs yet. The drains are waiting.</li>';
+  }
+  function openBasement(sub?: string, mine?: BasementRun): void {
+    if (open) closeBook(); scene.setPackOpen(false);
+    $('basement-sub').textContent = sub ?? 'Endless floors of entranced critters under the old mill. Clear a floor and the drains splash the pack; every second floor leaves bread. How deep can Bimbo go?';
+    bname.value = playerName(); drawBoard(mine);
+    const inside = !!scene.sim.room.def.endless;
+    $('basement-go').textContent = inside ? 'Go again' : 'Go down';
+    $('basement-up').hidden = !inside;
+    basementOpen = true; bdlg.hidden = false; scene.paused = true; $('basement-go').focus();
+  }
+  function closeBasement(): void { basementOpen = false; bdlg.hidden = true; scene.paused = false; scene.game.canvas.focus(); }
+  bname.onchange = () => setPlayerName(bname.value.trim() || 'Rocco');
+  $('b-basement').onclick = () => openBasement();
+  $('basement-close').onclick = closeBasement;
+  $('basement-go').onclick = () => { closeBasement(); if (scene.sim.room.def.endless) scene.resetRoom(); else scene.enterBasement(); };
+  $('basement-up').onclick = () => { closeBasement(); scene.leaveBasement(); };
+  bdlg.addEventListener('click', e => { if (e.target === bdlg) closeBasement(); });
+  scene.onBasementOver = (r, place) => openBasement(`Bimbo fainted on floor ${r.floor + 1}. You cleared ${r.floor} floor${r.floor === 1 ? '' : 's'} and beat ${r.kills} critters in ${mmss(r.time)}.${place ? ` That's #${place} on the board!` : ''}`, r);
+
+  // settings: accessibility toggles and key rebinding
+  const settings = $('settings'), keysBox = $('settings-keys');
+  let settingsOpen = false, listening: Action | null = null;
+  const chk = (id: string, key: 'shake' | 'flashes' | 'colourSafe') => { const el = $<HTMLInputElement>(id); el.checked = SETTINGS[key]; el.onchange = () => { SETTINGS[key] = el.checked; saveSettings(); }; };
+  chk('set-shake', 'shake'); chk('set-flash', 'flashes'); chk('set-cs', 'colourSafe');
+  function drawKeys(): void {
+    keysBox.innerHTML = '';
+    for (const a of Object.keys(ACTION_NAMES) as Action[]) {
+      const b = document.createElement('button'); b.type = 'button';
+      b.innerHTML = `<span>${ACTION_NAMES[a]}</span><kbd>${listening === a ? '…' : esc(keyLabel(SETTINGS.keys[a]))}</kbd>`;
+      if (listening === a) b.className = 'listening';
+      b.onclick = () => { listening = a; drawKeys(); };
+      keysBox.appendChild(b);
+    }
+  }
+  window.addEventListener('keydown', e => {
+    if (!settingsOpen || !listening) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    const k = e.key.toLowerCase();
+    if (k !== 'escape' && !k.startsWith('arrow') && k !== 'tab' && k !== 'm' && k !== 'enter') bind(listening, k);
+    listening = null; drawKeys();
+  }, true);
+  function closeSettings(): void { settingsOpen = false; listening = null; settings.hidden = true; scene.paused = false; scene.game.canvas.focus(); }
+  $('b-settings').onclick = () => { if (open) closeBook(); scene.setPackOpen(false); settingsOpen = true; settings.hidden = false; scene.paused = true; drawKeys(); $('settings-close').focus(); };
+  $('settings-close').onclick = closeSettings;
+  $('settings-defaults').onclick = () => { Object.assign(SETTINGS.keys, DEFAULT_KEYS); saveSettings(); drawKeys(); };
+  settings.addEventListener('click', e => { if (e.target === settings) closeSettings(); });
+
   // the Fish Journal: every kind in the cove, silhouettes for the ones still to catch
   const journal = $('journal'), jlist = $('journal-list');
   let journalOpen = false;
@@ -262,6 +332,8 @@ export function mountUi(scene: GameScene): void {
     if (scene.prologue?.active) { if (a === 'close') scene.skipPrologue(); return; }
     if (a === 'journal') { if (journalOpen) closeJournal(); else if (!open && !ferryOpen && !shopOpen) { scene.setPackOpen(false); openJournal(); } return; }
     if (journalOpen && (a === 'close' || a === 'closeBook')) { closeJournal(); return; }
+    if (settingsOpen) { if (a === 'close') closeSettings(); return; }
+    if (basementOpen) { if (a === 'close') closeBasement(); return; }
     if (a === 'book') { if (open) closeBook(); else { scene.setPackOpen(false); openBook(); } }
     else if (a === 'pack') { if (open) closeBook(); scene.setPackOpen(!scene.packOpen); }
     else if (a === 'closeBook' || a === 'close') { if (open) closeBook(); if (ferryOpen) closeFerry(); if (shopOpen) closeShop(); scene.setPackOpen(false); }

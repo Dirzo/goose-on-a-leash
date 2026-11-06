@@ -136,6 +136,11 @@
    "kind": "badger",
    "x": 960,
    "y": 260
+  },
+  {
+   "kind": "fox",
+   "x": 600,
+   "y": 320
   }
  ],
  "knightSpawn": null,

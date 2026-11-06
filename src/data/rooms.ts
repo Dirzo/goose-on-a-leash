@@ -2,7 +2,7 @@ import type { Circle, Rect, Vec } from '../core/math';
 import type { LeashId } from './recipes';
 import type { FishingGrounds } from '../core/fishing';
 
-export type EnemyKind = 'bunny' | 'knight' | 'frog' | 'snapper' | 'heron' | 'squirrel' | 'badger' | 'king' | 'elder' | 'crab' | 'gull' | 'gullbeard' | 'eel' | 'turtle' | 'bellhop' | 'mimic' | 'pelican' | 'blackswan' | 'queen';
+export type EnemyKind = 'bunny' | 'knight' | 'frog' | 'snapper' | 'heron' | 'squirrel' | 'badger' | 'king' | 'elder' | 'crab' | 'gull' | 'gullbeard' | 'eel' | 'turtle' | 'bellhop' | 'mimic' | 'pelican' | 'blackswan' | 'queen' | 'fox';
 
 /** A doorway on a room edge. Walking into it travels to `toDoor` in room `to` (or ends the slice when `to` is 'END'). */
 export interface Door {
@@ -102,6 +102,8 @@ export interface RoomDef {
   carpets?: Rect[];
   /** Guards come in waves from the burrows until `count` have been beaten; then the room's Royal Seal is won. */
   waves?: { kinds: EnemyKind[]; count: number; alive: number; every: number; seal: string; zone?: string };
+  /** The Infinite Basement: endless floors of critters. Spawn holes are the room's vents. */
+  endless?: boolean;
   /** Dripping freshwater springs in the caves (drawn by the painter; refill zones are in `refills`). */
   springs?: Vec[];
   /** The freshwater pump (drawn by the painter; its refill zone is in `refills`). */

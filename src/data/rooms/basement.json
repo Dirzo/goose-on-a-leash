@@ -1,0 +1,181 @@
+{
+ "id": "basement",
+ "name": "The Infinite Basement",
+ "subtitle": "Under the old mill \u00b7 endless",
+ "width": 1120,
+ "height": 760,
+ "walls": [
+  {
+   "x": 275,
+   "y": 225,
+   "w": 50,
+   "h": 50,
+   "kind": "pillar"
+  },
+  {
+   "x": 795,
+   "y": 225,
+   "w": 50,
+   "h": 50,
+   "kind": "pillar"
+  },
+  {
+   "x": 275,
+   "y": 515,
+   "w": 50,
+   "h": 50,
+   "kind": "pillar"
+  },
+  {
+   "x": 795,
+   "y": 515,
+   "w": 50,
+   "h": 50,
+   "kind": "pillar"
+  },
+  {
+   "x": 520,
+   "y": 360,
+   "w": 80,
+   "h": 50,
+   "kind": "statue"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1120,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 740,
+   "w": 1120,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 358.0,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 442.0,
+   "w": 20,
+   "h": 318.0,
+   "kind": "border"
+  },
+  {
+   "x": 1100,
+   "y": 0,
+   "w": 20,
+   "h": 760,
+   "kind": "border"
+  }
+ ],
+ "pits": [],
+ "bridges": [],
+ "refills": [],
+ "posts": [
+  {
+   "x": 200,
+   "y": 220,
+   "r": 9
+  },
+  {
+   "x": 960,
+   "y": 400,
+   "r": 9
+  }
+ ],
+ "vents": [
+  {
+   "x": 110,
+   "y": 130
+  },
+  {
+   "x": 1010,
+   "y": 130
+  },
+  {
+   "x": 110,
+   "y": 660
+  },
+  {
+   "x": 1010,
+   "y": 660
+  },
+  {
+   "x": 560,
+   "y": 690
+  }
+ ],
+ "breadSpots": [],
+ "enemies": [],
+ "doors": [
+  {
+   "id": "up",
+   "x": 0,
+   "y": 358.0,
+   "w": 26,
+   "h": 84,
+   "to": "UP",
+   "toDoor": "up",
+   "spawn": {
+    "x": 66,
+    "y": 400
+   },
+   "label": "Up the stairs",
+   "side": "W"
+  }
+ ],
+ "paths": [],
+ "zones": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1120,
+   "h": 760,
+   "name": "The Infinite Basement"
+  }
+ ],
+ "lanterns": [
+  {
+   "x": 300,
+   "y": 400
+  },
+  {
+   "x": 820,
+   "y": 400
+  },
+  {
+   "x": 560,
+   "y": 160
+  }
+ ],
+ "gate": null,
+ "bell": null,
+ "exit": null,
+ "bucket": null,
+ "knightSpawn": null,
+ "biome": "castle",
+ "lightKind": "frog",
+ "heavyKind": "badger",
+ "ventSpawns": false,
+ "endless": true,
+ "rooms": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1120,
+   "h": 760
+  }
+ ],
+ "playerStart": {
+  "x": 66,
+  "y": 400
+ }
+}

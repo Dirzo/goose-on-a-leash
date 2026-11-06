@@ -88,6 +88,8 @@ strip('heron_awake', [critters_hd.heron('idle', awake=True), critters_hd.heron('
 
 # Hollowbark Woods: squirrel (idle, blink, throw), badger (idle, blink, dig), the Burrow King (idle, blink, wind, charge, dazed)
 strip('squirrel', [critters_hd.squirrel(), critters_hd.squirrel(blink=True), critters_hd.squirrel(pose='throw')], (15, 27))
+strip('fox', [critters_hd.fox(), critters_hd.fox(blink=True), critters_hd.fox(pose='crouch'), critters_hd.fox(pose='run')], (22, 28))
+strip('fox_awake', [critters_hd.fox(awake=True), critters_hd.fox(blink=True, awake=True)], (22, 28))
 strip('squirrel_awake', [critters_hd.squirrel(awake=True), critters_hd.squirrel(blink=True, awake=True)], (15, 27))
 strip('badger', [critters_hd.badger(), critters_hd.badger(blink=True), critters_hd.badger(pose='dig')], (28, 33))
 strip('badger_awake', [critters_hd.badger(awake=True), critters_hd.badger(blink=True, awake=True)], (28, 33))

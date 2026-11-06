@@ -37,7 +37,7 @@ describe('world map', () => {
 
   it('every door leads to a real door that leads back', () => {
     for (const r of WORLD) for (const d of r.doors ?? []) {
-      if (d.to === 'END') continue;
+      if (d.to === 'END' || d.to === 'UP') continue;
       const there = ROOMS[d.to];
       expect(there, `${r.id}:${d.id} -> ${d.to}`).toBeTruthy();
       const back = there!.doors?.find(x => x.id === d.toDoor);
@@ -135,7 +135,7 @@ describe('travel', () => {
 
   it('every door leads to a real area, and that area has a door back', () => {
     for (const def of Object.values(ROOMS)) for (const d of def.doors ?? []) {
-      if (d.to === 'END') continue;
+      if (d.to === 'END' || d.to === 'UP') continue;
       const there = ROOMS[d.to];
       expect(there, `${def.id} -> ${d.to}`).toBeTruthy();
       expect(there!.doors!.some(x => x.id === d.toDoor && x.to === def.id), `${d.to} back to ${def.id}`).toBe(true);

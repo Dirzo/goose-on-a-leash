@@ -1,12 +1,12 @@
 import type Phaser from 'phaser';
 import type { InputFrame } from '../core/sim';
 import type { Vec } from '../core/math';
+import { actionFor } from './settings';
 
 type Verb = 'fling' | 'yank' | 'honk' | 'letGo' | 'feed' | 'cycle' | 'patch' | 'roll';
 export type UiAction = 'book' | 'reset' | 'closeBook' | 'pack' | 'close' | 'patch' | 'advance' | 'journal';
 
 const ARROWS = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright'];
-const GAME_KEYS = ['w', 'a', 's', 'd', ' ', 'e', 'q', 'f', 'r', 'b', 'c', 'p', 'i', 'tab', 'm', 'shift', 'g', 'j', ...ARROWS];
 const DEADZONE = 0.22;
 
 /**
@@ -71,37 +71,29 @@ export class Controls {
     const ae = document.activeElement as HTMLElement | null;
     const onSlider = ae instanceof HTMLInputElement && ae.type === 'range';
     const onButton = ae?.tagName === 'BUTTON';
+    const act = actionFor(k);
     if (this.paused) {
       // a screen is open (book or backpack): the UI layer decides what each key does
       if (this.cinema && (k === ' ' || k === 'enter')) { e.preventDefault(); if (!e.repeat) this.onUi('advance'); return; }
-      if (k === 'b') { e.preventDefault(); this.onUi('book'); }
-      else if (k === 'j') { e.preventDefault(); this.onUi('journal'); }
+      if (act === 'book') { e.preventDefault(); this.onUi('book'); }
+      else if (act === 'journal') { e.preventDefault(); this.onUi('journal'); }
       else if (k === 'escape') { e.preventDefault(); this.onUi('close'); }
-      else if (k === 'i' || k === 'tab') { e.preventDefault(); this.onUi('pack'); }
-      else if (k === 'p' && !e.repeat) { e.preventDefault(); this.onUi('patch'); }
-      else if (k === 'r' && !e.repeat) { e.preventDefault(); this.onUi('reset'); }
+      else if (act === 'pack') { e.preventDefault(); this.onUi('pack'); }
+      else if (act === 'patch' && !e.repeat) { e.preventDefault(); this.onUi('patch'); }
+      else if (act === 'reset' && !e.repeat) { e.preventDefault(); this.onUi('reset'); }
       return;
     }
     if (onSlider && ARROWS.includes(k)) return;          // arrows adjust the focused slider
     if (onButton && (k === ' ' || k === 'enter')) return; // let buttons click
     if (ae instanceof HTMLInputElement && ae.type !== 'range') return; // typing in a field
-    if (GAME_KEYS.includes(k)) { e.preventDefault(); if (onSlider) ae.blur(); }
-    if (e.repeat) return;
-    this.held.add(k);
-    if (k === ' ') this.pending.add('honk');
-    if (k === 'shift') this.pending.add('roll');
-    if (k === 'e') this.pending.add('yank');
-    if (k === 'q') this.pending.add('letGo');
-    if (k === 'f') this.pending.add('feed');
-    if (k === 'c') this.pending.add('cycle');
-    if (k === 'p') this.pending.add('patch');
-    if (k === 'b') this.onUi('book');
-    if (k === 'j') this.onUi('journal');
-    if (k === 'i' || k === 'tab') this.onUi('pack');
-    if (k === 'r') this.onUi('reset');
+    if (act || k === 'm') { e.preventDefault(); if (onSlider) ae.blur(); }
+    if (e.repeat || !act) return;
+    this.held.add(act);
+    if (act === 'honk' || act === 'roll' || act === 'yank' || act === 'letGo' || act === 'feed' || act === 'cycle' || act === 'patch') this.pending.add(act);
+    if (act === 'book' || act === 'journal' || act === 'pack' || act === 'reset') this.onUi(act);
   };
 
-  private keyup = (e: KeyboardEvent): void => { this.held.delete(e.key.toLowerCase()); };
+  private keyup = (e: KeyboardEvent): void => { const a = actionFor(e.key.toLowerCase()); if (a) this.held.delete(a); };
 
   /** Poll the gamepad once per rendered frame. */
   pollPad(): void {
@@ -130,8 +122,8 @@ export class Controls {
   }
 
   private move(): Vec {
-    let x = (this.held.has('d') || this.held.has('arrowright') ? 1 : 0) - (this.held.has('a') || this.held.has('arrowleft') ? 1 : 0);
-    let y = (this.held.has('s') || this.held.has('arrowdown') ? 1 : 0) - (this.held.has('w') || this.held.has('arrowup') ? 1 : 0);
+    let x = (this.held.has('right') ? 1 : 0) - (this.held.has('left') ? 1 : 0);
+    let y = (this.held.has('down') ? 1 : 0) - (this.held.has('up') ? 1 : 0);
     const pads = this.scene.input.gamepad;
     const pad = pads && pads.total > 0 ? pads.pad1 : null;
     if (pad) {
@@ -157,7 +149,7 @@ export class Controls {
     const m = this.paused ? { x: 0, y: 0 } : this.move();
     const a = this.aim(player);
     const f: InputFrame = { moveX: m.x, moveY: m.y, aimX: a.x, aimY: a.y };
-    if (!this.paused) { f.guard = this.held.has('g') || this.rmb || this.padGuard; f.castHold = this.lmb || this.padCast; }
+    if (!this.paused) { f.guard = this.held.has('guard') || this.rmb || this.padGuard; f.castHold = this.lmb || this.padCast; }
     if (consume && !this.paused) {
       if (!this.verbsOff) for (const v of this.pending) f[v] = true;
       this.pending.clear();

@@ -294,6 +294,26 @@
   ],
   "points": {}
  },
+ "fox": {
+  "w": 44,
+  "h": 30,
+  "frames": 4,
+  "anchor": [
+   22,
+   28
+  ],
+  "points": {}
+ },
+ "fox_awake": {
+  "w": 44,
+  "h": 30,
+  "frames": 2,
+  "anchor": [
+   22,
+   28
+  ],
+  "points": {}
+ },
  "squirrel_awake": {
   "w": 30,
   "h": 30,
