@@ -30,11 +30,15 @@ bg = lambda x, y: foe('badger', x, y)
 ROOMS.append(room(
     'hollowbark-1', 'Woodline', 1120, 640,
     [dict(id='w', side='W', at=350, to='reedmarsh-12', toDoor='e', label="The Ferryman's Pool"),
-     dict(id='e', side='E', at=300, to='hollowbark-2', toDoor='w', label='Bramble Path')],
+     dict(id='e', side='E', at=300, to='hollowbark-2', toDoor='w', gated=True, label='Bramble Path')],
     'w', subtitle='Hollowbark Woods · 1', **W(),
+    # the way on is shut until an acorn, batted back with the Ferryman's Oar, rings the chime in the thorns
+    gate=rect(1074, 254, 12, 92),
+    bell={'x': 968, 'y': 486, 'r': 14, 'parryOnly': True},
+    brambles=[rect(900, 440, 140, 100)],
     pits=[rect(520, 300, 80, 56, kind='water')],
     refills=[rect(500, 280, 120, 96)],
-    props=[tree(260, 160), tree(380, 480), tree(560, 140), tree(700, 520), tree(820, 180), tree(980, 460), tree(200, 560), tree(1000, 120)],
+    props=[tree(260, 160), tree(380, 480), tree(560, 140), tree(700, 520), tree(820, 180), tree(200, 560), tree(1000, 120)],
     vents=[{'x': 860, 'y': 560}],
     enemies=[sq(480, 220), sq(760, 400), sq(900, 260)],
     bread=[{'x': 300, 'y': 300}], spools=[{'x': 640, 'y': 560}],

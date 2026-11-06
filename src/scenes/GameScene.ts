@@ -77,6 +77,7 @@ export class GameScene extends Phaser.Scene {
       let steps = 0, first = true;
       while (this.acc >= STEP && steps < MAX_STEPS) {
         this.prev = snapshot(this.sim);
+        this.controls.oar = this.sim.kit.oar;
         this.sim.step(STEP, this.controls.frame(this.sim.player, first));
         first = false; this.acc -= STEP; steps++;
       }

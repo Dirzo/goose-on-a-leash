@@ -32,6 +32,7 @@ function reachable(def: RoomDef, leash: number, fromDoor: string | null): { door
     seen[cy * W + cx] = 1; queue.push([cx, cy]);
   };
   let gateOpened = false;
+  const acorns = def.lightKind === 'squirrel' || def.enemies.some(e => e.kind === 'squirrel');
   const flood = () => {
     while (queue.length) {
       const [cx, cy] = queue.pop()!;
@@ -43,7 +44,11 @@ function reachable(def: RoomDef, leash: number, fromDoor: string | null): { door
         const stop = p.r + C.playerRadius + 4;
         push(p.x - ((p.x - x) / d) * stop, p.y - ((p.y - y) / d) * stop);
       }
-      if (def.bell && room.gateClosed && Math.hypot(def.bell.x - x, def.bell.y - y) < HONK_REACH + def.bell.r) gateOpened = true;
+      if (def.bell && room.gateClosed) {
+        // a chime only rings from a batted-back acorn: needs squirrels throwing, and Rocco within a parry's reach
+        const reach = def.bell.parryOnly ? (acorns ? C.parryRange : -1) : HONK_REACH + def.bell.r;
+        if (Math.hypot(def.bell.x - x, def.bell.y - y) < reach) gateOpened = true;
+      }
     }
   };
   push(start.x, start.y);

@@ -6,7 +6,7 @@ type Verb = 'fling' | 'yank' | 'honk' | 'letGo' | 'feed' | 'cycle' | 'patch' | '
 export type UiAction = 'book' | 'reset' | 'closeBook' | 'pack' | 'close' | 'patch';
 
 const ARROWS = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright'];
-const GAME_KEYS = ['w', 'a', 's', 'd', ' ', 'e', 'q', 'f', 'r', 'b', 'c', 'p', 'i', 'tab', 'm', 'shift', ...ARROWS];
+const GAME_KEYS = ['w', 'a', 's', 'd', ' ', 'e', 'q', 'f', 'r', 'b', 'c', 'p', 'i', 'tab', 'm', 'shift', 'g', ...ARROWS];
 const DEADZONE = 0.22;
 
 /**
@@ -22,6 +22,10 @@ const DEADZONE = 0.22;
  */
 export class Controls {
   private held = new Set<string>();
+  /** Set by the scene: once Rocco has the Ferryman's Oar, right mouse / RB hold it up instead of yanking. */
+  oar = false;
+  private rmb = false;
+  private padGuard = false;
   private pending = new Set<Verb>();
   /** Pointer position in screen pixels; converted to world space each frame, since the camera scrolls. */
   private mouse: Vec = { x: 480, y: 300 };
@@ -42,8 +46,9 @@ export class Controls {
       this.canvas.focus();
       this.mouse = { x: p.x, y: p.y }; this.aimMode = 'mouse';
       if (this.paused) return;
-      if (p.rightButtonDown()) this.pending.add('yank'); else this.pending.add('fling');
+      if (p.rightButtonDown()) { if (this.oar) this.rmb = true; else this.pending.add('yank'); } else this.pending.add('fling');
     });
+    scene.input.on('pointerup', (p: Phaser.Input.Pointer) => { if ((p.event as MouseEvent | undefined)?.button === 2 || !p.rightButtonDown()) this.rmb = false; });
     scene.events.once('shutdown', () => this.destroy());
   }
 
@@ -53,7 +58,7 @@ export class Controls {
     window.removeEventListener('blur', this.clear);
   }
 
-  private clear = (): void => { this.held.clear(); };
+  private clear = (): void => { this.held.clear(); this.rmb = false; };
 
   private keydown = (e: KeyboardEvent): void => {
     const k = e.key.toLowerCase();
@@ -99,9 +104,10 @@ export class Controls {
     const ls = pad.leftStick;
     if (Math.hypot(ls.x, ls.y) > DEADZONE) this.aimMode = this.aimMode === 'pad' || Math.hypot(rs.x, rs.y) > 0.5 ? 'pad' : this.aimMode;
     const now: Record<string, boolean> = {
-      fling: pad.R2 > 0.5, yank: pad.L2 > 0.5 || pad.R1 > 0.5, honk: pad.A, roll: pad.B, letGo: pad.isButtonDown(11), feed: pad.X, cycle: pad.Y, patch: pad.L1 > 0.5,
+      fling: pad.R2 > 0.5, yank: pad.L2 > 0.5 || (pad.R1 > 0.5 && !this.oar), honk: pad.A, roll: pad.B, letGo: pad.isButtonDown(11), feed: pad.X, cycle: pad.Y, patch: pad.L1 > 0.5,
       book: pad.isButtonDown(9), pack: pad.isButtonDown(8),
     };
+    this.padGuard = this.oar && pad.R1 > 0.5;
     for (const [k, v] of Object.entries(now)) {
       if (v && !this.padPrev[k]) {
         if (k === 'book') this.onUi('book');
@@ -141,6 +147,7 @@ export class Controls {
     const m = this.paused ? { x: 0, y: 0 } : this.move();
     const a = this.aim(player);
     const f: InputFrame = { moveX: m.x, moveY: m.y, aimX: a.x, aimY: a.y };
+    if (!this.paused) f.guard = this.held.has('g') || this.rmb || this.padGuard;
     if (consume && !this.paused) {
       for (const v of this.pending) f[v] = true;
       this.pending.clear();

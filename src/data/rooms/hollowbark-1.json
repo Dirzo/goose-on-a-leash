@@ -41,13 +41,6 @@
    "kind": "tree"
   },
   {
-   "x": 958,
-   "y": 458,
-   "w": 44,
-   "h": 44,
-   "kind": "tree"
-  },
-  {
    "x": 178,
    "y": 558,
    "w": 44,
@@ -93,14 +86,14 @@
    "x": 1100,
    "y": 20,
    "w": 20,
-   "h": 20,
+   "h": 258.0,
    "kind": "border"
   },
   {
    "x": 1100,
-   "y": 620,
+   "y": 362.0,
    "w": 20,
-   "h": 40,
+   "h": 298.0,
    "kind": "border"
   },
   {
@@ -163,14 +156,14 @@
    "x": 1120,
    "y": 0,
    "w": 20,
-   "h": 40,
+   "h": 278.0,
    "kind": "border"
   },
   {
    "x": 1120,
-   "y": 620,
+   "y": 362.0,
    "w": 20,
-   "h": 20,
+   "h": 278.0,
    "kind": "border"
   },
   {
@@ -541,8 +534,18 @@
    "y": 302
   }
  ],
- "gate": null,
- "bell": null,
+ "gate": {
+  "x": 1074,
+  "y": 274,
+  "w": 12,
+  "h": 92
+ },
+ "bell": {
+  "x": 968,
+  "y": 506,
+  "r": 14,
+  "parryOnly": true
+ },
  "exit": null,
  "bucket": null,
  "knightSpawn": null,
@@ -556,10 +559,13 @@
    "y": 350
   }
  ],
- "biome": "woods",
- "lightKind": "squirrel",
- "heavyKind": "badger",
  "brambles": [
+  {
+   "x": 900,
+   "y": 460,
+   "w": 140,
+   "h": 100
+  },
   {
    "x": 1420,
    "y": 480,
@@ -591,6 +597,9 @@
    "h": 60
   }
  ],
+ "biome": "woods",
+ "lightKind": "squirrel",
+ "heavyKind": "badger",
  "bushes": [
   {
    "x": 1440,

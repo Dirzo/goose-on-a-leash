@@ -121,7 +121,7 @@ export class Atmosphere {
   /** A burst of light from an event (honk, splash, slam...). */
   flashAt(kind: string, x: number, y: number): void {
     const m: Record<string, [number, number]> = { honk: [0xfff0c8, 150], chomp: [0xffe0b0, 60], splash: [0x8ad8ff, 70], slam: [0xffd8a0, 120],
-      spores: [0x9affc8, 160], ring: [0xffe070, 140], wake: [0xffb8d0, 110], pick: [0xfff0b0, 70], patch: [0xffc8d8, 60], chest: [0xffe080, 150], snap: [0xffffff, 200] };
+      spores: [0x9affc8, 160], ring: [0xffe070, 140], wake: [0xffb8d0, 110], pick: [0xfff0b0, 70], patch: [0xffc8d8, 60], chest: [0xffe080, 150], snap: [0xffffff, 200], parry: [0xfff0c0, 110], block: [0xfff0c0, 50] };
     const v = m[kind];
     if (v) this.honks.push({ x, y, t: 0, c: v[0], r: v[1] });
   }

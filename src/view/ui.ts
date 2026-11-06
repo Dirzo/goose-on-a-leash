@@ -58,6 +58,7 @@ export function mountUi(scene: GameScene): void {
     if (open) closeBook();
     scene.setPackOpen(false);
     if (rank(def.id) >= 3 && rank(def.id) < 99) scene.sim.kit.findLeash('braided');
+    if (rank(def.id) >= 11 && rank(def.id) < 99) scene.sim.kit.oar = true;
     const entry = def.doors?.find(d => d.to !== 'END' && rank(d.to) < rank(def.id))?.id ?? null;
     scene.sim.enterRoom(def, entry, true);
     scene.saveNow();

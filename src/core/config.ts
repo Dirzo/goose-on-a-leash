@@ -54,6 +54,12 @@ export const C = {
   rollIframes: 0.26,
   rollCooldown: 0.5,
   rollSlosh: 0.004,
+  // the Ferryman's Oar: hold to guard Bimbo from the front; raise it just as a blow lands to parry
+  guardSpeed: 0.5,
+  guardArc: 1.25,          // half-angle (radians) of the arc the oar covers
+  parryWindow: 0.2,        // seconds after raising it in which a block becomes a parry
+  parryRange: 320,         // how far a parried acorn or rock flies back toward the aim
+  guardBrace: 0.3,         // how much of Biscuit's pull still moves Rocco while he plants the oar
   bunnySpawnEvery: 6,
   maxBunnies: 4,
   knightRespawn: 25,

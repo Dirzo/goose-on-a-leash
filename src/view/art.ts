@@ -38,6 +38,7 @@ export class ArtRenderer {
   private floor: Phaser.GameObjects.Graphics;      // shadows, water glints, items, props: under the sprites
   private line: Phaser.GameObjects.Graphics;       // the leash, over the sprites
   private fxg: Phaser.GameObjects.Graphics;
+  private oarG: Phaser.GameObjects.Graphics;
   private hud: Phaser.GameObjects.Graphics;
   /** Screen-space rain for storm rooms. */
   private rain: Phaser.GameObjects.Graphics;
@@ -77,6 +78,7 @@ export class ArtRenderer {
     this.floor = world(scene.add.graphics().setDepth(-500));
     this.line = world(scene.add.graphics().setDepth(5000));
     this.fxg = world(scene.add.graphics().setDepth(5100));
+    this.oarG = world(scene.add.graphics());
     this.hud = screen(scene.add.graphics().setDepth(9000));
     this.rain = screen(scene.add.graphics().setDepth(8000));
     this.rocco = world(scene.add.sprite(0, 0, 'rocco_idle'));
@@ -252,7 +254,8 @@ export class ArtRenderer {
     }
     // the fishing bell, hanging from its baked post
     const bell = def.bell;
-    if (bell) {
+    if (bell?.parryOnly) this.drawChime(bell, room.gateClosed, time);
+    else if (bell) {
       const sw = Math.sin(time * 14) * this.bellSwing * 0.5;
       const bx = bell.x + Math.sin(sw) * 6, by = bell.y;
       g.lineStyle(1, 0x2a2219, 1); g.lineBetween(bell.x, bell.y - 26, bx, by - 10);
@@ -465,6 +468,8 @@ export class ArtRenderer {
     this.drips = this.drips.filter(d => d.life > 0);
     for (const d of this.drips) { this.fxg.fillStyle(0x9ae0ff, 1); this.fxg.fillRect(Math.round(d.x), Math.round(d.y - d.z), 1, 2); }
 
+    this.drawOar(sim, P, time);
+
     // ---- Biscuit
     const hauled = go.state === 'held' && go.drag > 0;     // dragged along after a roll: flapping
     const flying = go.state === 'flying' || go.state === 'latched' || hauled;
@@ -611,6 +616,14 @@ export class ArtRenderer {
       if (f.kind === 'bread') { f2.fillStyle(0xc98a3c, 1 - kk); for (let i = 0; i < 6; i++) { const a = i * 1.05 + kk * 2; f2.fillRect(Math.round(f.x + Math.cos(a) * (8 + kk * 16)), Math.round(f.y - 30 + Math.sin(a) * (8 + kk * 16)), 2, 2); } }
       if (f.kind === 'poof') { f2.fillStyle(0xc8c8c8, 0.6 * (1 - kk)); for (let i = 0; i < 6; i++) { const a = i * 1.05; f2.fillCircle(f.x + Math.cos(a) * kk * 22, f.y - 6 + Math.sin(a) * kk * 14, 4 * (1 - kk) + 1); } }
       if (f.kind === 'ring') { f2.lineStyle(2, 0x9fe0a8, 1 - kk); f2.strokeCircle(f.x, f.y, 8 + kk * 50); }
+      if (f.kind === 'block' || f.kind === 'parry') {
+        const big = f.kind === 'parry';
+        for (let i = 0; i < (big ? 10 : 5); i++) {
+          const a = i * (big ? 0.63 : 1.25) + 0.3, r = (big ? 6 : 4) + kk * (big ? 26 : 14);
+          f2.fillStyle(i % 2 ? 0xfff0b0 : 0xffffff, 1 - kk); f2.fillRect(Math.round(f.x + Math.cos(a) * r), Math.round(f.y + Math.sin(a) * r), 2, 2);
+        }
+        if (big) { f2.lineStyle(2, 0xffffff, 1 - kk); f2.strokeCircle(f.x, f.y, 6 + kk * 30); this.wt('PARRY', f.x, f.y - 22 - kk * 14, 10, '#fff0b0', 1 - kk); }
+      }
       if (f.kind === 'splash' || f.kind === 'tear') {
         const n2 = f.kind === 'tear' ? 8 : 12;
         for (let i = 0; i < n2; i++) {
@@ -911,6 +924,53 @@ export class ArtRenderer {
     this.ut('mono', canPatch ? '[P] PATCH A TEAR' : pk.holes ? (pk.needles ? 'NEED TWINE TO PATCH' : 'NEED A SEWING KIT TO PATCH') : 'NO TEARS TO PATCH', X, 570, 15,
       canPatch ? '#f2c230' : pk.holes ? '#ff8a8a' : '#7cc48a', 1, 'left', true);
     this.ut('mono', '[I] / [ESC] CLOSE', X, 600, 12, '#9aa3a6', 1, 'left', true);
+  }
+
+  /** A wooden wind-chime hung from the gallows: honks don't ring it; a batted-back acorn does. */
+  private drawChime(b: Vec & { r: number }, closed: boolean, time: number): void {
+    const g = this.floor, sw = this.bellSwing;
+    g.lineStyle(2, 0x2a2219, 1); g.lineBetween(b.x - 14, b.y - 18, b.x + 14, b.y - 18);
+    for (let i = 0; i < 4; i++) {
+      const x = b.x - 10 + i * 7, a = Math.sin(time * (2 + i * 0.4) + i) * (1 + sw * 5), len = 12 + (i % 2) * 6;
+      const ex = x + a, ey = b.y - 18 + len;
+      g.lineStyle(1, 0x1a1522, 1); g.lineBetween(x, b.y - 18, ex, ey - 6);
+      g.fillStyle(0x1a1522, 1); g.fillRect(Math.round(ex) - 2, Math.round(ey) - 7, 4, 9);
+      g.fillStyle(closed ? 0xa8763a : 0x6a5a48, 1); g.fillRect(Math.round(ex) - 1, Math.round(ey) - 6, 2, 7);
+    }
+    if (closed) {
+      const p = 0.5 + 0.5 * Math.sin(time * 4);
+      g.lineStyle(1, 0xf2c230, 0.4 + 0.4 * p); g.strokeCircle(b.x, b.y - 6, b.r + 8 + p * 3);
+      this.wt('BAT AN ACORN INTO IT', b.x, b.y + 26, 6, '#f2c230', 0.6 + 0.4 * p, 'mono');
+    }
+  }
+
+  /** The Ferryman's Oar: held crosswise in front while guarding, slung on the back otherwise. */
+  private drawOar(sim: Sim, P: Vec, time: number): void {
+    const g = this.oarG, pl = sim.player; g.clear();
+    if (!sim.kit.oar || pl.dead > 0) return;
+    const wood = 0x8a5a2e, dark = 0x1a1522, hi = 0xc08a4a;
+    if (pl.guard > 0 && pl.roll <= 0) {
+      const fl = Math.hypot(pl.fx, pl.fy) || 1, dx = pl.fx / fl, dy = pl.fy / fl, px = -dy, py = dx;
+      const cx = P.x + dx * 15, cy = P.y - 20 + dy * 10, half = 17;
+      const ax = cx - px * half, ay = cy - py * half, bx = cx + px * half, by = cy + py * half;
+      g.setDepth(P.y + (dy > -0.3 ? 2 : -2));
+      g.lineStyle(5, dark, 1); g.lineBetween(ax, ay, bx, by);
+      g.lineStyle(3, wood, 1); g.lineBetween(ax, ay, bx, by);
+      // the blade at one end
+      const ex = bx + px * 8, ey = by + py * 8;
+      g.fillStyle(dark, 1); g.fillEllipse(ex, ey, 12 + Math.abs(px) * 6, 12 + Math.abs(py) * 6);
+      g.fillStyle(wood, 1); g.fillEllipse(ex, ey, 9 + Math.abs(px) * 5, 9 + Math.abs(py) * 5);
+      g.fillStyle(hi, 1); g.fillRect(Math.round(ex - 2), Math.round(ey - 3), 2, 2);
+      if (sim.parrying()) { g.lineStyle(1, 0xffffff, 0.9); g.lineBetween(ax, ay - 2, bx, by - 2); }
+      else if (Math.floor(time * 4) % 2 === 0) { g.lineStyle(1, 0xfff0b0, 0.25); g.strokeCircle(cx, cy, half + 4); }
+    } else {
+      g.setDepth(P.y - 0.5);
+      const s = this.faceL ? -1 : 1;
+      g.lineStyle(4, dark, 1); g.lineBetween(P.x - 11 * s, P.y - 44, P.x + 9 * s, P.y - 8);
+      g.lineStyle(2, wood, 1); g.lineBetween(P.x - 11 * s, P.y - 44, P.x + 9 * s, P.y - 8);
+      g.fillStyle(dark, 1); g.fillEllipse(P.x - 12 * s, P.y - 48, 7, 10);
+      g.fillStyle(wood, 1); g.fillEllipse(P.x - 12 * s, P.y - 48, 5, 8);
+    }
   }
 
   /** Squirrels, badgers and the Burrow King: poses, tunnelling mounds, telegraphs, dazed stars. */

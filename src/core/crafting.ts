@@ -19,6 +19,8 @@ export class Kit {
   toothFirst: boolean;
   /** Biscuit's learned traits (see data/traits.ts). */
   traits: Set<TraitId>;
+  /** The Ferryman's Oar (from the Heron): guard, parry and brace. */
+  oar = false;
 
   constructor() {
     this.mats = Object.fromEntries(Object.keys(ITEMS).map(k => [k, 0])) as Record<ItemId, number>;

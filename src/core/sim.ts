@@ -38,6 +38,8 @@ export interface Player {
   hp: number; inv: number; air: boolean; pull: Target | null;
   /** Dodge roll: seconds left (0 = not rolling), cooldown, and its direction. */
   roll: number; rollCd: number; rdx: number; rdy: number;
+  /** Seconds the oar has been held up (0 = not guarding). */
+  guard: number;
   /** Last movement direction; the goose trails behind it. */
   fx: number; fy: number;
   dead: number; // seconds left of the death pause, 0 when alive
@@ -78,7 +80,7 @@ export type CritterMode = 'stalk' | 'wind' | 'leap' | 'lash' | 'charge' | 'recov
 export type AttackKind = 'leap' | 'lash' | 'charge' | 'bite' | 'spear' | 'gust' | 'dart' | 'slam' | 'peck' | 'acorn' | 'erupt' | 'rock' | 'thorn' | 'dig' | 'rocks';
 
 /** A feather dart lobbed at Bimbo: it lands on the marked spot when t reaches T. */
-export interface Dart { x0: number; y0: number; tx: number; ty: number; t: number; T: number; kind?: 'feather' | 'acorn' | 'rock' }
+export interface Dart { x0: number; y0: number; tx: number; ty: number; t: number; T: number; kind?: 'feather' | 'acorn' | 'rock'; /** batted back by the oar: hits critters and bells, not Rocco */ back?: boolean }
 
 export interface PostTarget { x: number; y: number; r: number; post: true }
 export type Target = Enemy | PostTarget;
@@ -112,9 +114,11 @@ export interface InputFrame {
   moveX: number; moveY: number;
   aimX: number; aimY: number;
   fling?: boolean; yank?: boolean; honk?: boolean; letGo?: boolean; feed?: boolean; cycle?: boolean; patch?: boolean; roll?: boolean;
+  /** Held: raise the Ferryman's Oar. */
+  guard?: boolean;
 }
 
-export type FxKind = 'honk' | 'chomp' | 'boing' | 'poof' | 'ring' | 'snap' | 'bread' | 'pick' | 'tear' | 'splash' | 'faint' | 'patch' | 'wake' | 'chest' | 'gust' | 'slam'
+export type FxKind = 'block' | 'parry' | 'honk' | 'chomp' | 'boing' | 'poof' | 'ring' | 'snap' | 'bread' | 'pick' | 'tear' | 'splash' | 'faint' | 'patch' | 'wake' | 'chest' | 'gust' | 'slam'
   | 'thud' | 'dust' | 'spores' | 'bush';
 export type SimEvent =
   | { type: 'say'; text: string }
@@ -139,6 +143,7 @@ const QUIPS = {
   furious: ['FURY MODE. You are not in charge.'],
   slurp: ['SLURP. A frog tongue in the pack.', 'The frog drank some of Bimbo\'s water!', 'Tongue! Bimbo: "HEY."'],
   swimback: ['Splash! The frog paddles back to shore.', 'Plop. It swims for the bank.', 'Into the drink! It will be back.'],
+  parry: ['PARRY! Right back at you.', 'THWACK! Batted back.', 'Clean parry. The Ferryman would approve.'],
   wake: ['The frog blinks awake. Ribbit?', 'Trance broken. The frog hops home.', 'Red eyes fade. Frog says thanks.'],
 } as const;
 
@@ -154,6 +159,8 @@ export class Sim {
   enemies: Enemy[] = [];
   items: Item[] = [];
   darts: Dart[] = [];
+  /** Where Rocco is aiming (world), from the last input. */
+  aim: Vec = { x: 0, y: 0 };
   breadGot: boolean[] = [];
   /** Sewing kits and twine spools already taken in this room. */
   kitsGot: boolean[] = [];
@@ -211,7 +218,7 @@ export class Sim {
   /** Start fresh in a room: full hearts, a full pack, room memory kept. */
   reset(def: RoomDef = this.room?.def ?? ROOM_01): void {
     const s = def.playerStart;
-    this.player = { x: s.x, y: s.y, r: C.playerRadius, vx: 0, vy: 0, hp: C.maxHp, inv: 0, air: false, pull: null, fx: 1, fy: 0, dead: 0, roll: 0, rollCd: 0, rdx: 1, rdy: 0 };
+    this.player = { x: s.x, y: s.y, r: C.playerRadius, vx: 0, vy: 0, hp: C.maxHp, inv: 0, air: false, pull: null, fx: 1, fy: 0, dead: 0, roll: 0, rollCd: 0, rdx: 1, rdy: 0, guard: 0 };
     this.pack = { enabled: !!(def.refills?.length || def.barrels?.length), water: 1, holes: 0, patches: 0, needles: C.kitNeedles, lastWater: { ...s }, refilling: false };
     this.buff = { noFury: 0, bagel: 0, mega: 0 };
     this.time = 0; this.won = false; this.clearT = 0; this.handled = 0;
@@ -233,7 +240,7 @@ export class Sim {
     const s = door ? door.spawn : def.playerStart;
     const hp = revive ? C.maxHp : this.player?.hp ?? C.maxHp;
     this.player = { x: s.x, y: s.y, r: C.playerRadius, vx: 0, vy: 0, hp, inv: 0.8, air: false, pull: null,
-      fx: door ? Math.sign(def.width / 2 - s.x) || 1 : 1, fy: 0, dead: 0, roll: 0, rollCd: 0, rdx: 1, rdy: 0 };
+      fx: door ? Math.sign(def.width / 2 - s.x) || 1 : 1, fy: 0, dead: 0, roll: 0, rollCd: 0, rdx: 1, rdy: 0, guard: 0 };
     const pk = this.pack;
     this.pack = { enabled: !!(def.refills?.length || def.barrels?.length), water: revive ? 1 : pk?.water ?? 1,
       holes: revive ? Math.min(pk?.holes ?? 0, C.faintHolesKept) : pk?.holes ?? 0, patches: pk?.patches ?? 0,
@@ -504,7 +511,7 @@ export class Sim {
     const p = this.player, g = this.goose, room = this.room;
     const nx = dx / d, ny = dy / d, ex = d - L;
     // Rocco gets pulled toward Biscuit by his share, unless that would drag him into the water: he braces
-    let pw = p.pull || p.air ? 0 : w;
+    let pw = p.pull || p.air ? 0 : w * (p.guard > 0 ? C.guardBrace : 1);   // the planted oar braces him
     if (pw > 0 && (room.inPit(p.x + nx * ex * pw, p.y + ny * ex * pw, 6) || room.inPit(p.x + nx * 26, p.y + ny * 26, 6))) pw = 0;
     p.x += nx * ex * pw; p.y += ny * ex * pw; room.collide(p);
     const gx = p.x + nx * L, gy = p.y + ny * L;
@@ -561,7 +568,7 @@ export class Sim {
       }
     }
     const bell = this.room.def.bell;
-    if (bell) {
+    if (bell && !bell.parryOnly) {
       const bx = bell.x - g.x, by = bell.y - g.y, bd = Math.hypot(bx, by);
       if (bd < range + bell.r + 30 && Math.abs(angDiff(Math.atan2(by, bx), ang)) < cone + 0.2) {
         this.fx('ring', bell.x, bell.y);
@@ -731,14 +738,19 @@ export class Sim {
         for (const o of this.enemies) if (o !== e && this.active(o)) { o.woke = 0.001; this.fx('wake', o.x, o.y); }   // his frogs wake too
         this.room.gateClosed = false;
         this.world[this.room.def.id] = { ...(this.world[this.room.def.id] ?? { gateOpen: true, bread: [...this.breadGot], chest: false, rang: this.rang }), boss: true, gateOpen: true };
-        this.say(e.kind === 'king' ? 'The Burrow King shakes his great head. "...What was I digging for? Go on, little raccoon. Mind the fish."'
+        if (e.kind === 'king' || this.kit.oar) this.say(e.kind === 'king' ? 'The Burrow King shakes his great head. "...What was I digging for? Go on, little raccoon. Mind the fish."'
           : 'The red drains from the Heron\'s eyes. "...Raccoon. I am the Ferryman. The way on is open."');
         // his gifts go straight into the satchel (wherever the fight ended), and he refills Bimbo
         this.kit.mats.crest++; this.kit.mats.chain += 3; this.kit.mats.fluff += 4; this.kit.mats.egg++; this.kit.mats.feather += 2;
+        const oarGift = e.kind === 'heron' && !this.kit.oar;
+        if (oarGift) {
+          this.kit.oar = true;
+          this.say('"...Raccoon. I am the Ferryman. Take my oar: hold it up [G / right mouse] to guard the fish. Raise it as a blow lands and bat it back."');
+        }
         this.pack.needles += C.kitNeedles; this.pack.water = 1;
         if (e.kind === 'heron') { e.air = 0; e.x = e.hx; e.y = e.hy; }
         this.puddles = [];
-        this.fx('pick', this.player.x, this.player.y - 46, { text: "2 Golden Feathers, Snapper's Crest, Golden Egg, 3 Scute, 4 Twine, a sewing kit" });
+        this.fx('pick', this.player.x, this.player.y - 46, { text: (oarGift ? "THE FERRYMAN'S OAR · " : '') + "2 Golden Feathers, Snapper's Crest, Golden Egg, 3 Scute, 4 Twine, a sewing kit" });
         this.fx('chest', this.player.x, this.player.y - 20);
       } else this.say(e.heavy ? 'Old Snapper blinks. The red fades from his eyes.' : this.pick('wake'));
     } else { e.dead = true; this.fx('poof', e.x, e.y); }
@@ -755,6 +767,7 @@ export class Sim {
   hurtPlayer(amt = 1, heavy = false, from?: Vec, kind?: AttackKind): void {
     const p = this.player, pk = this.pack;
     if (p.inv > 0 || p.air || p.dead || this.rollSafe()) return;
+    if (from && kind !== 'thorn' && kind !== 'erupt' && kind !== 'slam' && this.blocks(from)) { this.blocked(from, heavy, kind); return; }
     p.inv = C.invulnerable;
     if (!pk.enabled) {
       p.hp -= amt;
@@ -805,6 +818,7 @@ export class Sim {
 
     if (input) {
       const aim = { x: input.aimX, y: input.aimY };
+      this.aim = aim;
       if (input.fling) this.fling(aim);
       if (input.yank) this.yank();
       if (input.honk) this.honk(aim);
@@ -813,6 +827,8 @@ export class Sim {
       if (input.cycle) this.cycleBread();
       if (input.patch) this.patchPack();
       if (input.roll) this.roll(input);
+      const canGuard = this.kit.oar && !!input.guard && p.roll <= 0 && !p.air && !p.pull && !p.dead && !this.won;
+      p.guard = canGuard ? p.guard + dt : 0;
     }
 
     // timers and buffs
@@ -952,7 +968,7 @@ export class Sim {
         p.vx += (p.rdx * sp - p.vx) * k; p.vy += (p.rdy * sp - p.vy) * k;
         p.fx = p.rdx; p.fy = p.rdy;
       } else {
-        const sp = C.playerSpeed * wade;
+        const sp = C.playerSpeed * wade * (p.guard > 0 ? C.guardSpeed : 1);
         p.vx += (mx * sp - p.vx) * acc; p.vy += (my * sp - p.vy) * acc;
       }
       // a goose stronger than his leash tugs you around
@@ -963,7 +979,7 @@ export class Sim {
           const e = this.nearestEnemy(p.x, p.y);
           let a = e ? Math.atan2(e.y - p.y, e.x - p.x) : this.rng() * Math.PI * 2;
           a += (this.rng() - 0.5) * 1.2;
-          const tug = (calmTug ? 110 * this.gap() : 300 * Math.max(0.35, 1 + 0.5 * this.gap())) * this.kit.stat('tug') * (p.roll > 0 ? 0.5 : 1);
+          const tug = (calmTug ? 110 * this.gap() : 300 * Math.max(0.35, 1 + 0.5 * this.gap())) * this.kit.stat('tug') * (p.roll > 0 ? 0.5 : 1) * (p.guard > 0 ? C.guardBrace : 1);
           p.vx += Math.cos(a) * tug; p.vy += Math.sin(a) * tug;
         }
       }
@@ -1078,17 +1094,103 @@ export class Sim {
 
   private stepDarts(dt: number): void {
     const p = this.player;
-    for (const d of this.darts) {
+    for (const d of [...this.darts]) {   // a copy: parries add darts while we go
       d.t += dt;
       if (d.t >= d.T) {
         const kind = d.kind ?? 'feather', b = this.packPoint(10);
         this.fx(kind === 'feather' ? 'splash' : 'thud', d.tx, d.ty - 6);
         if (kind === 'feather') this.addPuddle(d.tx, d.ty, 20);
         const radius = kind === 'acorn' ? 18 : kind === 'rock' ? 26 : 28;
-        if (Math.hypot(b.x - d.tx, b.y - d.ty) < radius && !p.air) this.hurtPlayer(1, kind !== 'acorn', { x: d.x0, y: d.y0 }, kind === 'feather' ? 'dart' : kind);
+        if (d.back) { this.batted(d); continue; }
+        if (Math.hypot(b.x - d.tx, b.y - d.ty) < radius + (p.guard > 0 ? 10 : 0) && !p.air) {
+          const src = { x: d.x0, y: d.y0 };
+          if (kind !== 'feather' && this.parrying() && this.blocks(src) && !this.rollSafe()) { this.parryDart(d); continue; }
+          this.hurtPlayer(1, kind !== 'acorn', src, kind === 'feather' ? 'dart' : kind);
+        }
       }
     }
     this.darts = this.darts.filter(d => d.t < d.T);
+  }
+
+  // ------------------------------------------------ the Ferryman's Oar
+
+  /** Is the oar up and facing where this blow comes from? */
+  blocks(from: Vec): boolean {
+    const p = this.player;
+    if (p.guard <= 0) return false;
+    const ox = from.x - p.x, oy = from.y - p.y, l = Math.hypot(ox, oy);
+    if (l < 1) return true;
+    const fl = Math.hypot(p.fx, p.fy) || 1;
+    return (ox * p.fx + oy * p.fy) / (l * fl) > Math.cos(C.guardArc);
+  }
+
+  /** Raised just now: a blow landing in this window is parried. */
+  parrying(): boolean { const g = this.player.guard; return g > 0 && g <= C.parryWindow; }
+
+  /** The oar takes a blow. Critters that hit it bounce off; a parried charge staggers the Burrow King. */
+  private blocked(from: Vec, heavy: boolean, kind?: AttackKind): void {
+    const p = this.player, parry = this.parrying();
+    p.inv = 0.25;
+    const [ux, uy] = dirTo(from, p), shove = heavy ? (parry ? 90 : 260) : 60;
+    if (!this.room.inPit(p.x + ux * 30, p.y + uy * 30, 0)) { p.vx += ux * shove; p.vy += uy * shove; }
+    const ox = p.x + p.fx * 18, oy = p.y - 18 + p.fy * 10;
+    this.fx(parry ? 'parry' : 'block', ox, oy);
+    if ('kind' in from) {
+      const e = from as Enemy;
+      if (e.kind === 'king' && kind === 'charge' && parry) {
+        e.mode = 'dazed'; e.modeT = 0; this.damage(e, 2);
+        this.say('PARRY! The oar stops the Burrow King dead. He sees stars. Bite him now!');
+        return;
+      }
+      if (!BOSS.has(e.kind)) { e.vx -= ux * (parry ? 420 : 240); e.vy -= uy * (parry ? 420 : 240); e.stun = Math.max(e.stun, parry ? 1.6 : 0.7); if (parry) this.damage(e, 1); }
+      else e.stun = Math.max(e.stun, parry ? 0.8 : 0.2);
+    }
+    if (parry) this.say(this.pick('parry'));
+    else if (this.rng() < 0.4) this.say(heavy ? 'CLONK. The oar holds, but it shoves you back.' : 'Clack! The oar takes it.');
+  }
+
+  /** Bat an acorn or rock back: it flies toward the aim (snapping to a critter or bell near it). */
+  private parryDart(d: Dart): void {
+    const p = this.player, aim = this.aim;
+    const dx = aim.x - p.x, dy = aim.y - p.y, l = Math.hypot(dx, dy) || 1;
+    const reach = Math.min(C.parryRange, Math.max(80, l));
+    let tx = p.x + (dx / l) * reach, ty = p.y + (dy / l) * reach;
+    // help the aim a little: the nearest thing worth hitting close to where you pointed
+    const cands: Vec[] = this.enemies.filter(e => this.active(e) && !e.woke).map(e => ({ x: e.x, y: e.y }));
+    const bell = this.room.def.bell; if (bell && this.room.gateClosed) cands.push(bell);
+    let best: Vec | null = null, bd = 90;
+    for (const c of cands) {
+      const k = Math.hypot(c.x - tx, c.y - ty), r = Math.hypot(c.x - p.x, c.y - p.y);
+      if (k < bd && r < C.parryRange + 40) { bd = k; best = c; }
+    }
+    if (best) { tx = best.x; ty = best.y; }
+    this.darts.push({ x0: p.x + p.fx * 16, y0: p.y - 26, tx, ty, t: 0, T: 0.32, kind: d.kind, back: true });
+    this.fx('parry', p.x + p.fx * 18, p.y - 22);
+    this.say(this.pick('parry'));
+  }
+
+  /** A batted-back acorn or rock lands: it bonks a critter, staggers the Burrow King, or rings a bell. */
+  private batted(d: Dart): void {
+    const rock = d.kind === 'rock';
+    this.fx('thud', d.tx, d.ty - 6);
+    const bell = this.room.def.bell;
+    if (bell && Math.hypot(bell.x - d.tx, bell.y - d.ty) < bell.r + 26) {
+      this.fx('ring', bell.x, bell.y);
+      if (this.room.gateClosed) { this.room.gateClosed = false; this.say(bell.parryOnly ? 'TOCK! The acorn smacks the chime. The way opens.' : 'DING! The cage is open.'); }
+      else this.say('DING!');
+      this.rang = true;
+      return;
+    }
+    for (const e of this.enemies) {
+      if (!this.active(e) || e.woke) continue;
+      if (Math.hypot(e.x - d.tx, e.y - d.ty) > e.r + (rock ? 30 : 22)) continue;
+      if (e.kind === 'king') {
+        if (rock) { e.mode = 'dazed'; e.modeT = 0; this.damage(e, 3); this.say('Your own rock, Your Majesty. He sees stars!'); }
+        else this.damage(e, 1);
+      } else { e.stun = Math.max(e.stun, rock ? 2 : 1.4); this.damage(e, rock ? 2 : 1); }
+      this.fx('chomp', e.x, e.y - 10);
+      return;
+    }
   }
 
   // ------------------------------------------------ storm (rooms with weather: 'rain')

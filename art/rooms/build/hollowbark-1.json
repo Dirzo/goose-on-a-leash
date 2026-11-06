@@ -87,13 +87,6 @@
    "kind": "tree"
   },
   {
-   "x": 958,
-   "y": 438,
-   "w": 44,
-   "h": 44,
-   "kind": "tree"
-  },
-  {
    "x": 178,
    "y": 538,
    "w": 44,
@@ -108,7 +101,12 @@
    "kind": "tree"
   }
  ],
- "gate": null,
+ "gate": {
+  "x": 1074,
+  "y": 254,
+  "w": 12,
+  "h": 92
+ },
  "pits": [
   {
    "x": 520,
@@ -128,7 +126,12 @@
   }
  ],
  "posts": [],
- "bell": null,
+ "bell": {
+  "x": 968,
+  "y": 486,
+  "r": 14,
+  "parryOnly": true
+ },
  "exit": null,
  "vents": [
   {
@@ -188,6 +191,7 @@
     "x": 1054,
     "y": 300
    },
+   "gated": true,
    "label": "Bramble Path"
   }
  ],
@@ -214,6 +218,14 @@
  "biome": "woods",
  "lightKind": "squirrel",
  "heavyKind": "badger",
+ "brambles": [
+  {
+   "x": 900,
+   "y": 440,
+   "w": 140,
+   "h": 100
+  }
+ ],
  "spools": [
   {
    "x": 640,

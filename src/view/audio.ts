@@ -88,6 +88,8 @@ export class Sound {
     switch (kind) {
       case 'honk': this.honk(power); break;
       case 'chomp': this.noise(0.07, 1800, 0.35, 'bandpass', 900, 0, 2); this.tone(140, 0.09, 'triangle', 0.3, 70); break;
+      case 'block': this.tone(520, 0.06, 'square', 0.12, 300); this.noise(0.08, 2400, 0.2, 'bandpass', 1400); break;
+      case 'parry': this.tone(880, 0.05, 'square', 0.14, 1320); this.tone(1320, 0.18, 'triangle', 0.12, 1760, 0.04); this.noise(0.1, 3000, 0.2, 'highpass', 2000); break;
       case 'boing': this.tone(260, 0.3, 'sine', 0.2, 620); break;
       case 'splash': this.noise(0.4, 2400, 0.28, 'lowpass', 300); this.tone(420, 0.12, 'sine', 0.08, 180, 0.03); break;
       case 'tear': this.noise(0.16, 3200, 0.3, 'highpass', 5000, 0, 1); this.noise(0.1, 2000, 0.25, 'bandpass', 1200, 0.05, 4); break;

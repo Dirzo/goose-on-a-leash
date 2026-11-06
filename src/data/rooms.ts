@@ -35,7 +35,8 @@ export interface RoomDef {
   /** Shoreline zones that refill the backpack. A room with refills turns the backpack system on. */
   refills?: Rect[];
   posts: Circle[];
-  bell: Circle | null;
+  /** `parryOnly`: a chime that ignores honks; only a batted-back acorn or rock rings it. */
+  bell: (Circle & { parryOnly?: boolean }) | null;
   exit: Rect | null;
   vents: Vec[];
   bucket: Vec | null;
