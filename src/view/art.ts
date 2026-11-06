@@ -797,7 +797,7 @@ export class ArtRenderer {
     this.ht('mono', names[go.state]!.toUpperCase(), W - 282, 60, 11, go.feral ? '#ff2a1a' : '#9aa3a6', 1, 'left', true);
     if (sim.castMode) {                              // casting mode: how much line is out, and the cut
       panel(W - 296, 72, 280, 40);
-      const out = sim.lineLen(), max = sim.leashLen(), cut = go.cut ?? 0;
+      const out = sim.lineLen(), max = Math.round(sim.castMax()), cut = go.cut ?? 0;
       g.fillStyle(0x1a1522, 1); g.fillRect(W - 282, 82, 252, 6);
       g.fillStyle(0xd8ecf4, 1); g.fillRect(W - 282, 82, 252 * Math.min(1, out / max), 6);
       const canCut = (go.fury >= C.castCutFury || go.furious > 0) && (go.state === 'held' || go.state === 'latched');

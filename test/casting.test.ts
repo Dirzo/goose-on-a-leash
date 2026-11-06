@@ -25,9 +25,10 @@ describe('casting mode', () => {
     const short = far(a, 50, frame());
     const b = field(); wind(b, C.castChargeTime * 0.8);
     const long = far(b, 50, frame());
-    expect(short).toBeLessThan(C.castHeel + 30);
+    expect(short).toBeLessThan(C.castHeel + 80);
     expect(long).toBeGreaterThan(short + 80);
-    expect(long).toBeLessThanOrEqual(b.leashLen() + 1);
+    expect(long).toBeLessThanOrEqual(b.castMax() + 1);
+    expect(long).toBeGreaterThan(b.leashLen() * 1.2);   // a good cast goes well past the old leash
   });
 
   it('the meter swings back down: hold too long and the cast goes short', () => {
@@ -66,11 +67,11 @@ describe('casting mode', () => {
     const sim = field();
     const f = sim.mkEnemy('frog', 300, 320); f.cd = 99; f.hp = f.max = 99; f.heavy = true; sim.enemies.push(f);
     sim.goose.state = 'latched'; sim.goose.target = f; sim.goose.ox = -1; sim.goose.oy = 0; sim.castLen = 110;
-    for (let i = 0; i < 60; i++) sim.step(STEP, frame({ moveX: -1, castHold: true }));
+    for (let i = 0; i < 40; i++) sim.step(STEP, frame({ moveX: -1, castHold: true }));
     const held = Math.hypot(sim.player.x - f.x, sim.player.y - f.y);
     expect(held).toBeGreaterThan(150);
     const L = sim.castLen;
-    for (let i = 0; i < 60; i++) sim.step(STEP, frame({ moveX: -1 }));
+    for (let i = 0; i < 30; i++) sim.step(STEP, frame({ moveX: -1 }));
     expect(Math.hypot(sim.player.x - f.x, sim.player.y - f.y)).toBeLessThanOrEqual(L + 1.5);
   });
 

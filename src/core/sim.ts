@@ -229,7 +229,9 @@ export class Sim {
   /** Casting mode: how much line is out. */
   castLen: number = C.castHeel;
   /** The line's working length: the whole leash, or in casting mode as much as is out. */
-  lineLen(): number { return this.castMode ? Math.min(this.leashLen(), this.castLen) : this.leashLen(); }
+  lineLen(): number { return this.castMode ? Math.min(this.castMax(), this.castLen) : this.leashLen(); }
+  /** Power cast: the most line a full cast can run out (better leashes cast further). */
+  castMax(): number { return this.leashLen() * C.castReachMul; }
   /** Goose damage multiplier from Goose Power. */
   /** Goose Power: the bench base plus one for every two traits Biscuit has learned. */
   power(): number { return this.tuning.power + Math.floor(this.kit.traits.size / 2); }
@@ -664,10 +666,10 @@ export class Sim {
     return Math.max(C.castMinPower, ph <= 1 ? ph : 2 - ph);
   }
   /** How far a cast at this power sends him. */
-  castReach(pw: number): number { return C.castHeel + (this.leashLen() - C.castHeel) * pw; }
+  castReach(pw: number): number { return C.castHeel + (this.castMax() - C.castHeel) * Math.pow(pw, 0.75); }
   private stepCast(dt: number, hold: boolean): void {
     this.castHolding = hold;
-    const g = this.goose, p = this.player, max = this.leashLen();
+    const g = this.goose, p = this.player, max = this.castMax();
     const out = Math.hypot(g.x - p.x, g.y - p.y);
     const canWind = g.state === 'held' && !p.dead && !this.won && !p.pull && p.roll <= 0;
     if (canWind && hold && this.chargeArmed) { this.chargeT += dt; this.charging = true; }
@@ -689,7 +691,7 @@ export class Sim {
     if (g.state !== 'flying') return;
     const perfect = pw >= C.castSweet;
     this.castLen = this.castReach(perfect ? 1 : pw);
-    const k = 0.55 + 0.6 * pw; g.vx *= k; g.vy *= k;                       // weak casts fly slower too
+    const k = 0.75 + 0.6 * pw; g.vx *= k; g.vy *= k;                       // weak casts fly slower too
     g.hit = perfect ? C.castPerfectHit : C.castWeakHit + (1 - C.castWeakHit) * Math.min(1, pw / C.castSweet);
     g.perfect = perfect;
     if (perfect) { this.fx('perfect', g.x, g.y); this.say(this.pick('perfect')); }
@@ -1897,7 +1899,7 @@ export class Sim {
   private stepGoose(dt: number): void {
     const g = this.goose, p = this.player, room = this.room;
     // casting mode with the spool open: line runs freely, up to the whole leash
-    const L = this.castMode && this.castHolding && g.state === 'latched' ? this.leashLen() : this.lineLen();
+    const L = this.castMode && this.castHolding && g.state === 'latched' ? this.castMax() : this.lineLen();
     g.t -= dt;
     if (g.state === 'held' || g.state === 'returning') {
       if (g.state === 'held') {
@@ -2061,7 +2063,7 @@ export class Sim {
 
     // rope: attached unless the goose is loose or returning on his own
     const attached = g.state !== 'loose' && g.state !== 'returning';
-    if (this.castMode && this.castHolding && g.state === 'latched') this.castLen = Math.min(this.leashLen(), Math.max(this.castLen, Math.hypot(g.x - p.x, g.y - p.y)));
+    if (this.castMode && this.castHolding && g.state === 'latched') this.castLen = Math.min(this.castMax(), Math.max(this.castLen, Math.hypot(g.x - p.x, g.y - p.y)));
     this.rope.step(attached ? p : null, g, L);
 
     // grab the trailing leash of a loose goose
