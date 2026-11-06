@@ -29,6 +29,8 @@ export class Controls {
   /** Set by the scene in scripted bits (catching Biscuit): walk only, no verbs. */
   verbsOff = false;
   private rmb = false;
+  private lmb = false;
+  private padCast = false;
   private padGuard = false;
   private pending = new Set<Verb>();
   /** Pointer position in screen pixels; converted to world space each frame, since the camera scrolls. */
@@ -50,9 +52,9 @@ export class Controls {
       this.canvas.focus();
       this.mouse = { x: p.x, y: p.y }; this.aimMode = 'mouse';
       if (this.paused) { if (this.cinema) this.onUi('advance'); return; }
-      if (p.rightButtonDown()) { if (this.oar) this.rmb = true; else this.pending.add('yank'); } else this.pending.add('fling');
+      if (p.rightButtonDown()) { if (this.oar) this.rmb = true; else this.pending.add('yank'); } else { this.pending.add('fling'); this.lmb = true; }
     });
-    scene.input.on('pointerup', (p: Phaser.Input.Pointer) => { if ((p.event as MouseEvent | undefined)?.button === 2 || !p.rightButtonDown()) this.rmb = false; });
+    scene.input.on('pointerup', (p: Phaser.Input.Pointer) => { const b = (p.event as MouseEvent | undefined)?.button; if (b === 2 || !p.rightButtonDown()) this.rmb = false; if (b === 0 || !p.leftButtonDown()) this.lmb = false; });
     scene.events.once('shutdown', () => this.destroy());
   }
 
@@ -62,7 +64,7 @@ export class Controls {
     window.removeEventListener('blur', this.clear);
   }
 
-  private clear = (): void => { this.held.clear(); this.rmb = false; };
+  private clear = (): void => { this.held.clear(); this.rmb = false; this.lmb = false; };
 
   private keydown = (e: KeyboardEvent): void => {
     const k = e.key.toLowerCase();
@@ -113,6 +115,7 @@ export class Controls {
       book: pad.isButtonDown(9), pack: pad.isButtonDown(8),
     };
     this.padGuard = this.oar && pad.R1 > 0.5;
+    this.padCast = pad.R2 > 0.5;
     for (const [k, v] of Object.entries(now)) {
       if (v && !this.padPrev[k]) {
         if (k === 'book') this.onUi('book');
@@ -152,7 +155,7 @@ export class Controls {
     const m = this.paused ? { x: 0, y: 0 } : this.move();
     const a = this.aim(player);
     const f: InputFrame = { moveX: m.x, moveY: m.y, aimX: a.x, aimY: a.y };
-    if (!this.paused) f.guard = this.held.has('g') || this.rmb || this.padGuard;
+    if (!this.paused) { f.guard = this.held.has('g') || this.rmb || this.padGuard; f.castHold = this.lmb || this.padCast; }
     if (consume && !this.paused) {
       if (!this.verbsOff) for (const v of this.pending) f[v] = true;
       this.pending.clear();

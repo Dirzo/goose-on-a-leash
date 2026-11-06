@@ -276,7 +276,8 @@ def shark(frame):
     dr.polygon([(300, 66), (356, 28 + sw), (340, 70), (356, 118 + sw), (300, 82)], fill=P['shk1'] + (255,))   # tail
     dr.polygon([(110, 92), (150, 132), (160, 96)], fill=P['shk0'] + (255,))   # pectoral fin
     dr.polygon([(14, 76), (60, 82), (110, 80), (60, 92)], fill=P['shk0'] + (255,))   # jaw shadow
-    for x in range(30, 80, 7): dr.polygon([(x, 78), (x + 3, 84), (x + 6, 78)], fill=(70, 60, 60, 255))   # teeth, barely
+    if frame != 2:                                                 # teeth, barely (gone when he smiles: just the one grin)
+        for x in range(30, 80, 7): dr.polygon([(x, 78), (x + 3, 84), (x + 6, 78)], fill=(70, 60, 60, 255))
     for k in range(4): dr.line([(86 + k * 8, 58), (82 + k * 8, 74)], fill=P['scar'] + (255,), width=2)   # gills, faint red
     if frame == 2:                                                 # the smile: a long curl of bright teeth up toward the eye
         curve = [(12 + k * 7, 79 - (k * k) * 0.13) for k in range(11)]

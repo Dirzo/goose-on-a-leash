@@ -122,6 +122,7 @@ export class GameScene extends Phaser.Scene {
       while (this.acc >= STEP && steps < MAX_STEPS) {
         this.prev = snapshot(this.sim);
         this.controls.oar = this.sim.kit.oar;
+        this.sim.castMode = this.castMode;
         this.sim.step(STEP, this.controls.frame(this.sim.player, first));
         first = false; this.acc -= STEP; steps++;
       }
@@ -144,6 +145,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Start a cinematic once (the save remembers which were shown). */
+  /** Leash mode: 'classic' fling, or the experimental 'casting' (remembered in this browser). */
+  castMode = (() => { try { return localStorage.getItem('goose-on-a-leash/leash-mode') === 'casting'; } catch { return false; } })();
+  setCastMode(on: boolean): void {
+    this.castMode = on; this.sim.castMode = on;
+    try { localStorage.setItem('goose-on-a-leash/leash-mode', on ? 'casting' : 'classic'); } catch { /* per-browser nicety only */ }
+  }
+
   /** Cinematics can be switched off (remembered in this browser). */
   cinemaOn = (() => { try { return localStorage.getItem('goose-on-a-leash/cinematics') !== 'off'; } catch { return true; } })();
   setCinemaOn(on: boolean): void {
@@ -250,7 +258,7 @@ export class GameScene extends Phaser.Scene {
     const rolling = sim.player.roll > 0;
     if (rolling && !this.wasRolling) sound.play('whoosh');
     this.wasRolling = rolling;
-    const g = sim.goose, taut = Math.hypot(g.x - sim.player.x, g.y - sim.player.y) > sim.leashLen() * 0.95 && sim.leashAttached;
+    const g = sim.goose, taut = Math.hypot(g.x - sim.player.x, g.y - sim.player.y) > sim.lineLen() * 0.95 && sim.leashAttached;
     sound.setStrain(this.paused ? 0 : Math.max(g.strain, taut ? 0.3 : 0));
     sound.setRain(sim.storming && !this.paused);
   }

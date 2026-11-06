@@ -69,6 +69,9 @@ export function mountUi(scene: GameScene): void {
   const soundBtn = $('b-sound'), soundLabel = () => { soundBtn.textContent = `Sound: ${sound.muted ? 'off' : 'on'} [M]`; };
   soundLabel(); sound.onChange = soundLabel;
   soundBtn.onclick = () => { sound.toggle(); scene.game.canvas.focus(); };
+  const castBtn = $('b-cast'), castLabel = () => { castBtn.textContent = `Leash: ${scene.castMode ? 'casting (experimental)' : 'classic'}`; };
+  castLabel();
+  castBtn.onclick = () => { scene.setCastMode(!scene.castMode); castLabel(); scene.game.canvas.focus(); };
   const cineBtn = $('b-cine'), cineLabel = () => { cineBtn.textContent = `Cinematics: ${scene.cinemaOn ? 'on' : 'off'}`; };
   cineLabel();
   cineBtn.onclick = () => { scene.setCinemaOn(!scene.cinemaOn); cineLabel(); scene.game.canvas.focus(); };

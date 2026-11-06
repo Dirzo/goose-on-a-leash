@@ -643,7 +643,7 @@ export class ArtRenderer {
     for (let i = 0; i <= n; i++) { const u = i / n; rp[i] = { x: rp[i]!.x + d0.x * (1 - u) + d1.x * u, y: rp[i]!.y + d0.y * (1 - u) + d1.y * u }; }
     const smooth = smoothRope(rp);
     this.rodTip = tipW;
-    const taut = Math.hypot(G.x - P.x, G.y - P.y) > sim.leashLen() * 0.97;
+    const taut = Math.hypot(G.x - P.x, G.y - P.y) > sim.lineLen() * 0.97;
     if (this.stage?.hideGoose || this.stage?.hideLine) smooth.length = 0;
     this.line.lineStyle(leash.heavy ? 2 : 1, hex(leash.ropeColor), 1);
     if (!smooth.length) { /* no leash yet */ } else if (leash.heavy) dashed(this.line, smooth, 4, 2); else this.line.strokePoints(smooth as unknown as Phaser.Math.Vector2[], false);
@@ -793,6 +793,15 @@ export class ArtRenderer {
     panel(W - 296, 16, 280, 52);
     this.ht('display', 'BISCUIT', W - 282, 44, 18, go.feral ? '#ff2a1a' : '#f6f1e6', 1, 'left');
     this.ht('mono', names[go.state]!.toUpperCase(), W - 282, 60, 11, go.feral ? '#ff2a1a' : '#9aa3a6', 1, 'left', true);
+    if (sim.castMode) {                              // casting mode: how much line is out, and the cut
+      panel(W - 296, 72, 280, 40);
+      const out = sim.lineLen(), max = sim.leashLen(), cut = go.cut ?? 0;
+      g.fillStyle(0x1a1522, 1); g.fillRect(W - 282, 82, 252, 6);
+      g.fillStyle(0xd8ecf4, 1); g.fillRect(W - 282, 82, 252 * Math.min(1, out / max), 6);
+      const canCut = (go.fury >= C.castCutFury || go.furious > 0) && (go.state === 'held' || go.state === 'latched');
+      const label = cut > 0 ? `CUT LOOSE · ${Math.ceil(cut)}s` : canCut ? '[Q] CUT THE LINE' : `LINE ${Math.round(out)}/${max} · hold to let out`;
+      this.ht('mono', label, W - 282, 104, 11, cut > 0 ? '#ff8a6a' : canCut ? '#f2c230' : '#9aa3a6', canCut && cut <= 0 ? 0.6 + 0.4 * Math.sin(this.time * 6) : 1, 'left', true);
+    }
 
     // satchel: bread and materials, bottom left
     panel(16, H - 74, 470, 58);

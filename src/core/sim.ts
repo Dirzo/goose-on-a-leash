@@ -95,6 +95,8 @@ export interface Goose {
   t: number; fury: number; furious: number; tug: number; honkCd: number; biteT: number; grabCd: number;
   /** Seconds left of being hauled along by the leash (after Rocco rolls away): he scrambles and flaps. */
   drag: number;
+  /** Casting mode: seconds left of his rampage after you cut the line. */
+  cut?: number;
 }
 
 export interface Item { mat: ItemId; x: number; y: number; vx: number; vy: number; t: number; got?: boolean }
@@ -119,6 +121,8 @@ export interface InputFrame {
   fling?: boolean; yank?: boolean; honk?: boolean; letGo?: boolean; feed?: boolean; cycle?: boolean; patch?: boolean; roll?: boolean;
   /** Held: raise the Ferryman's Oar. */
   guard?: boolean;
+  /** Held: the cast button (casting mode: the spool is open and line runs out). */
+  castHold?: boolean;
 }
 
 export type FxKind = 'block' | 'parry' | 'honk' | 'chomp' | 'boing' | 'poof' | 'ring' | 'snap' | 'bread' | 'pick' | 'tear' | 'splash' | 'faint' | 'patch' | 'wake' | 'chest' | 'gust' | 'slam'
@@ -212,6 +216,17 @@ export class Sim {
   /** Effective leash strength: bench base + equipped leash + Chain Bagel buff. */
   str(): number { return this.tuning.strength + this.kit.stat('str') + (this.buff.bagel > 0 ? 2 : 0); }
   leashLen(): number { return this.tuning.leash + this.kit.stat('len'); }
+  /**
+   * Casting mode (experimental): the leash is the fishing line on the reel. Holding the cast button opens
+   * the spool and line runs out as Biscuit flies or as you back away from his fight; let go and the brake
+   * locks it at that length. Reel in with yank. Cut the line (let go) once he's angry enough and he fights
+   * alone for a while, then comes back to be tied on again.
+   */
+  castMode = false;
+  /** Casting mode: how much line is out. */
+  castLen: number = C.castHeel;
+  /** The line's working length: the whole leash, or in casting mode as much as is out. */
+  lineLen(): number { return this.castMode ? Math.min(this.leashLen(), this.castLen) : this.leashLen(); }
   /** Goose damage multiplier from Goose Power. */
   /** Goose Power: the bench base plus one for every two traits Biscuit has learned. */
   power(): number { return this.tuning.power + Math.floor(this.kit.traits.size / 2); }
@@ -634,10 +649,28 @@ export class Sim {
     this.say(mega ? 'MEGA HONK' : this.pick('honk'));
   }
 
+  /** Casting mode: line runs out while the spool is open (button held), and comes back in at heel. */
+  private castHolding = false;
+  private stepCast(dt: number, hold: boolean): void {
+    this.castHolding = hold;
+    const g = this.goose, p = this.player, max = this.leashLen();
+    const out = Math.hypot(g.x - p.x, g.y - p.y);
+    if (g.state === 'held') this.castLen = Math.max(C.castHeel, Math.min(this.castLen, out + 30) - 260 * dt);   // reeled back in as he trots to heel
+    else if (hold && (g.state === 'flying' || g.state === 'latched')) this.castLen = Math.min(max, Math.max(this.castLen, out + 3));
+    else if (g.state === 'loose' || g.state === 'returning') this.castLen = C.castHeel;
+  }
+
   letGo(): void {
     const g = this.goose;
     if (this.won || this.player.dead) return;
     if (g.state !== 'held' && g.state !== 'latched') return;
+    if (this.castMode) {
+      // cutting the line: only once he's worked up enough to fight on his own
+      if (g.fury < C.castCutFury && g.furious <= 0) { this.say(`He's not angry enough to fight alone yet. Rage ${Math.round(g.fury)} of ${C.castCutFury}.`); return; }
+      g.target = null; g.grabCd = C.grabCooldown; g.state = 'loose'; g.feral = false; g.t = 99; g.cut = C.castCutTime;
+      this.fx('snap', g.x, g.y); this.say('SNIP! You cut the line. Go get them, Biscuit!');
+      return;
+    }
     g.target = null;
     if (g.furious > 0) this.goFeral('You let a furious goose go. Bad idea.');
     else { g.grabCd = C.grabCooldown; g.state = 'loose'; g.feral = false; g.t = 4; this.say('Goose unleashed. Good luck everyone.'); }
@@ -890,6 +923,7 @@ export class Sim {
       if (input.cycle) this.cycleBread();
       if (input.patch) this.patchPack();
       if (input.roll) this.roll(input);
+      if (this.castMode) this.stepCast(dt, !!input.castHold);
       const canGuard = this.kit.oar && !!input.guard && p.roll <= 0 && !p.air && !p.pull && !p.dead && !this.won;
       p.guard = canGuard ? p.guard + dt : 0;
     }
@@ -1826,7 +1860,9 @@ export class Sim {
   }
 
   private stepGoose(dt: number): void {
-    const g = this.goose, p = this.player, room = this.room, L = this.leashLen();
+    const g = this.goose, p = this.player, room = this.room;
+    // casting mode with the spool open: line runs freely, up to the whole leash
+    const L = this.castMode && this.castHolding && (g.state === 'flying' || g.state === 'latched') ? this.leashLen() : this.lineLen();
     g.t -= dt;
     if (g.state === 'held' || g.state === 'returning') {
       if (g.state === 'held') {
@@ -1907,6 +1943,21 @@ export class Sim {
           }
         }
       }
+    } else if (g.state === 'loose' && (g.cut ?? 0) > 0) {
+      g.cut = (g.cut ?? 0) - dt;
+      const e = this.nearestEnemy(g.x, g.y);
+      if (e && Math.hypot(e.x - g.x, e.y - g.y) < 420) {
+        const [dx, dy, d] = dirTo(g, e), sp = 300 + 10 * this.power();
+        g.vx = dx * sp; g.vy = dy * sp;
+        if (d < e.r + 12) {
+          g.biteT -= dt;
+          if (g.biteT <= 0) { g.biteT = 0.3; this.damage(e, this.pw() * 1.3); e.stun = Math.max(e.stun, 0.6); e.vx += dx * 140; e.vy += dy * 140; this.fx('chomp', g.x, g.y); }
+        }
+      } else {                                            // nothing in reach: he stays near you, still fuming
+        const [dx, dy, d] = dirTo(g, p);
+        const sp = d > 90 ? 180 : 0; g.vx = dx * sp; g.vy = dy * sp;
+      }
+      if ((g.cut ?? 0) <= 0) { g.cut = 0; g.fury = 0; g.furious = 0; g.state = 'returning'; this.say('Biscuit has run out of rage. He waddles back to be tied on.'); }
     } else if (g.state === 'loose') {
       let e = this.nearestEnemy(g.x, g.y);
       if (g.feral && (!e || Math.hypot(e.x - g.x, e.y - g.y) > 260)) e = null;
@@ -1972,6 +2023,7 @@ export class Sim {
 
     // rope: attached unless the goose is loose or returning on his own
     const attached = g.state !== 'loose' && g.state !== 'returning';
+    if (this.castMode && this.castHolding && (g.state === 'flying' || g.state === 'latched')) this.castLen = Math.min(this.leashLen(), Math.max(this.castLen, Math.hypot(g.x - p.x, g.y - p.y)));
     this.rope.step(attached ? p : null, g, L);
 
     // grab the trailing leash of a loose goose

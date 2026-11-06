@@ -54,6 +54,10 @@ export const C = {
   rollIframes: 0.26,
   rollCooldown: 0.5,
   rollSlosh: 0.004,
+  // casting mode (experimental): Biscuit is cast on the fishing line; holding the button lets line out
+  castHeel: 50,            // line out when he's back at your heel
+  castCutFury: 60,         // rage needed before you can cut him loose to fight alone
+  castCutTime: 8,          // seconds he rampages after the line is cut, then comes back to be tied on
   // the Ferryman's Oar: hold to guard Bimbo from the front; raise it just as a blow lands to parry
   guardSpeed: 0.5,
   guardArc: 1.25,          // half-angle (radians) of the arc the oar covers
