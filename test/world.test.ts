@@ -134,11 +134,11 @@ describe('travel', () => {
   });
 
   it('the END door finishes the slice', () => {
-    const sim = at(ROOMS['driftwood-4']!);
+    const sim = at(ROOMS['tide-2']!);
     sim.room.gateClosed = false;
-    const e = sim.room.def.doors!.find(d => d.id === 'e')!;
+    const e = sim.room.def.doors!.find(d => d.id === 'n')!;
     sim.player.x = e.spawn.x; sim.player.y = e.spawn.y;
-    run(sim, 1, { moveX: 1, moveY: 0, aimX: 0, aimY: 0 });
+    run(sim, 1, { moveX: 0, moveY: -1, aimX: 0, aimY: 0 });
     expect(sim.won).toBe(true);
   });
 });

@@ -10,6 +10,7 @@ import type { Enemy, Sim, SimEvent } from '../core/sim';
 import type { Vec } from '../core/math';
 import { SPRITES } from './assets';
 import { INGREDIENTS } from '../data/elixir';
+import { FISH } from '../core/fishing';
 import { Atmosphere } from './atmosphere';
 import { CinemaView, type CinemaState } from './cinema';
 import { TextPool, fillP, smoothRope, dashed, type Face, type Snapshot } from './render';
@@ -534,6 +535,7 @@ export class ArtRenderer {
 
     this.drawOar(sim, P, time);
     if (sim.castMode && sim.charging) this.drawCharge(sim, P, time);
+    if (sim.room.def.fishing) this.drawFishing(sim, P, time);
 
     // ---- Biscuit
     const hauled = go.state === 'held' && go.drag > 0;     // dragged along after a roll: flapping
@@ -571,7 +573,7 @@ export class ArtRenderer {
       if (e.dead) continue;
       alive.add(e.id);
       let s = this.foes.get(e.id);
-      if (!s) { s = this.worldIgnore(this.scene.add.sprite(0, 0, ({ snapper: 'snapper', elder: 'snapper', heron: 'heron', squirrel: 'squirrel', badger: 'badger', king: 'king', crab: 'crab', gull: 'gull', gullbeard: 'gullbeard' } as Record<string, string>)[e.kind] ?? 'frog')); this.foes.set(e.id, s); }
+      if (!s) { s = this.worldIgnore(this.scene.add.sprite(0, 0, ({ snapper: 'snapper', elder: 'snapper', heron: 'heron', squirrel: 'squirrel', badger: 'badger', king: 'king', crab: 'crab', gull: 'gull', gullbeard: 'gullbeard', eel: 'eel' } as Record<string, string>)[e.kind] ?? 'frog')); this.foes.set(e.id, s); }
       const { x, y } = EP(e);
       const awake = e.woke > 0 || (e.stun > 0 && e.kind !== 'snapper');
       const kind = e.kind === 'heron' ? (e.woke > 0 ? 'heron_awake' : 'heron')
@@ -582,7 +584,7 @@ export class ArtRenderer {
         this.drawWoodsCritter(sim, e, s, x, y, time);
         continue;
       }
-      if (e.kind === 'crab' || e.kind === 'gull' || e.kind === 'gullbeard') {
+      if (e.kind === 'crab' || e.kind === 'gull' || e.kind === 'gullbeard' || e.kind === 'eel') {
         this.drawWharfCritter(sim, e, s, x, y, time);
         continue;
       }
@@ -867,6 +869,8 @@ export class ArtRenderer {
       g.fillStyle(0x0b0a10, 0.75 * a); g.fillRect(W / 2 - t.width / 2 - 12, y - 18, t.width + 24, 27);
     });
 
+    this.drawFishHud(sim, g, panel, W, H);
+
     // boss health
     const boss = sim.enemies.find(e => (e.kind === 'heron' || e.kind === 'king' || (e.kind === 'gullbeard' && e.mode !== 'stalk') || (e.kind === 'elder' && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < 620)) && !e.woke);
     if (boss) {
@@ -1102,11 +1106,11 @@ export class ArtRenderer {
   }
 
   /** Power cast wind-up: a meter over Rocco's head that swings up and back, and where the cast will land. */
-  private drawCharge(sim: Sim, P: Vec, time: number): void {
-    const g = this.fxg, c = sim.charge(), sweet = c >= C.castSweet;
+  private drawCharge(sim: Sim, P: Vec, time: number, c = sim.charge()): void {
+    const g = this.fxg, sw = sim.sweet(), sweet = c >= sw;
     const w = 46, x = Math.round(P.x - w / 2), y = Math.round(P.y - 68);
     g.fillStyle(0x1a1522, 0.9); g.fillRect(x - 1, y - 1, w + 2, 7);
-    g.fillStyle(0x5a4a2a, 1); g.fillRect(x + Math.round(w * C.castSweet), y, w - Math.round(w * C.castSweet), 5);
+    g.fillStyle(0x5a4a2a, 1); g.fillRect(x + Math.round(w * sw), y, w - Math.round(w * sw), 5);
     g.fillStyle(sweet ? 0xfff0a0 : 0xd8ecf4, 1); g.fillRect(x, y, Math.round(w * c), 5);
     if (sweet) { g.lineStyle(1, 0xf2c230, 0.6 + 0.4 * Math.sin(time * 30)); g.strokeRect(x - 2, y - 2, w + 4, 9); }
     // where he'll come down: along the aim, as far as this much line reaches
@@ -1149,6 +1153,7 @@ export class ArtRenderer {
 
   /** Crabs, gulls and Captain Gullbeard: fliers drawn above their shadows, dive marks, the swoop line, stolen loot. */
   private drawWharfCritter(sim: Sim, e: Enemy, s: Phaser.GameObjects.Sprite, x: number, y: number, time: number): void {
+    if (e.kind === 'eel') { this.drawEel(sim, e, s, x, y, time); return; }
     const g = this.floor, f = this.fxg, awake = e.woke > 0, cap = e.kind === 'gullbeard';
     const blink = ((time * 1.1 + e.id * 0.37) % 3.2) < 0.14;
     const flap = Math.floor(time * (cap ? 7 : 11) + e.id) % 2;
@@ -1201,6 +1206,157 @@ export class ArtRenderer {
     if (e.stun > 0 && e.air <= 2) for (let i = 0; i < 2; i++) { const a = time * 5 + i * 3; f.fillStyle(0xf2c230, 1); this.star(f, x + Math.cos(a) * 10, y - 26 + Math.sin(a) * 3, 2.5); }
     if (e.kind === 'crab' && e.mode === 'wind') this.wt('!', x, y - 30, 11, '#ff4a4a', 1);
   }
+
+  /** Tide-pool eels: a ripple while hidden, bubbles and a warning before the lunge, flopping on the rocks. */
+  private drawEel(sim: Sim, e: Enemy, s: Phaser.GameObjects.Sprite, x: number, y: number, time: number): void {
+    const g = this.floor, f = this.fxg, awake = e.woke > 0;
+    const hidden = !awake && (e.mode === 'lurk' || e.mode === 'stalk' || e.mode === 'wind');
+    s.setVisible(!hidden);
+    if (hidden) {
+      g.lineStyle(1, 0x9ad8e8, 0.35 + 0.15 * Math.sin(time * 3 + e.id)); g.strokeEllipse(x, y, 20 + Math.sin(time * 2 + e.id) * 3, 7);
+      if (e.mode === 'wind') {
+        const k = Math.min(1, e.modeT / 0.5);
+        g.lineStyle(2, 0xff4a4a, 0.3 + 0.5 * k); g.strokeCircle(x, y, 95);
+        for (let i = 0; i < 4; i++) { f.fillStyle(0xe0f4f8, 0.8); f.fillCircle(x + Math.sin(time * 9 + i * 2) * 8, y - 2 - ((time * 30 + i * 6) % 10), 1.5); }
+        this.wt('!', x, y - 26, 12, '#ff4a4a', 1);
+      }
+      return;
+    }
+    const blink = ((time * 1.1 + e.id * 0.37) % 3.2) < 0.14;
+    const frame = awake ? (blink ? 1 : 0) : e.mode === 'beached' ? 3 : e.mode === 'up' && e.modeT < 0.3 ? 2 : blink ? 1 : 0;
+    this.show(s, awake ? 'eel_awake' : 'eel', frame);
+    const sway = e.mode === 'up' ? Math.sin(time * 4 + e.id) * 1.5 : e.mode === 'beached' ? Math.sin(time * 16) * 1.5 : 0;
+    s.setPosition(Math.round(x + sway), Math.round(y)).setDepth(y).setFlipX(sim.player.x < x).setAlpha(awake ? Math.max(0, 1 - e.woke / 1.6) : 1);
+    if (e.hitT > 0) s.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL); else s.clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
+    if (e.mode === 'beached' && !awake) { g.fillStyle(0x000000, 0.3); g.fillEllipse(x, y + 2, 34, 6); if (e.stun > 0) this.star(f, x, y - 20, 2.5); }
+  }
+
+  /**
+   * Fishing: the spots, the shadows in the water, the bobber and line, the hooked fish thrashing, the leap
+   * at the shore. The meter and the fight's tension bar are drawn here and in the HUD.
+   */
+  private drawFishing(sim: Sim, P: Vec, time: number): void {
+    const F = sim.fishing, def = sim.room.def.fishing!, g = this.floor, f = this.fxg;
+    for (const sp of def.spots) {                      // a flat rock with a rod rest
+      const here = F.spot === sp;
+      g.fillStyle(0x000000, 0.3); g.fillEllipse(sp.x + 2, sp.y + 4, 40, 12);
+      g.fillStyle(0x3a3a46, 1); g.fillEllipse(sp.x, sp.y, 36, 14); g.fillStyle(0x565666, 1); g.fillEllipse(sp.x - 2, sp.y - 2, 28, 8);
+      g.lineStyle(2, 0x8a5a2e, 1); g.lineBetween(sp.x + 12, sp.y, sp.x + 18, sp.y - 16);
+      if (!here && Math.hypot(sim.player.x - sp.x, sim.player.y - sp.y) < 220) this.wt(`${sp.name} · fishing spot`, sp.x, sp.y - 26, 6, '#9ad8e8', 0.8, 'mono');
+    }
+    for (const sh of F.shadows) {                      // dark shapes under the water, tails flicking
+      const big = sh.def.size, a = sh.mode === 'flee' ? 0.3 : 0.62;
+      const dir = sh.mode === 'come' ? Math.atan2(F.bob.y - sh.y, F.bob.x - sh.x) : Math.atan2(sh.ty - sh.y, sh.tx - sh.x);
+      const cx = Math.cos(dir), cy = Math.sin(dir);
+      // a glint of moonlight on the water above it, so it reads against the dark sea
+      f.lineStyle(1, 0x9ad8e8, 0.22 + 0.12 * Math.sin(time * 3 + sh.id)); f.strokeEllipse(sh.x, sh.y, big * 3 + Math.sin(time * 2 + sh.id) * 3, big * 1.4);
+      g.fillStyle(0x000204, a);
+      if (sh.def.id === 'moray') {
+        for (let i = 0; i < 9; i++) { const k = i * 5, w = Math.sin(time * 6 + i * 0.8 + sh.id) * 4; g.fillCircle(sh.x - cx * k - cy * w, sh.y - cy * k + cx * w, 5 - i * 0.3); }
+      } else {
+        g.fillEllipse(sh.x, sh.y, big * 2.4, big * 1.1);
+        const tw = Math.sin(time * 10 + sh.id) * big * 0.3;
+        g.fillTriangle(sh.x - cx * big * 1.1, sh.y - cy * big * 1.1, sh.x - cx * big * 1.8 - cy * (big * 0.6 + tw), sh.y - cy * big * 1.8 + cx * (big * 0.6 + tw),
+          sh.x - cx * big * 1.8 + cy * (big * 0.6 - tw), sh.y - cy * big * 1.8 - cx * (big * 0.6 - tw));
+      }
+    }
+    if (F.charging) this.drawFishCharge(sim, P, time);
+    const out = F.phase === 'fly' || F.phase === 'wait' || F.phase === 'bite' || F.phase === 'reel' || F.phase === 'land';
+    if (!out) return;
+    const tip = this.rodTip;
+    let bx = F.bob.x, by = F.bob.y, lift = 0;
+    if (F.phase === 'fly') { const u = Math.min(1, F.t / 0.55); bx = F.from.x + (F.bob.x - F.from.x) * u; by = F.from.y + (F.bob.y - F.from.y) * u; lift = Math.sin(u * Math.PI) * 60; }
+    const h = F.hooked, tension = h?.tension ?? 0.2;
+    const lc = tension > 0.85 ? 0xff4a4a : tension > 0.6 ? 0xf2c230 : 0xd8ecf4;
+    // the line: a sag that tightens with tension
+    const mx = (tip.x + bx) / 2, my = (tip.y + by - lift) / 2 + (1 - Math.min(1, tension)) * 26;
+    this.line.lineStyle(1, lc, 0.9); this.line.beginPath(); this.line.moveTo(tip.x, tip.y);
+    for (let i = 1; i <= 12; i++) { const u = i / 12, ix = (1 - u) * (1 - u) * tip.x + 2 * u * (1 - u) * mx + u * u * bx, iy = (1 - u) * (1 - u) * tip.y + 2 * u * (1 - u) * my + u * u * (by - lift); this.line.lineTo(ix, iy); }
+    this.line.strokePath();
+    if (F.phase === 'land') {                          // it leaps out at the rocks
+      const u = Math.min(1, F.t / 0.5), jy = by - Math.sin(u * Math.PI) * 30;
+      f.fillStyle(0xe0f4f8, 0.8); for (let i = 0; i < 6; i++) f.fillCircle(bx + Math.cos(i) * 10 * u, by - Math.abs(Math.sin(i * 2)) * 8 * u, 1.5);
+      this.showFishAt(h!.def.id, bx, jy, Math.sin(time * 18) * 0.4);
+      this.wt('GRAB IT! [E]', bx, by - 56, 12, '#f2c230', 0.7 + 0.3 * Math.sin(time * 16));
+      return;
+    }
+    this.hideFish();
+    const dip = F.phase === 'bite' ? 4 : F.nibble > 0 ? 2 : 0, under = F.phase === 'bite' || F.phase === 'reel';
+    if (!under || F.phase === 'bite') {
+      f.fillStyle(0x1a1522, 1); f.fillCircle(bx, by - lift + dip, 3.5);
+      f.fillStyle(0xe05a47, 1); f.fillCircle(bx, by - lift + dip - 1, 2.5); f.fillStyle(0xf6f1e6, 1); f.fillRect(bx - 2, by - lift + dip, 4, 2);
+    }
+    if (F.phase === 'wait' || F.phase === 'bite') { g.lineStyle(1, 0x9ad8e8, 0.5); g.strokeEllipse(bx, by + 2, 10 + Math.sin(time * 4) * 2 + dip * 3, 4 + dip); }
+    if (F.phase === 'bite') this.wt('STRIKE! [click]', bx, by - 30, 12, '#ff8a6a', 0.7 + 0.3 * Math.sin(time * 30));
+    if (F.phase === 'reel' && h) {
+      const run = h.runT > 0, warn = h.warn > 0;
+      g.lineStyle(run ? 2 : 1, 0xe0f4f8, run ? 0.8 : 0.5); g.strokeEllipse(bx, by + 2, 18 + Math.sin(time * 20) * (run ? 6 : 2), 7);
+      if (run || warn) { f.fillStyle(0xe0f4f8, 0.9); for (let i = 0; i < (run ? 8 : 4); i++) f.fillCircle(bx + Math.sin(time * 23 + i * 1.7) * 14, by - Math.abs(Math.sin(time * 17 + i)) * 10, 1.5); }
+      if (warn) this.wt('!', bx, by - 26, 14, '#ff4a4a', 1);
+    }
+  }
+
+  /** Fishing HUD: hints, the tension bar during a fight, and the catch card. */
+  private cardFish: Phaser.GameObjects.Sprite | null = null;
+  private drawFishHud(sim: Sim, g: Phaser.GameObjects.Graphics, panel: (x: number, y: number, w: number, h: number) => void, W: number, H: number): void {
+    const F = sim.fishing, time = this.time;
+    if (!this.cardFish) this.cardFish = this.screenOnly(this.scene.add.sprite(0, 0, 'fish_sprat', 0).setDepth(9050).setVisible(false));
+    this.cardFish.setVisible(false);
+    if (!sim.room.def.fishing || F.phase === 'off') return;
+    const known = (id: string) => !!sim.kit.fish[id]?.n;
+    if (F.phase === 'ready' && !F.card) {
+      const n = FISH.filter(f => known(f.id)).length;
+      this.ht('mono', `FISHING · hold to wind up, let go to cast · ${n}/${FISH.length} in the journal [J]`, W / 2, H - 180, 12, '#9ad8e8', 0.85, 'center', true);
+    }
+    const h = F.hooked;
+    if (h && (F.phase === 'reel' || F.phase === 'land')) {
+      const x0 = W / 2 - 220, y0 = H - 228;
+      panel(x0, y0, 440, 74);
+      const name = known(h.def.id) ? h.def.name : '???';
+      this.ht('display', `${h.giant ? 'GIANT ' : ''}${name}`, x0 + 14, y0 + 22, 15, h.def.color, 1, 'left');
+      const run = h.runT > 0, warn = h.warn > 0, tired = h.stamina <= 0;
+      const label = F.phase === 'land' ? 'GRAB IT! [E]' : run ? 'LET GO!' : warn ? 'IT\'S GOING TO RUN...' : tired ? 'TIRED: REEL IT IN' : 'HOLD TO REEL';
+      this.ht('mono', label, x0 + 426, y0 + 22, 13, run || F.phase === 'land' ? '#ff8a6a' : warn ? '#f2c230' : '#9ad8e8', run || warn ? 0.6 + 0.4 * Math.sin(time * 20) : 1, 'right', true);
+      // tension: snaps at the right end
+      const bx = x0 + 14, by = y0 + 36, bw = 412;
+      g.fillStyle(0x1a1522, 1); g.fillRect(bx, by, bw, 12);
+      g.fillStyle(0x5a1a1a, 1); g.fillRect(bx + bw * 0.85, by, bw * 0.15, 12);
+      const tc = h.tension > 0.85 ? 0xff4a4a : h.tension > 0.6 ? 0xf2c230 : h.tension < 0.06 ? 0x5a6a7a : 0x9ad8e8;
+      g.fillStyle(tc, 1); g.fillRect(bx + 2, by + 2, (bw - 4) * Math.min(1, h.tension), 8);
+      this.ht('mono', 'LINE TENSION', bx, by + 26, 10, '#9aa3a6', 1, 'left', true);
+      // how much fight it has left
+      const st = Math.min(1, Math.max(0, h.stamina) / (h.def.stamina * (h.giant ? 1.4 : 1)));
+      this.ht('mono', 'FIGHT', bx + bw - 120, by + 26, 10, '#9aa3a6', 1, 'left', true);
+      g.fillStyle(0x1a1522, 1); g.fillRect(bx + bw - 76, by + 19, 76, 6); g.fillStyle(0xe05a47, 1); g.fillRect(bx + bw - 75, by + 20, 74 * st, 4);
+    }
+    const c = F.card;
+    if (c) {
+      const a = Math.min(1, c.t / 0.2, (2.6 - c.t) / 0.3), x0 = W / 2 - 250, y0 = 120;
+      g.fillStyle(0x0b0a10, 0.88 * a); g.fillRect(x0, y0, 500, 170); g.lineStyle(2, hex(c.def.color), a); g.strokeRect(x0, y0, 500, 170);
+      const sp = SPRITES[`fish_${c.def.id}`]!, sc = Math.min(4, 150 / sp.w, 70 / sp.h);
+      this.cardFish.setTexture(`fish_${c.def.id}`, 0).setVisible(true).setPosition(x0 + 100, y0 + 70 + Math.sin(time * 5) * 3).setScale(sc).setAlpha(a).setRotation(Math.sin(time * 3) * 0.08);
+      this.ht('display', c.def.name.toUpperCase(), x0 + 200, y0 + 40, 20, c.def.color, a, 'left');
+      this.ht('mono', `${c.def.rarity.toUpperCase()} · ${c.len} CM${c.giant ? ' · GIANT!' : ''}${c.first ? ' · NEW!' : ''}`, x0 + 200, y0 + 64, 12, c.first || c.giant ? '#f2c230' : '#9aa3a6', a, 'left', true);
+      const text = c.note ?? (c.first ? c.def.fact : `Best: ${sim.kit.fish[c.def.id]?.best ?? c.len} cm · caught ${sim.kit.fish[c.def.id]?.n ?? 1}`);
+      const words = text.split(' '); let line = '', ly = y0 + 100;
+      for (const w of words) { if ((line + w).length > 52) { this.ht('body', line, x0 + 200, ly, 13, '#e9e4d6', a, 'left'); ly += 18; line = ''; } line += w + ' '; }
+      if (line) this.ht('body', line, x0 + 200, ly, 13, '#e9e4d6', a, 'left');
+    }
+  }
+
+  /** The fishing cast's meter, and where the bobber will land. */
+  private drawFishCharge(sim: Sim, P: Vec, time: number): void {
+    this.drawCharge(sim, P, time, sim.fishing.charge());
+  }
+
+  private fishSprite: Phaser.GameObjects.Sprite | null = null;
+  private showFishAt(id: string, x: number, y: number, angle: number): void {
+    if (!this.fishSprite) { this.fishSprite = this.worldIgnore(this.scene.add.sprite(0, 0, `fish_${id}`, 0)); }
+    const key = `fish_${id}`;
+    if (this.fishSprite.texture.key !== key) this.fishSprite.setTexture(key, 0);
+    this.fishSprite.setVisible(true).setPosition(Math.round(x), Math.round(y)).setRotation(angle).setDepth(y + 10);
+  }
+  private hideFish(): void { this.fishSprite?.setVisible(false); }
 
   /** Squirrels, badgers and the Burrow King: poses, tunnelling mounds, telegraphs, dazed stars. */
   private drawWoodsCritter(sim: Sim, e: Enemy, s: Phaser.GameObjects.Sprite, x: number, y: number, time: number): void {

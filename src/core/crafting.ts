@@ -27,6 +27,8 @@ export class Kit {
   reel = false;
   /** Legendary elixir ingredients gathered (see data/elixir.ts). */
   ingredients = new Set<string>();
+  /** The fish journal: how many of each, and the biggest (cm). */
+  fish: Record<string, { n: number; best: number }> = {};
 
   constructor() {
     this.mats = Object.fromEntries(Object.keys(ITEMS).map(k => [k, 0])) as Record<ItemId, number>;

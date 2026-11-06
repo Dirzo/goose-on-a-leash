@@ -111,6 +111,8 @@ export class Sound {
       case 'hiss': this.noise(0.45, 5000, 0.12, 'highpass'); break;
       case 'kraa': this.tone(520, 0.4, 'sawtooth', 0.12, 340); this.noise(0.3, 1600, 0.08, 'bandpass', 900, 0, 3); break;
       case 'whoosh': this.noise(0.35, 300, 0.15, 'bandpass', 1500); break;
+      case 'blip': this.tone(520, 0.06, 'sine', 0.12, 700); break;
+      case 'reelclick': this.noise(0.02, 3000, 0.08, 'highpass'); break;
       case 'door': this.noise(0.4, 400, 0.12, 'bandpass', 1200); this.tone(330, 0.2, 'sine', 0.06, 440); break;
       case 'thud': this.tone(160, 0.12, 'triangle', 0.18, 80); this.noise(0.1, 600, 0.12, 'lowpass', 200); break;
       case 'dust': this.noise(0.5, 300, 0.25, 'lowpass', 90); this.tone(70, 0.3, 'sine', 0.25, 40); break;

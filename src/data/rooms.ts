@@ -1,7 +1,8 @@
 import type { Circle, Rect, Vec } from '../core/math';
 import type { LeashId } from './recipes';
+import type { FishingGrounds } from '../core/fishing';
 
-export type EnemyKind = 'bunny' | 'knight' | 'frog' | 'snapper' | 'heron' | 'squirrel' | 'badger' | 'king' | 'elder' | 'crab' | 'gull' | 'gullbeard';
+export type EnemyKind = 'bunny' | 'knight' | 'frog' | 'snapper' | 'heron' | 'squirrel' | 'badger' | 'king' | 'elder' | 'crab' | 'gull' | 'gullbeard' | 'eel';
 
 /** A doorway on a room edge. Walking into it travels to `toDoor` in room `to` (or ends the slice when `to` is 'END'). */
 export interface Door {
@@ -72,11 +73,15 @@ export interface RoomDef {
   /** Glowing mushroom rings: honk one and its spores put nearby critters to sleep. */
   shrooms?: Vec[];
   /** Which art set paints the room. */
-  biome?: 'pond' | 'marsh' | 'woods' | 'wharf';
+  biome?: 'pond' | 'marsh' | 'woods' | 'wharf' | 'tide';
   /** Sea glass washed up on the beach, each picked up once (Pickett trades it at his tackle shop). */
   glass?: Vec[];
   /** A shop: honk at the counter to trade. */
   shop?: Vec & { name: string };
+  /** Fishing grounds: spots to stand on, the water the fish swim in, and the trench where the Moray Twins lurk. */
+  fishing?: FishingGrounds;
+  /** Dripping freshwater springs in the caves (drawn by the painter; refill zones are in `refills`). */
+  springs?: Vec[];
   /** The freshwater pump (drawn by the painter; its refill zone is in `refills`). */
   pump?: Vec;
   /** Golden Feathers hidden in the room, each picked up once. */

@@ -67,13 +67,28 @@ WHARF_P = {k: hx(v) for k, v in {
 }.items()}
 
 
+# The Tide Caves: wet black rock, barnacles and kelp; the tide pools glow a little. The cove is moonlit sand.
+TIDE_P = {k: hx(v) for k, v in {
+    'Q0': '15181e', 'Q1': '1c2028', 'Q2': '242a34', 'Q3': '2a3a3a', 'Q4': '3a5a4a', 'Q5': '5a7a5a',
+    'D0': '12141a', 'D1': '2a3038', 'D2': '3a4450', 'MUD': '1a1e24',
+    'W0': '06202a', 'W1': '0a3038', 'W2': '124a50', 'W3': 'a8e8e0',
+    'TREE': '05070a', 'TREE2': '0a0e14', 'TREE3': '161c26',
+    'ST0': '22262e', 'ST1': '343a46', 'ST2': '4e5664', 'SHELL': 'd8d0c4', 'KELP': '2a4a2a',
+}.items()}
+
+
 def render(R):
     W, H = R['width'], R['height']
     woods = R.get('biome') == 'woods'
     wharf = R.get('biome') == 'wharf'
     P = dict(BASE_P)
     if woods: P.update(WOODS_P)
-    if wharf: P.update(WHARF_P)
+    tide = R.get('biome') == 'tide'
+    cove = tide and bool(R.get('fishing'))
+    if wharf or cove: P.update(WHARF_P)
+    if tide and not cove: P.update(TIDE_P)
+    if tide: P['W0'], P['W1'], P['W2'] = TIDE_P['W0'], TIDE_P['W1'], TIDE_P['W2']
+    wharf = wharf or cove
     rng = random.Random(sum(ord(c) * (i + 1) for i, c in enumerate(R['id'])))
     yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
     img = np.zeros((H, W, 3), np.float32)
@@ -192,7 +207,7 @@ def render(R):
         return any(d['x'] - m < x < d['x'] + d['w'] + m and d['y'] - m < y < d['y'] + d['h'] + m for d in docks)
     def near_post(x, y, m=30):
         return any(math.hypot(p['x'] - x, p['y'] - y) < m for p in R.get('posts', []))
-    nb = 0 if wharf else int(bank.sum() / 260)
+    nb = 0 if wharf or tide else int(bank.sum() / 260)
     if wharf:                                              # shells and pebbles on the tide line, foam lace in the shallows
         for _ in range(int(bank.sum() / 90)):
             x, y = rng.randrange(4, W - 4), rng.randrange(4, H - 4)
@@ -204,7 +219,7 @@ def render(R):
             x, y = rng.randrange(24, W - 24), rng.randrange(34, H - 10)
             if bank[y, x] and not near_dock(x, y) and not near_post(x, y):
                 reeds(x - 6, y + 4, rng.randrange(3, 7)); break
-    for _ in range(0 if wharf else int(water.sum() / 9000)):
+    for _ in range(0 if wharf or tide else int(water.sum() / 9000)):
         for _try in range(60):
             lx, ly = rng.randrange(20, W - 20), rng.randrange(20, H - 20)
             if water[ly, lx] and sd[ly, lx] < -14 and not near_dock(lx, ly, 20) and not near_post(lx, ly, 26):
@@ -393,6 +408,33 @@ def render(R):
             disk(rcx - 7, rcy - 7, 6, 'ST2', 0.75)
             for k in range(6): px(rcx - 10 + k * 4, rcy + 12, 'Q3')
 
+    # ---- the trench: deep water, darker and still
+    fg = R.get('fishing')
+    if fg and fg.get('trench'):
+        t = fg['trench']
+        d_ = sdf_rect(t, 30) - noise * 1.2
+        deep_ = water & (d_ < 0)
+        img[deep_] = img[deep_] * 0.55
+        img[water & (np.abs(d_) < 1.2) & ((xx.astype(int) + yy.astype(int)) % 3 == 0)] = P['W2']
+    # ---- cave pools glow faintly; barnacles and kelp on the rock
+    if tide and not cove:
+        pools_ = water & (sd > -18)
+        img[pools_] = img[pools_] * 0.8 + P['W2'] * 0.2
+        for _ in range(int(W * H / 900)):
+            x, y = rng.randrange(4, W - 4), rng.randrange(4, H - 4)
+            if land[y, x] and rng.random() < 0.6: px(x, y, 'SHELL'); px(x + 1, y, 'ST1')
+        for _ in range(int(bank.sum() / 120)):
+            x, y = rng.randrange(4, W - 4), rng.randrange(4, H - 4)
+            if bank[y, x]:
+                for k in range(rng.randrange(3, 8)): px(x + math.sin(k * 0.8) * 1.5, y - k, 'KELP')
+    for sp_ in R.get('springs', []):                    # freshwater dripping from the rock into a basin
+        x, y = int(sp_['x']), int(sp_['y'])
+        shadow(x + 3, y + 12, 30, 9, 0.55)
+        disk(x, y + 2, 22, 'ST0', 0.5); disk(x, y + 1, 19, 'ST1', 0.5); disk(x, y + 2, 15, 'W2', 0.45); disk(x - 3, y, 6, 'W3', 0.4)
+        img[y - 34:y - 8, x - 9:x + 9] = P['ST0'] if tide and not cove else P['B1']
+        img[y - 34:y - 30, x - 11:x + 11] = P['ST1'] if tide and not cove else P['B2']
+        for k in range(0, 22, 3): px(x, y - 8 + k * 0.4, 'W3')
+
     # ---- Pickett's stall: a counter under a striped awning (Pickett himself is a sprite)
     sp = R.get('shop')
     if sp:
@@ -497,7 +539,7 @@ def render(R):
     img[lit] = img[lit] * 0.6 + (P['TREE3'] * 1.6) * 0.4
     far = canopy & (deep > 30)
     img[far] = img[far] * np.clip(1 - (deep[far] - 30) / 140, 0.45, 1)[..., None]
-    for x in range(24, W - 24, 5 if not wharf else 10**6):        # hanging strands along the top
+    for x in range(24, W - 24, 5 if not (wharf or tide) else 10**6):        # hanging strands along the top
         if gap[30, x] or not canopy[18, x]: continue
         for y in range(20, 20 + rng.randrange(6, 22)):
             if y + 6 < H and not water[y, x]: px(x + (y // 7) % 2, y + 6, 'RD0')
@@ -535,7 +577,7 @@ def main(ids):
     os.makedirs(OUT, exist_ok=True)
     files = [os.path.join(ROOT, 'src', 'data', 'rooms', f'{i}.json') for i in ids] if ids else \
         sorted(glob.glob(os.path.join(ROOT, 'src', 'data', 'rooms', 'reedmarsh-*.json')) + glob.glob(os.path.join(ROOT, 'src', 'data', 'rooms', 'hollowbark-*.json'))
-               + glob.glob(os.path.join(ROOT, 'src', 'data', 'rooms', 'driftwood-*.json')))
+               + glob.glob(os.path.join(ROOT, 'src', 'data', 'rooms', 'driftwood-*.json')) + glob.glob(os.path.join(ROOT, 'src', 'data', 'rooms', 'tide-*.json')))
     for f in files:
         R = json.load(open(f))
         save_room(render(R), os.path.join(OUT, f"{R['id']}.png"))

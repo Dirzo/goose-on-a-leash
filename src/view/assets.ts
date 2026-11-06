@@ -15,6 +15,9 @@ const url = (path: string): string => {
   return u;
 };
 
+/** A sprite strip's image URL (for HTML screens). */
+export const spriteUrl = (name: string): string | null => URLS[`../assets/sprites/${name}.png`] ?? null;
+
 /** Rooms that have painted backgrounds (any src/assets/rooms/<id>.png). Others use the gray-box renderer. */
 export const ROOM_ART: Record<string, string> = Object.fromEntries(
   Object.keys(URLS).filter(k => k.startsWith('../assets/rooms/')).map(k => [k.slice('../assets/rooms/'.length, -4), k.slice('../assets/'.length)]));

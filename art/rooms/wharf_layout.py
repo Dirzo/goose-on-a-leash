@@ -162,7 +162,7 @@ ROOMS.append(room(
 ROOMS.append(room(
     'driftwood-6', 'The Rusty Gull', 1280, 760,
     [dict(id='w', side='W', at=380, to='driftwood-5', toDoor='e', label='Bilge Docks'),
-     dict(id='e', side='E', at=380, to='END', toDoor='', gated=True, label='The Tide Caves')],
+     dict(id='e', side='E', at=380, to='tide-1', toDoor='w', gated=True, label='The Tide Caves')],
     'w', subtitle='Driftwood Wharf · Captain Gullbeard', **D(),
     gate=rect(1234, 334, 12, 92),
     pits=[rect(20, 20, 1240, 720, kind='water')],

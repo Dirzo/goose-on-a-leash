@@ -116,3 +116,12 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--caution);outlin
 .ferry-stops button:hover:not([disabled]),.ferry-stops button:focus-visible{background:rgba(255,255,255,.7)}
 .ferry-stops button[disabled]{opacity:.55;cursor:default}
 .ferry-stops small{display:block;opacity:.7;margin-top:2px}
+
+.journal-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:12px;max-height:60vh;overflow:auto}
+.journal-list h3{grid-column:1/-1;margin:10px 0 0;font-size:13px;letter-spacing:.08em;text-transform:uppercase;opacity:.7}
+.fish-card{display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid rgba(0,0,0,.2);border-radius:6px;background:rgba(255,255,255,.35)}
+.fish-card .pic{width:64px;height:36px;flex:none;display:flex;align-items:center;justify-content:center}
+.fish-card .pic img{image-rendering:pixelated;max-width:64px;max-height:36px;transform:scale(1.4)}
+.fish-card.unknown .pic img{filter:brightness(0);opacity:.35}
+.fish-card b{display:block}
+.fish-card small{display:block;opacity:.75}

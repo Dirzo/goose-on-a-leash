@@ -372,3 +372,251 @@ def pickett(blink=False, pose='idle'):
         else: eye.rect(ex, 9, ex + 1, 10, 'BK'); eye.px(ex, 9, 'BW')
     L.append(eye)
     return composite(L)
+
+
+# ---------------------------------------------------------------- The Tide Caves: fish and eels
+FPAL = {k: hx(v) for k, v in {
+    'S0': '3a4a58', 'S1': '7a90a0', 'S2': 'b8d0d8', 'S3': 'eef6f8',
+    'M0': '1e3a40', 'M1': '2e6a6a', 'M2': '6ab0a0', 'M3': 'c8e8d8', 'MS': '10242a',
+    'B0': '3a4250', 'B1': '6a7888', 'B2': '9aa8b8', 'B3': 'd8e0e8',
+    'G0': '3a2a1a', 'G1': '6a4a2e', 'G2': '8a6a4a', 'G3': 'c09a6a', 'GS': 'e0c090',
+    'E0': '1e2a14', 'E1': '3a5a24', 'E2': '5a7a3a', 'E3': '8aa858', 'EY': 'f2d040',
+    'FIN': 'c8a8a0', 'BK': '15111c', 'BW': 'f8f4ec', 'FR': 'ff3a3a', 'FR2': 'ffb0a0', 'MOUTH': '5a1a1a', 'TOOTH': 'f0ece0',
+    'W0': '0c2630', 'W1': '9ad8e8', 'W2': 'e0f4f8',
+}.items()}
+
+
+def _fish(w, h, body, belly, back, tail, eye_xy, eye_r=1.5, spots=None, stripes=None, fin=None):
+    L = []
+    t = Layer('tail', w, h, FPAL); t.poly(tail[0], tail[1]); L.append(t)
+    b = Layer('body', w, h, FPAL)
+    cx, cy, rx, ry = body
+    b.ell(cx, cy, rx, ry, back); b.ell(cx + 1, cy + ry * 0.35, rx * 0.92, ry * 0.6, belly)
+    for (x, y, c) in (spots or []): b.px(x, y, c)
+    for (pts, c) in (stripes or []): b.line(pts, c)
+    if fin: b.poly(fin[0], fin[1])
+    L.append(b)
+    e = Layer('eye', w, h, FPAL); ex, ey = eye_xy
+    e.ell(ex, ey, eye_r + 0.5, eye_r + 0.5, 'BW'); e.ell(ex, ey, eye_r * 0.7, eye_r * 0.7, 'BK'); L.append(e)
+    return composite(L)
+
+
+def sprat():
+    w, h = 26, 12
+    return _fish(w, h, (14, 6, 9, 3.5), 'S3', 'S1', ([(5, 6), (0, 1), (2, 6), (0, 11)], 'S1'), (20, 5), 1,
+                 stripes=[([(8, 5), (20, 5)], 'S2')])
+
+
+def mackerel():
+    w, h = 40, 16
+    stripes = [([(10 + i * 4, 3), (12 + i * 4, 7)], 'MS') for i in range(6)]
+    return _fish(w, h, (21, 8, 14, 5), 'M3', 'M1', ([(8, 8), (0, 2), (3, 8), (0, 14)], 'M1'), (31, 7), 1.5, stripes=stripes,
+                 fin=([(18, 4), (22, 0), (25, 4)], 'M0'))
+
+
+def bass():
+    w, h = 52, 24
+    return _fish(w, h, (27, 12, 18, 8), 'B3', 'B1', ([(10, 12), (0, 3), (4, 12), (0, 21)], 'B1'), (40, 9), 2,
+                 stripes=[([(12, 11), (42, 11)], 'B0')], fin=([(20, 5), (26, 0), (34, 5)], 'B0'))
+
+
+def grouper():
+    w, h = 70, 36
+    spots = [(x, y, 'G0') for x in range(18, 56, 5) for y in range(10, 28, 5) if (x + y) % 3 == 0]
+    L = _fish(w, h, (36, 18, 26, 13), 'GS', 'G2', ([(12, 18), (0, 6), (5, 18), (0, 30)], 'G1'), (54, 13), 2.5, spots=spots,
+              fin=([(24, 6), (34, 0), (48, 6)], 'G1'))
+    d = Image_draw(L); d.line([(58, 22), (64, 22)], fill=FPAL['G0'] + (255,), width=2)   # a big sulky mouth
+    return L
+
+
+def moray(pose='idle', awake=False):
+    """A Moray Twin: long green eel, yellow eye (red in the trance), jaws full of teeth."""
+    w, h = 92, 30
+    L = []
+    b = Layer('body', w, h, FPAL)
+    pts = [(4 + i * 4, 18 + 5 * __import__('math').sin(i * 0.6)) for i in range(20)]
+    for i, (x, y) in enumerate(pts): b.ell(x, y, 4 + min(i, 12) * 0.35, 4 + min(i, 12) * 0.35, 'E1')
+    for i, (x, y) in enumerate(pts[::2]): b.px(x, y - 2, 'E3'); b.px(x + 1, y + 2, 'E0')
+    b.ell(84, 14, 7, 6, 'E2')
+    L.append(b)
+    j = Layer('jaw', w, h, FPAL)
+    if pose == 'bite':
+        j.poly([(84, 12), (92, 6), (92, 10)], 'MOUTH'); j.poly([(84, 16), (92, 22), (92, 18)], 'MOUTH')
+        for x in (87, 90): j.px(x, 9, 'TOOTH'); j.px(x, 19, 'TOOTH')
+    else:
+        j.line([(84, 16), (91, 15)], 'MOUTH')
+        for x in (86, 89): j.px(x, 16, 'TOOTH')
+    L.append(j)
+    e = Layer('eye', w, h, FPAL); e.ell(84, 11, 1.8, 1.8, 'EY' if awake else 'FR'); e.px(84, 10, 'BK'); L.append(e)
+    return composite(L)
+
+
+def eel(pose='up', blink=False, awake=False):
+    """A tide-pool eel seen from above-ish: head and neck reared out of the water. Poses: up, bite (lunging,
+    jaws open), beached (lying on the rocks)."""
+    import math
+    w, h = 40, 44
+    L = []
+    if pose == 'beached':
+        b = Layer('body', w, h, FPAL)
+        for i in range(10): b.ell(4 + i * 3.4, 34 + 3 * math.sin(i * 0.9), 3.5, 3.5, 'E1')
+        b.ell(36, 32, 5, 4, 'E2'); L.append(b)
+        e = Layer('eye', w, h, FPAL); e.line([(35, 30), (37, 30)], 'BK') if blink else e.px(36, 30, 'EY' if awake else 'FR'); L.append(e)
+        return composite(L)
+    rip = Layer('fx', w, h, FPAL); rip.ell(20, 38, 14, 4, 'W1'); rip.ell(20, 38, 10, 2.5, 'W0'); L.append(rip)
+    b = Layer('body', w, h, FPAL)
+    lean = 6 if pose == 'bite' else 0
+    for i in range(9): b.ell(20 + lean * i / 8, 38 - i * 3.4, 4.2 - i * 0.12, 4, 'E1')
+    for i in range(0, 9, 2): b.px(19 + lean * i / 8, 37 - i * 3.4, 'E3')
+    hx_, hy = 20 + lean, 8
+    b.ell(hx_, hy, 6, 5, 'E2')
+    L.append(b)
+    j = Layer('jaw', w, h, FPAL)
+    if pose == 'bite':
+        j.poly([(hx_ + 3, hy), (hx_ + 12, hy - 6), (hx_ + 12, hy - 2)], 'MOUTH'); j.poly([(hx_ + 3, hy + 2), (hx_ + 12, hy + 7), (hx_ + 12, hy + 3)], 'MOUTH')
+        j.px(hx_ + 8, hy - 3, 'TOOTH'); j.px(hx_ + 8, hy + 4, 'TOOTH')
+    else: j.line([(hx_ + 2, hy + 2), (hx_ + 6, hy + 2)], 'MOUTH')
+    L.append(j)
+    e = Layer('eye', w, h, FPAL)
+    if blink: e.line([(hx_ - 1, hy - 2), (hx_ + 1, hy - 2)], 'E0')
+    else: e.ell(hx_, hy - 2, 1.4, 1.4, 'EY' if awake else 'FR'); e.px(hx_ - 1, hy - 3, 'BW' if awake else 'FR2')
+    L.append(e)
+    return composite(L)
+
+
+def Image_draw(im):
+    from PIL import ImageDraw
+    return ImageDraw.Draw(im)
+
+
+# ---- the whole fish journal: a parametric fish plus a few odd shapes
+import math as _m
+
+
+def _pal(*cols):
+    return {f'c{i}': hx(c) for i, c in enumerate(cols)} | {'BK': hx('15111c'), 'BW': hx('f8f4ec'), 'OUT': hx('1a1522')}
+
+
+def fishy(w, h, back, belly, fin, stripe=None, eye=1.5, tall=0.45, long=1.0, spots=None, bars=None, lure=False, glow=None):
+    """A side-on fish facing right: body ellipse, belly, tail, dorsal fin, optional stripe/bars/spots."""
+    P = _pal(back, belly, fin, stripe or back, '000000', glow or 'ffffff')
+    L = []
+    cx, cy, rx = w * 0.54, h * 0.5, w * 0.4 * long
+    ry = h * tall
+    t = Layer('tail', w, h, P)
+    t.poly([(cx - rx + 2, cy), (1, cy - ry * 0.9), (cx - rx * 0.75, cy), (1, cy + ry * 0.9)], 'c2'); L.append(t)
+    b = Layer('body', w, h, P)
+    b.ell(cx, cy, rx, ry, 'c0'); b.ell(cx + 1, cy + ry * 0.35, rx * 0.9, ry * 0.55, 'c1')
+    b.poly([(cx - rx * 0.4, cy - ry + 1), (cx - rx * 0.05, cy - ry - h * 0.18), (cx + rx * 0.3, cy - ry + 1)], 'c2')
+    if stripe: b.line([(cx - rx * 0.8, cy), (cx + rx * 0.8, cy)], 'c3')
+    for i in range(bars or 0): x = cx - rx * 0.6 + i * rx * 1.2 / max(1, bars - 1); b.line([(x, cy - ry * 0.8), (x + 1, cy - ry * 0.1)], 'c3')
+    for (sx, sy) in (spots or []): b.px(cx + sx * rx, cy + sy * ry, 'c3')
+    if lure: b.line([(cx + rx * 0.5, cy - ry), (cx + rx * 0.9, cy - ry - 6)], 'c2'); b.ell(cx + rx * 0.95, cy - ry - 7, 1.5, 1.5, 'c5')
+    if glow: b.ell(cx, cy + ry * 0.2, 1, 1, 'c5'); b.ell(cx - rx * 0.4, cy + ry * 0.3, 1, 1, 'c5'); b.ell(cx + rx * 0.4, cy + ry * 0.25, 1, 1, 'c5')
+    L.append(b)
+    e = Layer('eye', w, h, P); ex, ey = cx + rx * 0.68, cy - ry * 0.25
+    e.ell(ex, ey, eye + 0.5, eye + 0.5, 'BW'); e.ell(ex, ey, eye * 0.6, eye * 0.6, 'BK'); L.append(e)
+    return composite(L)
+
+
+def longfish(w, h, back, belly, fin, wavy=0.0, beak=False):
+    P = _pal(back, belly, fin)
+    L = []
+    b = Layer('body', w, h, P)
+    for i in range(int(w * 0.9)):
+        x = 2 + i; y = h / 2 + wavy * _m.sin(i * 0.25); r = h * 0.28 * min(1, (i + 3) / 8)
+        b.ell(x, y, 1.5, r, 'c0'); b.px(x, y + r * 0.4, 'c1')
+    if beak: b.poly([(w * 0.9, h / 2 - 1), (w - 1, h / 2), (w * 0.9, h / 2 + 1)], 'c2')
+    for i in range(0, int(w * 0.8), 3): b.px(4 + i, h / 2 - h * 0.28 + 1 + wavy * _m.sin((4 + i) * 0.25), 'c2')
+    L.append(b)
+    e = Layer('eye', w, h, P); e.ell(w * 0.88 - (3 if beak else 0), h / 2 - 1 + wavy * _m.sin(w * 0.8 * 0.25), 1.2, 1.2, 'BW'); e.px(w * 0.88 - (3 if beak else 0), h / 2 - 1, 'BK'); L.append(e)
+    return composite(L)
+
+
+def odd(kind):
+    if kind == 'boot':
+        P = _pal('4a3424', '6a4a30', '2a1a10', 'b8a080'); L = []
+        b = Layer('body', 30, 30, P); b.rect(6, 4, 16, 22, 'c0'); b.rect(6, 18, 27, 26, 'c0'); b.rect(6, 25, 28, 27, 'c2'); b.rect(8, 6, 14, 8, 'c1')
+        for y in range(9, 18, 3): b.line([(8, y), (14, y)], 'c3')
+        L.append(b); return composite(L)
+    if kind == 'bottle':
+        P = _pal('3a8a5a', '9ae0b0', 'e8dcc0', '8a5a2a'); L = []
+        b = Layer('body', 30, 14, P); b.ell(12, 7, 9, 5, 'c0'); b.rect(19, 5, 26, 9, 'c0'); b.rect(26, 5, 28, 9, 'c3'); b.rect(7, 5, 15, 9, 'c2'); b.px(9, 5, 'c1')
+        L.append(b); return composite(L)
+    if kind == 'chest':
+        P = _pal('5a3a1e', '8a5a2e', 'e8b840', '2a1a10'); L = []
+        b = Layer('body', 40, 30, P); b.rect(3, 10, 36, 28, 'c0'); b.rect(3, 4, 36, 12, 'c1'); b.rect(18, 10, 22, 16, 'c2')
+        for x in (8, 30): b.rect(x, 4, x + 2, 28, 'c3')
+        b.px(12, 2, 'c2'); b.px(26, 1, 'c2'); L.append(b); return composite(L)
+    if kind == 'hermit':
+        P = _pal('d8b8a0', 'b06a4a', 'e05a3a', 'f0d8c8'); L = []
+        b = Layer('body', 22, 18, P); b.ell(9, 9, 8, 7, 'c0'); b.ell(8, 8, 4, 3, 'c3')
+        for r in (5, 3): b.ell(9, 9, r, r * 0.8, 'c1' if r == 5 else 'c0')
+        c = Layer('claw', 22, 18, P); c.ell(17, 11, 4, 3, 'c2'); c.line([(14, 14), (19, 16)], 'c2'); c.line([(15, 7), (16, 3)], 'c2'); c.px(16, 3, 'BK')
+        L += [b, c]; return composite(L)
+    if kind == 'cuttle':
+        P = _pal('8a6a8a', 'c8a8c0', 'e0c8d8', '5a3a5a'); L = []
+        b = Layer('body', 40, 20, P); b.ell(16, 10, 13, 7, 'c0'); b.ell(16, 10, 15, 8.5, 'c2'); b.ell(16, 10, 13, 7, 'c0'); b.ell(17, 12, 10, 3, 'c1')
+        for i in range(5): b.line([(29, 8 + i), (38, 6 + i * 2)], 'c3')
+        for x in range(6, 26, 4): b.px(x, 7 + (x % 3), 'c3')
+        L.append(b); e = Layer('eye', 40, 20, P); e.ell(27, 8, 2, 1.5, 'BW'); e.line([(26, 8), (28, 8)], 'BK'); L.append(e); return composite(L)
+    if kind == 'lobster':
+        P = _pal('2a4a7a', '4a6aa0', '1a2a4a', 'e05a3a'); L = []
+        b = Layer('body', 52, 26, P)
+        for i in range(5): b.ell(8 + i * 5, 14, 3.5, 5 - i * 0.2, 'c0' if i % 2 else 'c1')
+        b.poly([(2, 14), (6, 8), (6, 20)], 'c2'); b.ell(34, 13, 8, 5, 'c1')
+        b.ell(47, 6, 5, 3, 'c0'); b.ell(47, 20, 5, 3, 'c0'); b.line([(40, 11), (45, 7)], 'c0', 2); b.line([(40, 15), (45, 19)], 'c0', 2)
+        b.line([(41, 12), (51, 2)], 'c2'); L.append(b)
+        e = Layer('eye', 52, 26, P); e.px(40, 11, 'BK'); L.append(e); return composite(L)
+    if kind == 'octopus':
+        P = _pal('a04a5a', 'd07a80', 'f0b0a8', '5a1a2a'); L = []
+        b = Layer('body', 44, 40, P); b.ell(22, 12, 12, 10, 'c0'); b.ell(20, 10, 6, 4, 'c1')
+        for i in range(6):
+            a0 = 0.4 + i * 0.45
+            pts = [(22 + _m.cos(a0) * 8 + k * 2.5 * _m.cos(a0), 18 + k * 3 + 2 * _m.sin(k + i)) for k in range(7)]
+            for (x, y) in pts: b.ell(x, y, 2.4 - 0.2 * pts.index((x, y)), 2.4 - 0.2 * pts.index((x, y)), 'c0')
+        L.append(b); e = Layer('eye', 44, 40, P); e.ell(17, 14, 2, 2, 'c2'); e.line([(16, 14), (18, 14)], 'BK'); e.ell(27, 14, 2, 2, 'c2'); e.line([(26, 14), (28, 14)], 'BK'); L.append(e)
+        return composite(L)
+    if kind == 'blobfish':
+        P = _pal('e0a8a8', 'f0c8c8', 'c08080', '8a4a4a'); L = []
+        b = Layer('body', 36, 26, P); b.ell(20, 14, 14, 10, 'c0'); b.ell(28, 16, 6, 6, 'c1'); b.ell(30, 18, 4, 3, 'c2'); b.poly([(6, 14), (1, 8), (1, 20)], 'c2')
+        b.line([(24, 22), (30, 22)], 'c3'); L.append(b)
+        e = Layer('eye', 36, 26, P); e.px(24, 11, 'BK'); e.px(30, 11, 'BK'); L.append(e); return composite(L)
+    if kind == 'turbot':
+        P = _pal('6a5a3a', '8a7a52', '4a3a22', '3a2a14'); L = []
+        b = Layer('body', 48, 30, P); b.ell(24, 15, 18, 12, 'c0'); b.ell(24, 15, 21, 14, 'c2'); b.ell(24, 15, 18, 12, 'c0')
+        for (x, y) in [(16, 10), (22, 18), (30, 12), (14, 19), (34, 18)]: b.ell(x, y, 2, 1.5, 'c3')
+        b.poly([(4, 15), (0, 10), (0, 20)], 'c2'); L.append(b)
+        e = Layer('eye', 48, 30, P); e.ell(36, 9, 1.5, 1.5, 'BW'); e.px(36, 9, 'BK'); e.ell(40, 12, 1.5, 1.5, 'BW'); e.px(40, 12, 'BK'); L.append(e); return composite(L)
+    raise ValueError(kind)
+
+
+JOURNAL_ART = {
+    'sprat': lambda: sprat(), 'mackerel': lambda: mackerel(), 'bass': lambda: bass(), 'grouper': lambda: grouper(),
+    'goby': lambda: fishy(22, 12, '6a5a4a', 'b8a890', '4a3a2a', spots=[(-0.3, -0.2), (0.1, 0.1), (0.4, -0.1)], tall=0.38),
+    'blenny': lambda: fishy(24, 14, '7a6a3a', 'c8b878', '5a4a2a', bars=4, eye=1.8, tall=0.4),
+    'sandeel': lambda: longfish(34, 8, '8aa8b0', 'e0eef0', '5a7880'),
+    'hermit': lambda: odd('hermit'),
+    'boot': lambda: odd('boot'),
+    'goldsprat': lambda: fishy(26, 12, 'e8b840', 'fff0a0', 'c08a20', stripe='fff8d0', tall=0.36),
+    'wrasse': lambda: fishy(34, 16, '3a7a5a', 'e0a060', '2a5a40', spots=[(x / 4, y / 3) for x in range(-3, 3) for y in (-1, 0)], tall=0.4),
+    'pollock': lambda: fishy(40, 16, '5a6a3a', 'd0d8c0', '3a4a2a', stripe='a8b890', tall=0.34),
+    'bream': lambda: fishy(36, 20, '8a98a8', 'e8eef4', '5a6878', stripe=None, tall=0.42, spots=[(0.55, -0.55)]),
+    'pipefish': lambda: longfish(36, 8, '7a8a4a', 'c8d098', '4a5a2a'),
+    'bottle': lambda: odd('bottle'),
+    'mullet': lambda: fishy(34, 16, 'd05a4a', 'f0c0a8', 'a03a2a', stripe='f0d050', tall=0.38),
+    'dory': lambda: fishy(40, 28, '8a7a5a', 'c8b890', '5a4a2a', tall=0.42, spots=[(0, 0), (0.05, 0.05), (-0.05, 0.05), (0, 0.1)]),
+    'garfish': lambda: longfish(52, 10, '3a7a6a', 'c8e8d8', '2a5a4a', beak=True),
+    'cuttle': lambda: odd('cuttle'),
+    'lobster': lambda: odd('lobster'),
+    'conger': lambda: longfish(70, 16, '3a3a42', '7a7a86', '22222a', wavy=2.5),
+    'monkfish': lambda: fishy(52, 30, '6a5a4a', '9a8a6a', '4a3a2a', tall=0.42, eye=1.5, lure=True, spots=[(-0.4, -0.3), (0.0, -0.4), (0.3, -0.2)]),
+    'turbot': lambda: odd('turbot'),
+    'octopus': lambda: odd('octopus'),
+    'chest': lambda: odd('chest'),
+    'moray': lambda: moray(),
+    'lantern': lambda: fishy(22, 12, '2a3a5a', '4a5a7a', '1a2a3a', glow='9affe8', tall=0.36),
+    'blobfish': lambda: odd('blobfish'),
+    'oarfish': lambda: longfish(90, 16, 'c8d0e0', 'f0f4f8', 'e05a4a', wavy=2),
+    'moonfish': lambda: fishy(48, 36, 'c8d8e8', 'f4f8fc', '9ab0c8', tall=0.44, eye=2.2, glow='ffffff'),
+}

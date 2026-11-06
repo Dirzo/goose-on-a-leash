@@ -176,10 +176,11 @@ export class GameScene extends Phaser.Scene {
       this.cueRoom = id;
       const fresh = Object.keys(sim.world).every(k => k === 'willowmere') && !sim.kit.oar;
       if (id === 'willowmere' && fresh && this.cinemaOn && !sim.seen.has('prologue') && this.view instanceof ArtRenderer) { this.startPrologue(); return; }
-      const ch = ({ willowmere: 'ch1', 'reedmarsh-1': 'ch2', 'hollowbark-1': 'ch3', 'driftwood-1': 'ch4', 'driftwood-2': 'wharf-hub' } as Record<string, string>)[id];
+      const ch = ({ willowmere: 'ch1', 'reedmarsh-1': 'ch2', 'hollowbark-1': 'ch3', 'driftwood-1': 'ch4', 'driftwood-2': 'wharf-hub', 'tide-1': 'ch5', 'tide-2': 'cove' } as Record<string, string>)[id];
       if (ch) this.playCinematic(ch);
     }
     if (this.cinema.active) return;
+    if (this.pendingCine && !sim.fishing.card) { this.playCinematic(this.pendingCine); this.pendingCine = ''; }
     for (const e of sim.enemies) {
       const k = e.kind === 'elder' || e.kind === 'heron' || e.kind === 'king' || e.kind === 'gullbeard' ? e.kind : null;
       if (!k) continue;
@@ -188,6 +189,7 @@ export class GameScene extends Phaser.Scene {
     }
   }
   private cueRoom = '';
+  private pendingCine = '';
 
   /** The opening: Rocco on the end of the dock, a pale moon, no goose yet. */
   startPrologue(): void {
@@ -294,6 +296,8 @@ export class GameScene extends Phaser.Scene {
     if (events.some(e => e.type === 'shrine')) this.onShrine();
     if (events.some(e => e.type === 'ferry')) this.onFerry();
     if (events.some(e => e.type === 'shop')) this.onShop();
+    for (const e of events) if (e.type === 'sound') sound.play(e.kind);
+    if (events.some(e => e.type === 'morays')) this.pendingCine = 'moray-out';
     const sim = this.sim;
     for (const e of events) {
       if (e.type === 'room') sound.play('door');

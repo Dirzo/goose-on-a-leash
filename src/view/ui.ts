@@ -5,7 +5,8 @@ import type { GameScene } from '../scenes/GameScene';
 import { applySave, clearStoredSave, decodeSave, encodeSave, snapshotSave } from '../core/save';
 import { ROOMS } from '../data/rooms';
 import { BRANCHES, TRAITS, type TraitId } from '../data/traits';
-import { ROOM_ART } from './assets';
+import { ROOM_ART, spriteUrl } from './assets';
+import { FISH } from '../core/fishing';
 import { sound } from './audio';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -39,10 +40,10 @@ export function mountUi(scene: GameScene): void {
 
   // ---- room selection and reset
   const order = Object.values(ROOMS).sort((a, b) => rank(a.id) - rank(b.id));
-  function rank(id: string): number { return id === 'willowmere' ? 0 : id.startsWith('reedmarsh-') ? +id.slice(10) : id.startsWith('hollowbark-') ? 10 + +id.slice(11) : id.startsWith('driftwood-') ? 20 + +id.slice(10) : 99; }
+  function rank(id: string): number { return id === 'willowmere' ? 0 : id.startsWith('reedmarsh-') ? +id.slice(10) : id.startsWith('hollowbark-') ? 10 + +id.slice(11) : id.startsWith('driftwood-') ? 20 + +id.slice(10) : id.startsWith('tide-') ? 30 + +id.slice(5) : 99; }
   const pick = $<HTMLSelectElement>('room-pick');
   pick.innerHTML = order.map(r => {
-    const tag = r.id === 'willowmere' ? 'Hub' : r.id.startsWith('reedmarsh-') ? `Reedmarsh ${r.id.slice(10)}` : r.id.startsWith('hollowbark-') ? `Hollowbark ${r.id.slice(11)}` : r.id.startsWith('driftwood-') ? `Driftwood ${r.id.slice(10)}` : 'Test';
+    const tag = r.id === 'willowmere' ? 'Hub' : r.id.startsWith('reedmarsh-') ? `Reedmarsh ${r.id.slice(10)}` : r.id.startsWith('hollowbark-') ? `Hollowbark ${r.id.slice(11)}` : r.id.startsWith('driftwood-') ? `Driftwood ${r.id.slice(10)}` : r.id.startsWith('tide-') ? `Tide Caves ${r.id.slice(5)}` : 'Test';
     return `<option value="${r.id}">${tag} · ${esc(r.name)}${r.boss ? ' (boss)' : ''}${r.id === 'room-01' ? ' (gray-box prototype)' : ''}</option>`;
   }).join('');
   const syncPick = () => { pick.value = scene.sim.room.def.id; };
@@ -226,10 +227,37 @@ export function mountUi(scene: GameScene): void {
   // the shrine opens the book on Biscuit's page
   scene.onShrine = () => { if (!open) { scene.setPackOpen(false); tab = 'biscuit'; openBook(); } };
 
+  // the Fish Journal: every kind in the cove, silhouettes for the ones still to catch
+  const journal = $('journal'), jlist = $('journal-list');
+  let journalOpen = false;
+  const INK: Record<string, string> = { common: '#555', uncommon: '#2e7d3e', rare: '#2a5ab0', legendary: '#a07800', junk: '#7a5a40' };
+  function closeJournal(): void { journalOpen = false; journal.hidden = true; scene.paused = false; scene.game.canvas.focus(); }
+  function openJournal(): void {
+    const k = scene.sim.kit, got = FISH.filter(f => k.fish[f.id]?.n).length;
+    $('journal-sub').textContent = `${got} of ${FISH.length} caught at Moonlit Cove. Every five new kinds: a Golden Feather.`;
+    const tierName = ['', 'The shallows', 'Past the shallows', 'Open water', 'The deep', 'The trench off the Far Rock'];
+    let html = '';
+    for (let t = 1; t <= 5; t++) {
+      html += `<h3>${tierName[t]}</h3>`;
+      for (const f of FISH.filter(x => x.tier === t)) {
+        const r = k.fish[f.id], src = spriteUrl(`fish_${f.id}`);
+        html += `<div class="fish-card ${r?.n ? '' : 'unknown'}"><div class="pic">${src ? `<img alt="" src="${src}">` : ''}</div><div>`
+          + (r?.n ? `<b>${esc(f.name)}</b><small><span style="color:${INK[f.rarity]}">${f.rarity}</span> · ×${r.n} · best ${r.best} cm</small>`
+            : `<b>???</b><small>${f.rarity === 'legendary' ? 'Legendary. Rarely seen.' : f.rarity}</small>`) + '</div></div>';
+      }
+    }
+    jlist.innerHTML = html;
+    journalOpen = true; journal.hidden = false; scene.paused = true; $('journal-close').focus();
+  }
+  $('journal-close').onclick = closeJournal;
+  journal.addEventListener('click', e => { if (e.target === journal) closeJournal(); });
+
   scene.controls.onUi = a => {
     if (scene.movie?.active) { if (a === 'close') scene.movie.skip(); return; }
     if (scene.cinema.active) { if (a === 'advance') scene.cinema.advance(); else if (a === 'close') scene.cinema.skip(); return; }
     if (scene.prologue?.active) { if (a === 'close') scene.skipPrologue(); return; }
+    if (a === 'journal') { if (journalOpen) closeJournal(); else if (!open && !ferryOpen && !shopOpen) { scene.setPackOpen(false); openJournal(); } return; }
+    if (journalOpen && (a === 'close' || a === 'closeBook')) { closeJournal(); return; }
     if (a === 'book') { if (open) closeBook(); else { scene.setPackOpen(false); openBook(); } }
     else if (a === 'pack') { if (open) closeBook(); scene.setPackOpen(!scene.packOpen); }
     else if (a === 'closeBook' || a === 'close') { if (open) closeBook(); if (ferryOpen) closeFerry(); if (shopOpen) closeShop(); scene.setPackOpen(false); }

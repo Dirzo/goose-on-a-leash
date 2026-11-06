@@ -15,7 +15,7 @@ const visit = (sim: Sim, id: string) => {
 describe('the ferry', () => {
   it('has a stop in the hub, at the Ferryman\'s Pool and in Hollowbark, each on dry ground', () => {
     const stops = Object.values(ROOMS).filter(r => r.ferry).map(r => r.id).sort();
-    expect(stops).toEqual(['driftwood-2', 'driftwood-3', 'hollowbark-3', 'reedmarsh-5', 'willowmere']);
+    expect(stops).toEqual(['driftwood-2', 'driftwood-3', 'hollowbark-3', 'reedmarsh-5', 'tide-2', 'willowmere']);
   });
 
   it('a visited stop is remembered; honking there with the Ferryman asleep does nothing', () => {

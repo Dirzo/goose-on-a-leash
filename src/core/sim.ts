@@ -5,6 +5,7 @@
  */
 import { C, DEFAULT_TUNING, type Tuning } from './config';
 import { Kit } from './crafting';
+import { FISH, Fishing, type FishDef } from './fishing';
 import { angDiff, clamp, dirTo, inRect, mulberry32, type Rng, type Vec } from './math';
 import { Room } from './room';
 import { Rope } from './rope';
@@ -18,12 +19,12 @@ export type GooseState = 'held' | 'flying' | 'latched' | 'loose' | 'returning';
 export type { EnemyKind };
 
 /** How close Rocco must get before an entranced critter notices him. Room 01's pests see across the room. */
-const AGGRO: Partial<Record<EnemyKind, number>> = { crab: 230, gull: 420, gullbeard: 900, elder: 620, frog: 160, snapper: 210, heron: 520, squirrel: 260, badger: 230, king: 700 };
+const AGGRO: Partial<Record<EnemyKind, number>> = { eel: 130, crab: 230, gull: 420, gullbeard: 900, elder: 620, frog: 160, snapper: 210, heron: 520, squirrel: 260, badger: 230, king: 700 };
 const HEAVY: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['knight', 'snapper', 'heron', 'badger', 'king', 'elder']);
 /** Animals under the blood moon's trance. Beaten, they wake up and wander off instead of dying. */
-const ENTRANCED: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['frog', 'snapper', 'heron', 'squirrel', 'badger', 'king', 'elder', 'crab', 'gull', 'gullbeard']);
-/** They fly: over water they don't swim, and above 30 they're out of reach. */
-const FLIERS: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['gull', 'gullbeard']);
+const ENTRANCED: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['frog', 'snapper', 'heron', 'squirrel', 'badger', 'king', 'elder', 'crab', 'gull', 'gullbeard', 'eel']);
+/** They fly (or live in the water): they don't swim back to shore, they move themselves, and above 30 they're out of reach. */
+const FLIERS: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['gull', 'gullbeard', 'eel']);
 /** Bosses stand their ground: no knockback, they never fall in, and they stay once woken. */
 const BOSS: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['heron', 'king', 'elder', 'gullbeard']);
 export const ELDER_HP = 24;
@@ -86,7 +87,7 @@ export type CritterMode = 'stalk' | 'wind' | 'leap' | 'lash' | 'charge' | 'recov
   /** Old Snapper: winded after a charge, hiding in his shell, flipped on his back. */
   | 'tired' | 'shell' | 'flipped'
   /** Driftwood Wharf: crabs guard with their claws; gulls circle, dive and make off with loot; the Captain swoops and gets tangled. */
-  | 'guard' | 'snap' | 'circle' | 'dive' | 'escape' | 'aim' | 'swoop' | 'tangled' | 'fall';
+  | 'guard' | 'snap' | 'circle' | 'dive' | 'escape' | 'aim' | 'swoop' | 'tangled' | 'fall' | 'lurk' | 'up' | 'beached';
 export type AttackKind = 'leap' | 'lash' | 'charge' | 'bite' | 'spear' | 'gust' | 'dart' | 'slam' | 'peck' | 'acorn' | 'erupt' | 'rock' | 'thorn' | 'dig' | 'rocks' | 'pinch' | 'dive' | 'bottle' | 'swoop';
 
 /** A feather dart lobbed at Bimbo: it lands on the marked spot when t reaches T. */
@@ -148,6 +149,8 @@ export type SimEvent =
   | { type: 'say'; text: string }
   | { type: 'fx'; kind: FxKind; x: number; y: number; a?: number; cone?: number; range?: number; text?: string }
   | { type: 'won' }
+  /** A sound with no picture (fishing blips, whooshes). */
+  | { type: 'sound'; kind: string }
   | { type: 'reset' }
   /** Rocco arrived in a room through a door (or a save was loaded). */
   | { type: 'room'; id: string }
@@ -157,6 +160,8 @@ export type SimEvent =
   | { type: 'ferry' }
   /** Rocco honked at a shop counter: open the trade. */
   | { type: 'shop' }
+  /** Both Moray Twins landed: the Moray Pearl. */
+  | { type: 'morays' }
   /** A tutorial prompt: shown on screen for a few seconds. */
   | { type: 'hint'; text: string };
 
@@ -201,6 +206,19 @@ export class Sim {
   glassGot: boolean[] = [];
   /** Rocco is at a shop counter (the UI can open the trade). */
   atShop = false;
+  /** Fishing at Moonlit Cove (active while Rocco stands on a fishing spot). */
+  fishing: Fishing = new Fishing({
+    rng: () => this.rng(),
+    inWater: (x, y) => this.room.inPit(x, y, 4),
+    record: () => this.kit.fish,
+    reel: () => this.kit.reel,
+    castReach: pw => this.castReach(pw),
+    say: t => this.say(t),
+    fx: (k, x, y) => this.fx(k, x, y),
+    sound: k => this.events.push({ type: 'sound', kind: k }),
+    caught: (def, len, first, giant) => this.caughtFish(def, len, first, giant),
+    pearl: () => this.kit.ingredients.has('pearl'),
+  });
   feathersGot: boolean[] = [];
   /** Nests knocked down in this room. */
   nestsDown: boolean[] = [];
@@ -475,6 +493,7 @@ export class Sim {
     this.kitsGot = (def.kits ?? []).map((_, i) => mem?.kits?.[i] ?? false);
     this.spoolsGot = (def.spools ?? []).map((_, i) => mem?.spools?.[i] ?? false);
     this.glassGot = (def.glass ?? []).map((_, i) => mem?.glass?.[i] ?? false);
+    this.fishing.setGrounds(def.fishing ?? null);
     this.atShop = false;
     this.feathersGot = (def.feathers ?? []).map((_, i) => mem?.feathers?.[i] ?? false);
     this.nestsDown = (def.nests ?? []).map((_, i) => mem?.nests?.[i] ?? false);
@@ -493,7 +512,7 @@ export class Sim {
   mkEnemy(kind: EnemyKind, x: number, y: number): Enemy {
     const k = HEAVY.has(kind), boss = BOSS.has(kind);
     const stats: Partial<Record<EnemyKind, [number, number, number]>> = {   // hp, radius, speed
-      heron: [HERON_HP, 24, 0], king: [KING_HP, 34, 48], gullbeard: [GULLBEARD_HP, 28, 0], crab: [4, 14, 72], gull: [2, 11, 150], elder: [ELDER_HP, 26, 46], squirrel: [2, 10, 115], badger: [10, 18, 50],
+      heron: [HERON_HP, 24, 0], king: [KING_HP, 34, 48], gullbeard: [GULLBEARD_HP, 28, 0], crab: [4, 14, 72], gull: [2, 11, 150], eel: [3, 12, 0], elder: [ELDER_HP, 26, 46], squirrel: [2, 10, 115], badger: [10, 18, 50],
     };
     const [hp, r, spd] = stats[kind] ?? [k ? 8 : 3, k ? 20 : 13, k ? 42 : 78];
     return { id: this.nextId++, kind, x, y, r, hp, max: hp, heavy: k, stun: 0,
@@ -888,6 +907,7 @@ export class Sim {
       return;
     }
     if (e.kind === 'gullbeard' && !e.woke) amt *= e.mode === 'tangled' ? 2 : e.mode === 'dazed' ? 1.5 : 1;
+    if (e.kind === 'eel' && e.mode === 'beached') amt *= 2;
     if (e.kind === 'elder' && !e.woke) {
       if (e.mode === 'shell') {
         if (this.elderClonkT <= 0) { this.say('CLONK. He\'s in his shell. Yank [E] while Biscuit holds on to flip him!'); this.elderClonkT = 3; }
@@ -1001,6 +1021,15 @@ export class Sim {
     if (this.won) return;
     if (p.dead) { p.dead -= dt; if (p.dead <= 0) this.restartRoom(); return; }
 
+    if (input && this.room.def.fishing) {
+      const spot = p.dead || p.air || p.roll > 0 ? null : this.room.def.fishing.spots.find(s => Math.hypot(s.x - p.x, s.y - p.y) < 28) ?? null;
+      this.fishing.step(dt, spot, !!input.castHold, !!input.yank, { x: input.aimX, y: input.aimY }, { x: p.x, y: p.y - 20 });
+      if (this.fishing.phase !== 'off') {
+        const busy = this.fishing.busy;
+        input = { ...input, castHold: false, fling: false, yank: false, letGo: false, honk: busy ? false : input.honk, roll: busy ? false : input.roll,
+          moveX: busy ? 0 : input.moveX, moveY: busy ? 0 : input.moveY };
+      }
+    }
     if (input) {
       const aim = { x: input.aimX, y: input.aimY };
       this.aim = aim;
@@ -1255,6 +1284,7 @@ export class Sim {
       else if (e.kind === 'badger') [ax, ay] = this.badgerAI(e, dt, slow);
       else if (e.kind === 'crab') [ax, ay] = this.crabAI(e, dt, slow);
       else if (e.kind === 'gull') [ax, ay] = this.gullAI(e, dt);
+      else if (e.kind === 'eel') [ax, ay] = this.eelAI(e, dt);
       else if (e.kind === 'gullbeard') [ax, ay] = this.gullbeardAI(e, dt);
       else if (critter) [ax, ay] = this.critterAI(e, dt, d, slow);
       else if (!e.stun && d < (AGGRO[e.kind] ?? 300)) { ax = dx * e.spd * slow; ay = dy * e.spd * slow; }
@@ -1948,6 +1978,34 @@ export class Sim {
     }
   }
 
+  /** A fish landed: the journal, sea glass, and milestones. The second Moray Twin ends the trance and gives the Pearl. */
+  private caughtFish(def: FishDef, len: number, first: boolean, giant: boolean): void {
+    const k = this.kit, rec = k.fish[def.id] ?? { n: 0, best: 0 };
+    const record = len > rec.best && rec.n > 0;
+    rec.n++; rec.best = Math.max(rec.best, len); k.fish[def.id] = rec;
+    k.mats.glass += def.glass * (giant ? 2 : 1);
+    if (def.id === 'moray') {
+      if (rec.n >= 2 && !k.ingredients.has('pearl')) {
+        k.ingredients.add('pearl'); k.mats.feather += 2; this.pack.needles += C.kitNeedles; this.pack.water = 1;
+        this.room.gateClosed = false;
+        this.world[this.room.def.id] = { ...(this.world[this.room.def.id] ?? { gateOpen: true, bread: [...this.breadGot], chest: false, rang: this.rang }), boss: true, gateOpen: true };
+        this.events.push({ type: 'morays' });
+        this.fx('wake', this.player.x, this.player.y - 30);
+        this.say('Both twins, landed. The red drains from their eyes... and one coughs up a pearl. THE MORAY PEARL!');
+      } else this.say(`A Moray Twin! ${len} cm of very cross eel.`);
+      return;
+    }
+    if (def.id === 'chest') { k.mats.fluff += 3; k.mats.chain += 1; if (first) k.mats.feather++; }
+    if (def.id === 'boot' && this.rng() < 0.3) this.pack.needles += 1;
+    const tierFirst = first && !FISH.some(f => f.tier === def.tier && f.id !== def.id && k.fish[f.id]?.n);
+    if (first) {
+      const species = FISH.filter(f => k.fish[f.id]?.n).length;
+      if (species % 5 === 0) { k.mats.feather++; this.say(`${species} kinds of fish in the journal! A Golden Feather for the collection.`); }
+      else this.say(`New for the journal: ${def.name}! ${len} cm.${tierFirst && def.tier < 4 ? ' Bigger shadows are circling further out.' : tierFirst && def.tier === 4 ? ' Something long is twisting in the trench off the Far Rock.' : ''}`);
+      if (species === FISH.length) { k.mats.feather += 2; this.say('EVERY fish in the cove. Rocco is a Master Angler. Bimbo is, grudgingly, impressed.'); }
+    } else this.say(`${giant ? 'A GIANT ' : ''}${def.name}, ${len} cm${record ? '. A new record!' : ''}. +${def.glass * (giant ? 2 : 1)} Sea Glass.`);
+  }
+
   /** Pickett's stock, and what each costs in sea glass. */
   shopStock(): ShopItem[] {
     return [
@@ -2099,6 +2157,45 @@ export class Sim {
         if (e.modeT > 0.9) { e.mode = 'circle'; e.modeT = 0; e.cd = 1.4 + this.rng() * 1.4; }
         return [0, 0];
       default: e.mode = 'circle'; return [0, 0];
+    }
+  }
+
+  /**
+   * Eels live in the tide pools: hidden (out of reach) until the pack comes close, then a ripple, and a
+   * lunge at Bimbo. They stay up a moment, biteable; yank one while Biscuit holds on and it lands on the
+   * rocks, flopping and helpless, until it wriggles back.
+   */
+  private eelAI(e: Enemy, dt: number): [number, number] {
+    const p = this.player, g = this.goose;
+    e.modeT += dt; e.cd -= dt;
+    const bimbo = this.packPoint(10), db = Math.hypot(bimbo.x - e.x, bimbo.y - e.y), wet = this.room.inPit(e.x, e.y, 2);
+    if (!wet && e.mode !== 'beached') { e.mode = 'beached'; e.modeT = 0; e.air = 0; this.say('The eel flops onto the rocks! Bite it while it wriggles!'); }
+    switch (e.mode) {
+      case 'beached':
+        e.air = 0;
+        if (wet) { e.mode = 'lurk'; e.modeT = 0; e.cd = 1.4; return [0, 0]; }
+        if (e.modeT > 3.2 && e.stun <= 0) { const [ux, uy] = dirTo(e, { x: e.hx, y: e.hy }); e.x += ux * 45 * dt; e.y += uy * 45 * dt; }
+        return [0, 0];
+      case 'wind':                                     // a ripple: it's coming up
+        e.air = 40;
+        if (e.modeT < 0.5) return [0, 0];
+        e.mode = 'up'; e.modeT = 0; e.air = 0;
+        this.fx('splash', e.x, e.y - 6);
+        if (db < 95) this.hurtPlayer(1, false, e, 'bite');
+        return [0, 0];
+      case 'up':
+        e.air = 0;
+        if (e.modeT > 1.4 && e.stun <= 0) {
+          e.mode = 'lurk'; e.modeT = 0; e.cd = 1.2 + this.rng() * 1.2;
+          if (g.state === 'latched' && g.target === e) { g.state = 'held'; this.say('The eel slips back under, out of Biscuit\'s beak.'); }
+        }
+        return [0, 0];
+      default:                                         // lurking under the water
+        e.mode = 'lurk'; e.air = 60;
+        if (e.stun > 0) return [0, 0];
+        const k = 1 - Math.exp(-dt * 3); e.x += (e.hx - e.x) * k; e.y += (e.hy - e.y) * k;
+        if (e.cd <= 0 && db < 120 && !p.dead) { e.mode = 'wind'; e.modeT = 0; }
+        return [0, 0];
     }
   }
 

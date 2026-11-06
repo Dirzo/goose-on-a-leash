@@ -1,0 +1,228 @@
+{
+ "id": "tide-2",
+ "name": "Echo Grotto",
+ "subtitle": "The Tide Caves \u00b7 2",
+ "width": 1120,
+ "height": 640,
+ "playerStart": {
+  "x": 66,
+  "y": 320
+ },
+ "walls": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1120,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 620,
+   "w": 1120,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 278.0,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 362.0,
+   "w": 20,
+   "h": 278.0,
+   "kind": "border"
+  },
+  {
+   "x": 1100,
+   "y": 0,
+   "w": 20,
+   "h": 278.0,
+   "kind": "border"
+  },
+  {
+   "x": 1100,
+   "y": 362.0,
+   "w": 20,
+   "h": 278.0,
+   "kind": "border"
+  },
+  {
+   "x": 110,
+   "y": 85,
+   "w": 100,
+   "h": 70,
+   "kind": "rock"
+  },
+  {
+   "x": 440,
+   "y": 75,
+   "w": 120,
+   "h": 70,
+   "kind": "rock"
+  },
+  {
+   "x": 770,
+   "y": 85,
+   "w": 100,
+   "h": 70,
+   "kind": "rock"
+  },
+  {
+   "x": 240,
+   "y": 510,
+   "w": 120,
+   "h": 60,
+   "kind": "rock"
+  },
+  {
+   "x": 590,
+   "y": 510,
+   "w": 100,
+   "h": 60,
+   "kind": "rock"
+  }
+ ],
+ "gate": {
+  "x": 1074,
+  "y": 274,
+  "w": 12,
+  "h": 92
+ },
+ "pits": [
+  {
+   "x": 200,
+   "y": 220,
+   "w": 700,
+   "h": 50,
+   "kind": "water"
+  },
+  {
+   "x": 200,
+   "y": 380,
+   "w": 700,
+   "h": 50,
+   "kind": "water"
+  }
+ ],
+ "bridges": [],
+ "refills": [
+  {
+   "x": 60,
+   "y": 480,
+   "w": 100,
+   "h": 80
+  }
+ ],
+ "posts": [],
+ "bell": {
+  "x": 940,
+  "y": 520,
+  "r": 14
+ },
+ "exit": null,
+ "vents": [],
+ "bucket": null,
+ "breadSpots": [],
+ "enemies": [
+  {
+   "kind": "eel",
+   "x": 320,
+   "y": 245
+  },
+  {
+   "kind": "eel",
+   "x": 560,
+   "y": 245
+  },
+  {
+   "kind": "eel",
+   "x": 800,
+   "y": 245
+  },
+  {
+   "kind": "eel",
+   "x": 440,
+   "y": 405
+  },
+  {
+   "kind": "eel",
+   "x": 700,
+   "y": 405
+  },
+  {
+   "kind": "crab",
+   "x": 980,
+   "y": 200
+  }
+ ],
+ "knightSpawn": null,
+ "doors": [
+  {
+   "id": "w",
+   "x": 0,
+   "y": 278.0,
+   "w": 26,
+   "h": 84,
+   "to": "tide-1",
+   "toDoor": "e",
+   "spawn": {
+    "x": 66,
+    "y": 320
+   },
+   "label": "Tidepool Steps"
+  },
+  {
+   "id": "e",
+   "x": 1094,
+   "y": 278.0,
+   "w": 26,
+   "h": 84,
+   "to": "tide-3",
+   "toDoor": "w",
+   "spawn": {
+    "x": 1054,
+    "y": 320
+   },
+   "gated": true,
+   "label": "Moonlit Cove"
+  }
+ ],
+ "paths": [
+  [
+   [
+    66,
+    320
+   ],
+   [
+    1054,
+    320
+   ]
+  ]
+ ],
+ "biome": "tide",
+ "lightKind": "crab",
+ "heavyKind": "crab",
+ "kits": [
+  {
+   "x": 1000,
+   "y": 140
+  }
+ ],
+ "springs": [
+  {
+   "x": 110,
+   "y": 510
+  }
+ ],
+ "glass": [
+  {
+   "x": 860,
+   "y": 470
+  }
+ ]
+}

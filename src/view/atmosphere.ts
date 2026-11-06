@@ -12,13 +12,14 @@ import type { Vec } from '../core/math';
 import type { RoomDef } from '../data/rooms';
 
 const LM = 4;                         // lightmap texels per world pixel (1/LM resolution: soft and cheap)
-type Biome = 'pond' | 'marsh' | 'woods' | 'wharf';
+type Biome = 'pond' | 'marsh' | 'woods' | 'wharf' | 'tide';
 
 interface Look { ambient: number; fog: number; fogA: number; motes: 'fireflies' | 'leaves'; dust: number }
 const LOOKS: Record<Biome, Look> = {
   pond: { ambient: 0xccc2e4, fog: 0xb0a0c8, fogA: 0.16, motes: 'fireflies', dust: 0xd8d0ff },
   marsh: { ambient: 0xc6d4e2, fog: 0xa8c0c8, fogA: 0.2, motes: 'fireflies', dust: 0xd0e8e0 },
   woods: { ambient: 0xcad6da, fog: 0x98b0a8, fogA: 0.14, motes: 'leaves', dust: 0xe0f0c8 },
+  tide: { ambient: 0xb8c8e8, fog: 0x98b8d0, fogA: 0.18, motes: 'fireflies', dust: 0xd0f0ff },   // cave damp, moonlit cove
   wharf: { ambient: 0xc2d2e8, fog: 0xa8c4d8, fogA: 0.22, motes: 'fireflies', dust: 0xe0f4ff },   // sea mist, salt spray
 };
 const STORM_AMBIENT = 0x8a98b0;
@@ -29,7 +30,7 @@ interface Mote { x: number; y: number; vx: number; vy: number; ph: number; kind:
 
 /** Eye height above the feet, for the glowing red eyes of entranced critters. */
 const EYES: Record<string, [number, number]> = {
-  frog: [12, 0.8], crab: [12, 0.8], gull: [22, 0.8], gullbeard: [58, 1.4], snapper: [14, 1], heron: [62, 1.3], squirrel: [16, 0.7], badger: [18, 1], king: [46, 1.8], knight: [22, 1],
+  frog: [12, 0.8], crab: [12, 0.8], eel: [30, 0.9], gull: [22, 0.8], gullbeard: [58, 1.4], snapper: [14, 1], heron: [62, 1.3], squirrel: [16, 0.7], badger: [18, 1], king: [46, 1.8], knight: [22, 1],
 };
 
 export function biomeOf(def: RoomDef): Biome {
@@ -105,7 +106,7 @@ export class Atmosphere {
     this.fg = [];
     const cam = this.scene.cameras.main, vw = cam.width / cam.zoom, vh = cam.height / cam.zoom;
     let seed = def.width * 7 + def.height; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-    const keys = b === 'woods' ? ['fg_branch', 'fg_leaves'] : b === 'wharf' ? ['fg_reeds'] : b === 'marsh' ? ['fg_reeds', 'fg_reeds', 'fg_leaves'] : ['fg_reeds', 'fg_leaves'];
+    const keys = b === 'woods' ? ['fg_branch', 'fg_leaves'] : b === 'wharf' || b === 'tide' ? ['fg_reeds'] : b === 'marsh' ? ['fg_reeds', 'fg_reeds', 'fg_leaves'] : ['fg_reeds', 'fg_leaves'];
     const S = 1.3;   // scroll factor: nearer the camera than the world
     const add = (X: number, Y: number, flipY: boolean) => {
       const k = keys[Math.floor(rnd() * keys.length)]!;

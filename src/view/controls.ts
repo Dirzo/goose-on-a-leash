@@ -3,10 +3,10 @@ import type { InputFrame } from '../core/sim';
 import type { Vec } from '../core/math';
 
 type Verb = 'fling' | 'yank' | 'honk' | 'letGo' | 'feed' | 'cycle' | 'patch' | 'roll';
-export type UiAction = 'book' | 'reset' | 'closeBook' | 'pack' | 'close' | 'patch' | 'advance';
+export type UiAction = 'book' | 'reset' | 'closeBook' | 'pack' | 'close' | 'patch' | 'advance' | 'journal';
 
 const ARROWS = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright'];
-const GAME_KEYS = ['w', 'a', 's', 'd', ' ', 'e', 'q', 'f', 'r', 'b', 'c', 'p', 'i', 'tab', 'm', 'shift', 'g', ...ARROWS];
+const GAME_KEYS = ['w', 'a', 's', 'd', ' ', 'e', 'q', 'f', 'r', 'b', 'c', 'p', 'i', 'tab', 'm', 'shift', 'g', 'j', ...ARROWS];
 const DEADZONE = 0.22;
 
 /**
@@ -75,6 +75,7 @@ export class Controls {
       // a screen is open (book or backpack): the UI layer decides what each key does
       if (this.cinema && (k === ' ' || k === 'enter')) { e.preventDefault(); if (!e.repeat) this.onUi('advance'); return; }
       if (k === 'b') { e.preventDefault(); this.onUi('book'); }
+      else if (k === 'j') { e.preventDefault(); this.onUi('journal'); }
       else if (k === 'escape') { e.preventDefault(); this.onUi('close'); }
       else if (k === 'i' || k === 'tab') { e.preventDefault(); this.onUi('pack'); }
       else if (k === 'p' && !e.repeat) { e.preventDefault(); this.onUi('patch'); }
@@ -95,6 +96,7 @@ export class Controls {
     if (k === 'c') this.pending.add('cycle');
     if (k === 'p') this.pending.add('patch');
     if (k === 'b') this.onUi('book');
+    if (k === 'j') this.onUi('journal');
     if (k === 'i' || k === 'tab') this.onUi('pack');
     if (k === 'r') this.onUi('reset');
   };

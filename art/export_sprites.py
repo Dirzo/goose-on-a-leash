@@ -106,6 +106,12 @@ strip('gullbeard', [critters_hd.gullbeard(), critters_hd.gullbeard(blink=True), 
 strip('gullbeard_awake', [critters_hd.gullbeard(awake=True), critters_hd.gullbeard(blink=True, awake=True)], critters_hd.GULLBEARD_ANCHOR)
 strip('pickett', [critters_hd.pickett(), critters_hd.pickett(blink=True), critters_hd.pickett(pose='wave')], (17, 39))
 
+# The Tide Caves: eel (up, blink, bite, beached), the fish for the catch card and the line, the Moray Twins
+strip('eel', [critters_hd.eel('up'), critters_hd.eel('up', blink=True), critters_hd.eel('bite'), critters_hd.eel('beached')], (20, 40))
+strip('eel_awake', [critters_hd.eel('up', awake=True), critters_hd.eel('up', blink=True, awake=True)], (20, 40))
+for fid, fn in critters_hd.JOURNAL_ART.items():
+    im = fn(); strip(f'fish_{fid}', [im], (im.size[0] // 2, im.size[1] // 2))
+
 strip('tree', [props_hd.tree(v) for v in range(3)], props_hd.TREE_ANCHOR)
 
 # backpack screen: Bimbo (happy, worried, gasping x open/blink), the pack, patches, tears

@@ -414,6 +414,326 @@
   ],
   "points": {}
  },
+ "eel": {
+  "w": 40,
+  "h": 44,
+  "frames": 4,
+  "anchor": [
+   20,
+   40
+  ],
+  "points": {}
+ },
+ "eel_awake": {
+  "w": 40,
+  "h": 44,
+  "frames": 2,
+  "anchor": [
+   20,
+   40
+  ],
+  "points": {}
+ },
+ "fish_sprat": {
+  "w": 26,
+  "h": 12,
+  "frames": 1,
+  "anchor": [
+   13,
+   6
+  ],
+  "points": {}
+ },
+ "fish_mackerel": {
+  "w": 40,
+  "h": 16,
+  "frames": 1,
+  "anchor": [
+   20,
+   8
+  ],
+  "points": {}
+ },
+ "fish_bass": {
+  "w": 52,
+  "h": 24,
+  "frames": 1,
+  "anchor": [
+   26,
+   12
+  ],
+  "points": {}
+ },
+ "fish_grouper": {
+  "w": 70,
+  "h": 36,
+  "frames": 1,
+  "anchor": [
+   35,
+   18
+  ],
+  "points": {}
+ },
+ "fish_goby": {
+  "w": 22,
+  "h": 12,
+  "frames": 1,
+  "anchor": [
+   11,
+   6
+  ],
+  "points": {}
+ },
+ "fish_blenny": {
+  "w": 24,
+  "h": 14,
+  "frames": 1,
+  "anchor": [
+   12,
+   7
+  ],
+  "points": {}
+ },
+ "fish_sandeel": {
+  "w": 34,
+  "h": 8,
+  "frames": 1,
+  "anchor": [
+   17,
+   4
+  ],
+  "points": {}
+ },
+ "fish_hermit": {
+  "w": 22,
+  "h": 18,
+  "frames": 1,
+  "anchor": [
+   11,
+   9
+  ],
+  "points": {}
+ },
+ "fish_boot": {
+  "w": 30,
+  "h": 30,
+  "frames": 1,
+  "anchor": [
+   15,
+   15
+  ],
+  "points": {}
+ },
+ "fish_goldsprat": {
+  "w": 26,
+  "h": 12,
+  "frames": 1,
+  "anchor": [
+   13,
+   6
+  ],
+  "points": {}
+ },
+ "fish_wrasse": {
+  "w": 34,
+  "h": 16,
+  "frames": 1,
+  "anchor": [
+   17,
+   8
+  ],
+  "points": {}
+ },
+ "fish_pollock": {
+  "w": 40,
+  "h": 16,
+  "frames": 1,
+  "anchor": [
+   20,
+   8
+  ],
+  "points": {}
+ },
+ "fish_bream": {
+  "w": 36,
+  "h": 20,
+  "frames": 1,
+  "anchor": [
+   18,
+   10
+  ],
+  "points": {}
+ },
+ "fish_pipefish": {
+  "w": 36,
+  "h": 8,
+  "frames": 1,
+  "anchor": [
+   18,
+   4
+  ],
+  "points": {}
+ },
+ "fish_bottle": {
+  "w": 30,
+  "h": 14,
+  "frames": 1,
+  "anchor": [
+   15,
+   7
+  ],
+  "points": {}
+ },
+ "fish_mullet": {
+  "w": 34,
+  "h": 16,
+  "frames": 1,
+  "anchor": [
+   17,
+   8
+  ],
+  "points": {}
+ },
+ "fish_dory": {
+  "w": 40,
+  "h": 28,
+  "frames": 1,
+  "anchor": [
+   20,
+   14
+  ],
+  "points": {}
+ },
+ "fish_garfish": {
+  "w": 52,
+  "h": 10,
+  "frames": 1,
+  "anchor": [
+   26,
+   5
+  ],
+  "points": {}
+ },
+ "fish_cuttle": {
+  "w": 40,
+  "h": 20,
+  "frames": 1,
+  "anchor": [
+   20,
+   10
+  ],
+  "points": {}
+ },
+ "fish_lobster": {
+  "w": 52,
+  "h": 26,
+  "frames": 1,
+  "anchor": [
+   26,
+   13
+  ],
+  "points": {}
+ },
+ "fish_conger": {
+  "w": 70,
+  "h": 16,
+  "frames": 1,
+  "anchor": [
+   35,
+   8
+  ],
+  "points": {}
+ },
+ "fish_monkfish": {
+  "w": 52,
+  "h": 30,
+  "frames": 1,
+  "anchor": [
+   26,
+   15
+  ],
+  "points": {}
+ },
+ "fish_turbot": {
+  "w": 48,
+  "h": 30,
+  "frames": 1,
+  "anchor": [
+   24,
+   15
+  ],
+  "points": {}
+ },
+ "fish_octopus": {
+  "w": 44,
+  "h": 40,
+  "frames": 1,
+  "anchor": [
+   22,
+   20
+  ],
+  "points": {}
+ },
+ "fish_chest": {
+  "w": 40,
+  "h": 30,
+  "frames": 1,
+  "anchor": [
+   20,
+   15
+  ],
+  "points": {}
+ },
+ "fish_moray": {
+  "w": 92,
+  "h": 30,
+  "frames": 1,
+  "anchor": [
+   46,
+   15
+  ],
+  "points": {}
+ },
+ "fish_lantern": {
+  "w": 22,
+  "h": 12,
+  "frames": 1,
+  "anchor": [
+   11,
+   6
+  ],
+  "points": {}
+ },
+ "fish_blobfish": {
+  "w": 36,
+  "h": 26,
+  "frames": 1,
+  "anchor": [
+   18,
+   13
+  ],
+  "points": {}
+ },
+ "fish_oarfish": {
+  "w": 90,
+  "h": 16,
+  "frames": 1,
+  "anchor": [
+   45,
+   8
+  ],
+  "points": {}
+ },
+ "fish_moonfish": {
+  "w": 48,
+  "h": 36,
+  "frames": 1,
+  "anchor": [
+   24,
+   18
+  ],
+  "points": {}
+ },
  "tree": {
   "w": 96,
   "h": 140,
