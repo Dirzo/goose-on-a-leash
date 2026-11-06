@@ -146,7 +146,7 @@ export class ArtRenderer {
     return { world: this.worldIgnore, screen: this.screenOnly };
   }
   /** Staging for the prologue: hide Biscuit and the leash until he's tied on; where the rod tip is. */
-  stage: { hideGoose: boolean; hideLine?: boolean } | null = null;
+  stage: { hideGoose: boolean; hideLine?: boolean; noKoi?: boolean } | null = null;
   rodTip: Vec = { x: 0, y: 0 };
 
   private setOrigin(s: Phaser.GameObjects.Sprite, strip: string): void {
@@ -473,7 +473,8 @@ export class ArtRenderer {
     // ---- Rocco
     const moving = Math.hypot(pl.vx, pl.vy) > 20;
     if (Math.abs(pl.fx) > 0.25) this.faceL = pl.fx < 0;
-    const strip = `rocco_${moving ? 'walk' : 'idle'}${pk.enabled && pk.holes > 0 ? '_leak' : ''}${pk.enabled && pk.water < 0.3 ? '_dry' : ''}`;
+    const strip = this.stage?.noKoi ? `rocco_${moving ? 'walk' : 'idle'}_empty`   // the prologue: no koi in the pack yet
+      : `rocco_${moving ? 'walk' : 'idle'}${pk.enabled && pk.holes > 0 ? '_leak' : ''}${pk.enabled && pk.water < 0.3 ? '_dry' : ''}`;
     this.show(this.rocco, strip, Math.floor(time * (moving ? 10 : 6)));
     const rolling = pl.roll > 0, ru = rolling ? 1 - pl.roll / C.rollTime : 0;
     const lift = pl.air ? 8 : rolling ? Math.sin(ru * Math.PI) * 5 : 0;

@@ -4,7 +4,7 @@
  * View-only scripts: the game is paused while one plays. Seen ones are saved.
  */
 
-export type Speaker = 'rocco' | 'bimbo' | 'biscuit' | 'elder' | 'heron' | 'king';
+export type Speaker = 'rocco0' | 'rocco' | 'bimbo' | 'biscuit' | 'elder' | 'heron' | 'king';
 /** Where to point the camera: Rocco, the boss in the room, or a world point. */
 export type CamTarget = 'player' | 'boss' | { x: number; y: number };
 
@@ -21,6 +21,7 @@ export type Step =
 
 /** Portrait: which sprite, zoom, and where to frame it (ax/ay: 0 = left/top edge of the sprite, 1 = right/bottom). */
 export const SPEAKERS: Record<Speaker, { name: string; color: string; strip: string; frame: number; scale: number; ax: number; ay: number }> = {
+  rocco0: { name: 'Rocco', color: '#e9c98a', strip: 'rocco_idle_empty', frame: 0, scale: 1.9, ax: 0.5, ay: 0.1 },
   rocco: { name: 'Rocco', color: '#e9c98a', strip: 'rocco_idle', frame: 0, scale: 1.9, ax: 0.5, ay: 0.1 },
   bimbo: { name: 'Bimbo', color: '#ffb0c8', strip: 'bimbo', frame: 0, scale: 1.7, ax: 0.5, ay: 0.5 },
   biscuit: { name: 'Biscuit', color: '#f2f2e8', strip: 'biscuit_idle', frame: 0, scale: 2.2, ax: 0.6, ay: 0 },
@@ -35,28 +36,30 @@ export const CINEMATICS: Record<string, Step[]> = {
     { fadeIn: 2 },
     { title: 'Prologue · One More Cast', sub: 'Willowmere Pond, a quiet night', hold: 3 },
     { pan: 'player', dur: 0.6 },
-    { say: "Quiet night. Big moon. One more cast and I'll head home.", who: 'rocco' },
+    { say: "Something big's been circling down there all night. One more cast.", who: 'rocco0' },
   ],
   'pro-catch': [
     { sound: 'splash' },
-    { say: "Whoa. WHOA. That's no carp.", who: 'rocco' },
+    { say: "Whoa. WHOA. That's no carp.", who: 'rocco0' },
     { say: 'Put. Me. DOWN. I am a Moon Koi, and this is MY pond.', who: 'bimbo' },
-    { say: "A talking fish. Grandpa said there'd be nights like this.", who: 'rocco' },
+    { say: "A talking fish. Grandpa said there'd be nights like this.", who: 'rocco0' },
     { act: 'redmoon' }, { sound: 'wake' }, { shake: 0.6 },
     { wait: 1.6 },
     { say: "Oh no. The moon. It's turning red. Everything that looks at it goes... hungry.", who: 'bimbo' },
     { pan: { x: 240, y: 170 }, dur: 1.2 },
     { sound: 'ribbit' },
     { say: "And I'm the tastiest thing in Willowmere. Somewhere wet. NOW.", who: 'bimbo' },
+    { say: "Wait. The moon's red and YOU aren't hungry. Why aren't you hungry?", who: 'bimbo' },
+    { say: 'Polarized fishing glasses. I never fish without them.', who: 'rocco0' },
     { pan: 'player', dur: 0.8 },
     { act: 'pack' }, { sound: 'splash' },
-    { say: "In the backpack you go. It sloshes a bit. Don't mind the holes.", who: 'rocco' },
+    { say: "In the backpack you go. It sloshes a bit. Don't mind the holes.", who: 'rocco0' },
     { sound: 'honk' }, { act: 'goose' },
     { wait: 0.8 },
     { say: 'HONK.', who: 'biscuit' },
-    { say: "Biscuit! Farmer Hollis's goose. Meanest bird in the valley.", who: 'rocco' },
+    { say: "Biscuit! The others are asleep, but not you. Never you.", who: 'rocco' },
     { say: 'It is looking at me. Why is it looking at me.', who: 'bimbo' },
-    { say: "He bites anything that moves. That's exactly what we need.", who: 'rocco' },
+    { say: "He's my grumpiest goose. He bites anything that moves. That's exactly what we need.", who: 'rocco' },
     { act: 'tie' }, { sound: 'patch' },
     { say: 'There. Tied to my fishing line. Point him at trouble, and let him go.', who: 'rocco' },
     { say: 'HONK!!', who: 'biscuit' },

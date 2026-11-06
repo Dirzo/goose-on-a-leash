@@ -14,6 +14,7 @@
 import Phaser from 'phaser';
 import type { Vec } from '../core/math';
 import type { Sim, SimEvent } from '../core/sim';
+import { FONTS } from './render';
 
 export type ProPhase = 'intro' | 'cast' | 'fly' | 'wait' | 'bite' | 'reel' | 'catch' | 'done';
 
@@ -115,7 +116,7 @@ export class Prologue {
     this.logic = new PrologueLogic(sim);
     this.g = layers.world(scene.add.graphics().setDepth(5050));
     this.hud = layers.screen(scene.add.graphics().setDepth(9700));
-    for (let i = 0; i < 4; i++) this.texts.push(layers.screen(scene.add.text(0, 0, '', { fontFamily: '"Inter", system-ui, sans-serif', fontSize: '18px', color: '#e9e4d6', resolution: res }).setDepth(9750).setOrigin(0.5).setVisible(false)));
+    for (let i = 0; i < 4; i++) this.texts.push(layers.screen(scene.add.text(0, 0, '', { fontFamily: FONTS.body, fontSize: '18px', color: '#e9e4d6', resolution: res }).setDepth(9750).setOrigin(0.5).setVisible(false)));
     window.addEventListener('keydown', this.keyDown); window.addEventListener('keyup', this.keyUp);
     scene.input.on('pointerdown', this.ptrDown); scene.input.on('pointerup', this.ptrUp);
   }

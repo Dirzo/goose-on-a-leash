@@ -88,7 +88,7 @@ def composite(layers, outline_skip=()):
     for (x, y) in sil: dst[x, y] = C['out'] + (255,)
     return out
 
-def build(frame, leak=True, water_level=0.8, walk=False):
+def build(frame, leak=True, water_level=0.8, walk=False, koi_in=True):
     t = frame / FRAMES * math.tau
     bob = 1 if math.sin(t) > 0.3 else 0                  # 1 px idle bob
     if walk: bob = frame % 2                              # quicker bounce while walking
@@ -145,7 +145,7 @@ def build(frame, leak=True, water_level=0.8, walk=False):
     fy = ky + (0 if flap else 2)
     koi.poly([(kx - 5, ky + 2), (kx - 9, fy - 1), (kx - 8, fy + 2)], 'koif')     # flapping fins
     koi.poly([(kx + 5, ky + 2), (kx + 8, fy - 2), (kx + 8, fy + 1)], 'koif')
-    L.append(koi)
+    if koi_in: L.append(koi)
 
     # --- back arm and legs
     barm = Layer('backarm')

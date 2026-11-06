@@ -70,6 +70,9 @@ for walk in (False, True):
             name = f"rocco_{'walk' if walk else 'idle'}{'_leak' if leak else ''}{'_dry' if dry else ''}"
             frames = [rocco_hd.build(i, leak=leak, water_level=0.2 if dry else 0.8, walk=walk) for i in range(8)]
             strip(name, frames, (40, 69), R_POINTS)
+    # before the catch (the prologue): no koi in the pack yet
+    name = f"rocco_{'walk' if walk else 'idle'}_empty"
+    strip(name, [rocco_hd.build(i, leak=False, water_level=0.5, walk=walk, koi_in=False) for i in range(8)], (40, 69), R_POINTS)
 
 strip('biscuit_idle', [biscuit_hd.build_idle(i) for i in range(8)], (24, 58), {'neck': [31, 26]})
 strip('biscuit_fling', [biscuit_hd.build_fling(i) for i in range(8)], (22, 28), {'neck': [32, 16]})

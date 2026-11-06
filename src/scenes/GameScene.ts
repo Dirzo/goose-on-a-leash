@@ -7,6 +7,7 @@ import { Renderer, snapshot, type Snapshot } from '../view/render';
 import { ArtRenderer, CANVAS_H, CANVAS_W, HUD_SCALE, SCREEN_H, SCREEN_W } from '../view/art';
 import { Cinema } from '../view/cinema';
 import { Prologue } from '../view/prologue';
+import { Movie } from '../view/movie';
 import { ROOM_ART, nearestFilter, preloadArt } from '../view/assets';
 import { applySave, loadStoredSave, snapshotSave, storeSave } from '../core/save';
 import { sound } from '../view/audio';
@@ -44,6 +45,8 @@ export class GameScene extends Phaser.Scene {
   cinema = new Cinema();
   /** The playable opening (fishing up Bimbo), on a fresh game. */
   prologue: Prologue | null = null;
+  /** The opening film, before the prologue. */
+  movie: Movie | null = null;
   /** Set by the UI: Rocco called the ferry. */
   onFerry: () => void = () => {};
 
@@ -88,10 +91,11 @@ export class GameScene extends Phaser.Scene {
     const now = performance.now();
     const dt = this.lastNow ? Math.min(0.25, (now - this.lastNow) / 1000) : STEP;
     this.lastNow = now;
-    const film = this.cinema.active, pro = !!this.prologue?.active;
+    if (this.movie?.active) this.movie.update(dt);
+    const film = this.cinema.active || !!this.movie?.active, pro = !!this.prologue?.active;
     this.controls.paused = this.paused || film || pro; this.controls.cinema = film;
     this.controls.pollPad();
-    if (film) { this.cinema.update(dt, this.sim, this.sim.player); this.acc = 0; }
+    if (film) { if (this.cinema.active) this.cinema.update(dt, this.sim, this.sim.player); this.acc = 0; }
     else if (pro && this.view instanceof ArtRenderer) {
       const pl = this.prologue!;
       pl.update(dt, this.controls.aim(this.sim.player), this.view.rodTip);
@@ -165,16 +169,18 @@ export class GameScene extends Phaser.Scene {
     if (!dock) return;
     sim.player.x = dock.x + dock.w - 22; sim.player.y = dock.y + dock.h / 2; sim.player.fx = 1; sim.player.fy = 0;
     sim.goose.x = sim.player.x - 30; sim.goose.y = sim.player.y; sim.goose.state = 'held';
-    this.view.stage = { hideGoose: true };
+    this.view.stage = { hideGoose: true, noKoi: true };
     this.view.atmo.calm = 1;
     this.prologue = new Prologue(this, sim, this.view.layers(), HUD_SCALE);
-    this.cinema.play('pro-open');
+    this.movie = new Movie(this, this.view.layers().screen, HUD_SCALE);
+    this.movie.onEnd = () => { this.movie = null; this.lastNow = performance.now(); this.controls.dropPending(); this.cinema.play('pro-open'); };
   }
 
   /** Cues from the prologue's cinematic. */
   private stageAct(act: string): void {
     if (!(this.view instanceof ArtRenderer)) return;
     if (act === 'redmoon') { this.view.atmo.calm = 0; if (this.prologue) this.prologue.redT = 0; }
+    if (act === 'pack' && this.view.stage) this.view.stage = { ...this.view.stage, noKoi: false };
     if (act === 'goose') {
       const p = this.sim.player;
       this.sim.goose.x = p.x - 40; this.sim.goose.y = p.y; this.sim.goose.face = 1;
@@ -186,6 +192,7 @@ export class GameScene extends Phaser.Scene {
   /** Esc during the fishing: jump to the end of the prologue. */
   skipPrologue(): void {
     if (!this.prologue?.active) return;
+    this.movie?.skip();
     this.cinema.skip();
     this.endPrologue();
   }

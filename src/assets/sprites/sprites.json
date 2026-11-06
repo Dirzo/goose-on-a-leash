@@ -75,6 +75,25 @@
    ]
   }
  },
+ "rocco_idle_empty": {
+  "w": 76,
+  "h": 80,
+  "frames": 8,
+  "anchor": [
+   40,
+   69
+  ],
+  "points": {
+   "rodTip": [
+    72,
+    20
+   ],
+   "koi": [
+    21,
+    31
+   ]
+  }
+ },
  "rocco_walk": {
   "w": 76,
   "h": 80,
@@ -133,6 +152,25 @@
   }
  },
  "rocco_walk_leak_dry": {
+  "w": 76,
+  "h": 80,
+  "frames": 8,
+  "anchor": [
+   40,
+   69
+  ],
+  "points": {
+   "rodTip": [
+    72,
+    20
+   ],
+   "koi": [
+    21,
+    31
+   ]
+  }
+ },
+ "rocco_walk_empty": {
   "w": 76,
   "h": 80,
   "frames": 8,

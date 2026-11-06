@@ -200,6 +200,7 @@ export function mountUi(scene: GameScene): void {
   scene.onShrine = () => { if (!open) { scene.setPackOpen(false); tab = 'biscuit'; openBook(); } };
 
   scene.controls.onUi = a => {
+    if (scene.movie?.active) { if (a === 'close') scene.movie.skip(); return; }
     if (scene.cinema.active) { if (a === 'advance') scene.cinema.advance(); else if (a === 'close') scene.cinema.skip(); return; }
     if (scene.prologue?.active) { if (a === 'close') scene.skipPrologue(); return; }
     if (a === 'book') { if (open) closeBook(); else { scene.setPackOpen(false); openBook(); } }
