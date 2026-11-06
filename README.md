@@ -9,7 +9,8 @@ This is the **M1 Foundation** build: the HTML prototype ported to Phaser 4 and T
 ```sh
 npm install
 npm run dev        # http://localhost:5173
-npm test           # 25 Vitest tests, including a 10,000-fling fuzz test
+npm test           # 250 Vitest tests, including a 10,000-fling fuzz test
+npm run build:cdn  # single-file build (Phaser from jsDelivr), then: npm run budget
 npm run build      # typecheck + production build into dist/
 npm run deploy     # build + Cloudflare Workers static assets (needs wrangler login)
 ```
@@ -38,3 +39,8 @@ Gamepad: left stick move, right stick aim, RT fling, LT/RB yank, A honk, B let g
 `.github/workflows/ci.yml` typechecks, tests and builds every push and PR. With repo secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, it deploys `main` to production and uploads each PR as a preview version (`pr-<number>` alias).
 
 See `docs/PARITY.md` for every intentional difference from the HTML prototype.
+
+## Docs
+
+* `docs/BALANCE.md`: every difficulty number in one place, and how to tune from playtest stats.
+* `docs/launch/`: deploy, itch.io, Steam, trailers, community, desktop and launch plans (ready, waiting on accounts).
