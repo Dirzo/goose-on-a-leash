@@ -142,6 +142,7 @@ export class GameScene extends Phaser.Scene {
       if (pl.logic.phase === 'tied') { pl.logic.phase = 'catch'; this.cinema.play('pro-tie'); }
     }
     if (!film && !pro) { this.cinema.update(dt, this.sim, this.sim.player); if (!chasing) this.cues(); }
+    if (this.view instanceof ArtRenderer && !pro && this.sim.world['castle-6']?.boss) this.view.atmo.calm = Math.max(this.view.atmo.calm, 0.65);   // the moon is pale again
     this.listen();
     const still = this.paused || film || pro, alpha = still ? 1 : this.acc / STEP;
     this.view.draw(this.sim, still ? null : this.prev, alpha, this.paused ? 0 : dt, this.controls.aim(this.sim.player), !film);
@@ -184,20 +185,22 @@ export class GameScene extends Phaser.Scene {
       this.cueRoom = id;
       const fresh = Object.keys(sim.world).every(k => k === 'willowmere') && !sim.kit.oar;
       if (id === 'willowmere' && fresh && this.cinemaOn && !sim.seen.has('prologue') && this.view instanceof ArtRenderer) { this.startPrologue(); return; }
-      const ch = ({ willowmere: 'ch1', 'reedmarsh-1': 'ch2', 'hollowbark-1': 'ch3', 'driftwood-1': 'ch4', 'driftwood-2': 'wharf-hub', 'tide-1': 'ch5', 'tide-2': 'cove', 'castle-1': 'ch6' } as Record<string, string>)[id];
+      const ch = ({ willowmere: 'ch1', 'reedmarsh-1': 'ch2', 'hollowbark-1': 'ch3', 'driftwood-1': 'ch4', 'driftwood-2': 'wharf-hub', 'tide-1': 'ch5', 'tide-2': 'cove', 'castle-1': 'ch6', 'castle-6': 'shark-in' } as Record<string, string>)[id];
       if (ch) this.playCinematic(ch);
     }
     if (this.cinema.active) return;
-    if (this.pendingCine && !sim.fishing.card) { this.playCinematic(this.pendingCine); this.pendingCine = ''; }
+    if (this.pendingCine && !sim.fishing.card) { this.playCinematic(this.pendingCine); this.pendingCine = ''; return; }
+    if (this.pendingCine2 && !this.cinema.active && (sim.seen.has('queen-out') || !this.cinemaOn)) { this.playCinematic(this.pendingCine2); this.pendingCine2 = ''; return; }
     for (const e of sim.enemies) {
-      const k = e.kind === 'elder' || e.kind === 'heron' || e.kind === 'king' || e.kind === 'gullbeard' || e.kind === 'pelican' || e.kind === 'blackswan' ? e.kind : null;
+      const k = e.kind === 'elder' || e.kind === 'heron' || e.kind === 'king' || e.kind === 'gullbeard' || e.kind === 'pelican' || e.kind === 'blackswan' || e.kind === 'queen' ? e.kind : null;
       if (!k) continue;
       if (e.woke > 1.0) this.playCinematic(`${k}-out`);
-      else if (!e.woke && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < (k === 'elder' ? 430 : k === 'pelican' || k === 'blackswan' ? 700 : 900)) this.playCinematic(`${k}-in`);
+      else if (!e.woke && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < (k === 'elder' ? 430 : k === 'pelican' || k === 'blackswan' || k === 'queen' ? 700 : 900)) this.playCinematic(`${k}-in`);
     }
   }
   private cueRoom = '';
   private pendingCine = '';
+  private pendingCine2 = '';
 
   /** The opening: Rocco on the end of the dock, a pale moon, no goose yet. */
   startPrologue(): void {
@@ -229,6 +232,14 @@ export class GameScene extends Phaser.Scene {
       this.view.stage = { hideGoose: false, hideLine: true };
     }
     if (act === 'tie') this.view.stage = null;
+    if (act === 'palemoon') this.view.atmo.calm = 1;
+    if (act === 'home') {                              // after the end: home to Willowmere, under a pale moon again
+      const sim = this.sim;
+      sim.goose.state = 'held'; sim.goose.cut = 0; sim.goose.fury = 0; sim.goose.furious = 0; sim.goose.feral = false;
+      sim.enterRoom(WILLOWMERE, null);
+      sim.goose.x = sim.player.x - 30; sim.goose.y = sim.player.y;
+      this.feed(sim.drainEvents());
+    }
   }
 
   /** Esc during the fishing: jump to the end of the prologue. */
@@ -325,6 +336,8 @@ export class GameScene extends Phaser.Scene {
     for (const e of events) if (e.type === 'sound') sound.play(e.kind);
     if (events.some(e => e.type === 'morays')) this.pendingCine = 'moray-out';
     for (const e of events) if (e.type === 'seal') this.pendingCine = `seal-${e.id}`;
+    if (events.some(e => e.type === 'elixir')) this.pendingCine2 = 'elixir';
+    if (events.some(e => e.type === 'finale')) { if (this.cinemaOn) this.pendingCine = 'finale'; else this.stageAct('home'); }
     const sim = this.sim;
     for (const e of events) {
       if (e.type === 'room') sound.play('door');

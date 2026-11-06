@@ -4,7 +4,7 @@
  * View-only scripts: the game is paused while one plays. Seen ones are saved.
  */
 
-export type Speaker = 'rocco0' | 'rocco' | 'bimbo' | 'biscuit' | 'elder' | 'heron' | 'king' | 'gullbeard' | 'pickett' | 'pelican' | 'blackswan';
+export type Speaker = 'rocco0' | 'rocco' | 'bimbo' | 'biscuit' | 'elder' | 'heron' | 'king' | 'gullbeard' | 'pickett' | 'pelican' | 'blackswan' | 'queen';
 /** Where to point the camera: Rocco, the boss in the room, or a world point. */
 export type CamTarget = 'player' | 'boss' | { x: number; y: number };
 
@@ -31,6 +31,7 @@ export const SPEAKERS: Record<Speaker, { name: string; color: string; strip: str
   gullbeard: { name: 'Captain Gullbeard', color: '#8fe0d0', strip: 'gullbeard', frame: 0, scale: 1.5, ax: 0.72, ay: 0.12 },
   pelican: { name: 'The Pelican Chef', color: '#f2c94c', strip: 'pelican', frame: 0, scale: 1.7, ax: 0.6, ay: 0.08 },
   blackswan: { name: 'The Black Swan', color: '#e0e6ee', strip: 'blackswan', frame: 0, scale: 1.6, ax: 0.66, ay: 0.06 },
+  queen: { name: 'The Swan Queen', color: '#d8f0ff', strip: 'queen', frame: 0, scale: 1.6, ax: 0.68, ay: 0.06 },
   pickett: { name: 'Pickett', color: '#c49a6a', strip: 'pickett', frame: 2, scale: 2.4, ax: 0.5, ay: 0.05 },
 };
 
@@ -250,6 +251,57 @@ export const CINEMATICS: Record<string, Step[]> = {
   'seal-keep': [
     { wait: 0.3 },
     { title: 'The Keep Seal', sub: 'All three Royal Seals... once the others are found. The throne room waits above the gate.', hold: 3.2 },
+  ],
+  'queen-in': [
+    { fadeIn: 0.6 },
+    { pan: 'boss', dur: 1.4 },
+    { sound: 'bell' },
+    { say: 'A raccoon. In my throne room. Carrying the little moon in a sack.', who: 'queen' },
+    { say: 'Your Majesty, the red moon has your crown. We need a tear. Just the one. Then we go.', who: 'rocco' },
+    { say: 'Swans do not weep, raccoon. Swans SING.', who: 'queen' },
+    { say: "Rocco, if she sings, Biscuit's going to turn on you. You know that, right?", who: 'bimbo' },
+    { say: "Bread at the ready. And Biscuit: honk louder than her.", who: 'rocco' },
+    { say: 'HONK!!', who: 'biscuit' },
+    { pan: 'player', dur: 0.9 },
+  ],
+  'queen-out': [
+    { wait: 1 },
+    { pan: 'boss', dur: 1.2 },
+    { say: '...The moon. I watched it turn, and then I watched nothing at all. How long have I been singing?', who: 'queen' },
+    { say: 'Too long, Your Majesty. Your tear?', who: 'rocco' },
+    { say: "It's already in your paw, little fisherman. The shark is in my moat. It has been waiting for the moon-fish all this time.", who: 'queen' },
+    { pan: 'player', dur: 0.8 },
+  ],
+  elixir: [
+    { wait: 0.4 },
+    { sound: 'learn' },
+    { title: 'The Moon Elixir', sub: 'Lilydew · Firefly Honey · Heartwood Sap · Sea-Glass Salt · Moray Pearl · the Swan Queen\'s Tear', hold: 3.6 },
+    { say: "Oh. OH. I can feel my fins again. Rocco, I'm GLOWING.", who: 'bimbo' },
+    { say: 'Then let\'s go and give that shark something to look at.', who: 'rocco' },
+  ],
+  'shark-in': [
+    { fadeIn: 1 },
+    { title: 'The Blood Moat', sub: 'The last cast', hold: 2.6 },
+    { shake: 0.8 }, { sound: 'growl' },
+    { say: "There. Under the red water. It's been following me since Willowmere.", who: 'bimbo' },
+    { sound: 'snap' }, { shake: 0.5 },
+    { say: "It just BIT THROUGH THE LEASH! Biscuit's loose!", who: 'rocco' },
+    { say: 'HONK HONK HONK!!!', who: 'biscuit' },
+    { say: "Fine. FINE. Biscuit, keep the crabs off the pack. I'm a fisherman. I'll fish it out.", who: 'rocco' },
+    { title: 'Stand on the Last Rock', sub: 'Hook the Blood Shark and slam it into the rock three times. Let go when it runs.', hold: 3.4 },
+  ],
+  finale: [
+    { wait: 1 },
+    { shake: 1 }, { sound: 'slam' },
+    { say: '...The red. It\'s going out of the water. Out of the SKY. Rocco, look up!', who: 'bimbo' },
+    { act: 'palemoon' },
+    { say: "Just a moon. A plain old moon. I'd forgotten what it looks like.", who: 'rocco' },
+    { say: 'HONK.', who: 'biscuit' },
+    { say: "Thank you. Both of you. Even the goose. ESPECIALLY the goose.", who: 'bimbo' },
+    { title: 'The End', sub: 'Goose on a Leash · thank you for playing', hold: 4 },
+    { act: 'home' },
+    { fadeIn: 1.2 },
+    { title: 'Willowmere Pond', sub: 'The fish are still biting. The castle is still there. Biscuit is still a goose.', hold: 3.6 },
   ],
   'moray-out': [
     { wait: 0.6 },

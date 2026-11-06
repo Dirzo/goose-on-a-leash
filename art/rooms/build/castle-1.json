@@ -12,7 +12,14 @@
   {
    "x": 0,
    "y": 0,
-   "w": 1018.0,
+   "w": 598.0,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 682.0,
+   "y": 0,
+   "w": 336.0,
    "h": 20,
    "kind": "border"
   },
@@ -94,14 +101,26 @@
    "kind": "pillar"
   },
   {
-   "x": 560,
-   "y": 60,
-   "w": 160,
-   "h": 70,
+   "x": 430,
+   "y": 50,
+   "w": 110,
+   "h": 60,
+   "kind": "statue"
+  },
+  {
+   "x": 740,
+   "y": 50,
+   "w": 110,
+   "h": 60,
    "kind": "statue"
   }
  ],
- "gate": null,
+ "gate": {
+  "x": 598,
+  "y": 24,
+  "w": 84,
+  "h": 12
+ },
  "pits": [
   {
    "x": 20,
@@ -213,6 +232,21 @@
     "y": 70
    },
    "label": "The Lava Keep"
+  },
+  {
+   "id": "throne",
+   "x": 598.0,
+   "y": 0,
+   "w": 84,
+   "h": 26,
+   "to": "castle-11",
+   "toDoor": "s",
+   "spawn": {
+    "x": 640,
+    "y": 70
+   },
+   "gated": true,
+   "label": "The Throne Room"
   }
  ],
  "paths": [
@@ -264,6 +298,7 @@
  "biome": "castle",
  "lightKind": "turtle",
  "heavyKind": "turtle",
+ "sealGate": 3,
  "springs": [
   {
    "x": 640,

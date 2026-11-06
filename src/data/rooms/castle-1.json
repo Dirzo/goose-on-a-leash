@@ -34,16 +34,30 @@
    "kind": "pillar"
   },
   {
-   "x": 560,
-   "y": 60,
-   "w": 160,
-   "h": 70,
+   "x": 430,
+   "y": 50,
+   "w": 110,
+   "h": 60,
+   "kind": "statue"
+  },
+  {
+   "x": 740,
+   "y": 50,
+   "w": 110,
+   "h": 60,
    "kind": "statue"
   },
   {
    "x": 0,
    "y": 0,
-   "w": 1018.0,
+   "w": 598.0,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 682.0,
+   "y": 0,
+   "w": 336.0,
    "h": 20,
    "kind": "border"
   },
@@ -208,6 +222,22 @@
    },
    "label": "The Lava Keep",
    "side": "N"
+  },
+  {
+   "id": "throne",
+   "x": 598.0,
+   "y": 0,
+   "w": 84,
+   "h": 26,
+   "to": "castle-5",
+   "toDoor": "s",
+   "spawn": {
+    "x": 640,
+    "y": 70
+   },
+   "gated": true,
+   "label": "The Throne Room",
+   "side": "N"
   }
  ],
  "paths": [
@@ -279,7 +309,12 @@
    "y": 160
   }
  ],
- "gate": null,
+ "gate": {
+  "x": 598,
+  "y": 24,
+  "w": 84,
+  "h": 12
+ },
  "bell": null,
  "exit": null,
  "bucket": null,
@@ -305,6 +340,7 @@
  "lightKind": "turtle",
  "heavyKind": "turtle",
  "ventSpawns": false,
+ "sealGate": 3,
  "rooms": [
   {
    "x": 0,

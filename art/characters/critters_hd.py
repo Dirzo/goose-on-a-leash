@@ -803,3 +803,75 @@ def black_swan(blink=False, awake=False, pose='idle'):
         lance.poly([(30, by), (38, by - 6), (38, by + 8)], 'PL2')
     L.append(lance)
     return composite(L)
+
+
+def swan_queen(blink=False, awake=False, pose='idle'):
+    """The Swan Queen: a tall white swan with a gold crown set with the blood moon's red stone (a pale moonstone
+    once she wakes), a royal blue sash. Poses: idle, quills (wings flared), song (head high, beak open),
+    surface (rising from water), beached (sprawled on the marble)."""
+    w, h = 104, 100
+    P = dict(KPAL)
+    P.update({k: hx(v) for k, v in {'Q0': 'b8bcc8', 'Q1': 'e4e6ee', 'Q2': 'ffffff', 'QB': 'f0a020', 'QK': '1a1522', 'SA0': '1a2a6a', 'SA1': '2e4aa8',
+                                      'CR0': 'b88a20', 'CR1': 'f0c040', 'CR2': 'fff0a0', 'RED': 'ff2a2a', 'MOON': 'd8f0ff', 'WAT': '9ad8e8'}.items()})
+    L = []
+    flat = pose == 'beached'
+    if pose == 'quills':
+        wing = Layer('wing', w, h, P)
+        for i in range(6):
+            a = -2.4 + i * 0.22
+            wing.line([(40, 56), (40 + _m.cos(a) * 44, 56 + _m.sin(a) * 44)], 'Q1', 5)
+            wing.line([(40, 56), (40 + _m.cos(a) * 44, 56 + _m.sin(a) * 44)], 'Q0', 1)
+        L.append(wing)
+    body = Layer('body', w, h, P)
+    by = 76 if flat else 66
+    if pose == 'surface':
+        body.ell(46, 78, 26, 8, 'WAT'); body.ell(46, 74, 22, 8, 'Q1')
+    else:
+        if not flat: body.line([(40, 82), (38, 98)], 'QB', 3); body.line([(52, 82), (54, 98)], 'QB', 3)
+        body.ell(46, by, 28, 16 if not flat else 12, 'Q1'); body.ell(42, by - 5, 18, 8, 'Q2')
+        body.poly([(20, by), (4, by - 10), (10, by + 6)], 'Q1')
+        body.line([(30, by - 10), (58, by + 8)], 'SA1', 4); body.line([(30, by - 8), (58, by + 10)], 'SA0', 1)
+    L.append(body)
+    neck = Layer('neck', w, h, P)
+    if flat: nx, ny = 86, 70
+    elif pose == 'song': nx, ny = 62, 15
+    else: nx, ny = 70, 18
+    base = (60, 64) if pose != 'surface' else (58, 70)
+    for i in range(14):
+        t = i / 13
+        bend = _m.sin(t * _m.pi) * (10 if pose != 'song' else 2)
+        neck.ell(base[0] + (nx - base[0]) * t - bend, base[1] + (ny - base[1]) * t, 4.5, 4.5, 'Q1')
+    neck.ell(nx, ny, 7, 6, 'Q2')
+    beak = [(nx + 5, ny - 1), (nx + 15, ny + 1), (nx + 5, ny + 4)]
+    if pose == 'song': neck.poly([(nx + 5, ny - 2), (nx + 13, ny - 7), (nx + 7, ny + 1)], 'QB'); neck.poly([(nx + 5, ny + 2), (nx + 14, ny + 5), (nx + 5, ny + 5)], 'QB')
+    else: neck.poly(beak, 'QB')
+    neck.poly([(nx + 3, ny - 3), (nx + 6, ny - 1), (nx + 3, ny + 2)], 'QK')
+    L.append(neck)
+    crown = Layer('crown', w, h, P)
+    cx, cy = nx - 1, ny - 8
+    for dx in (-5, -1, 3):
+        crown.poly([(cx + dx, cy + 3), (cx + dx + 2, cy - 4), (cx + dx + 4, cy + 3)], 'CR1')
+    crown.rect(cx - 6, cy + 2, cx + 8, cy + 4, 'CR0'); crown.ell(cx + 1, cy + 1, 1.8, 1.8, 'MOON' if awake else 'RED')
+    L.append(crown)
+    eye = Layer('eye', w, h, P)
+    if blink or flat: eye.line([(nx - 1, ny - 1), (nx + 1, ny - 1)], 'Q0')
+    else: eye.rect(nx, ny - 2, nx + 1, ny - 1, 'QK' if awake else 'RED'); eye.px(nx, ny - 2, 'Q2' if awake else 'FR2')
+    L.append(eye)
+    return composite(L)
+
+
+def blood_shark():
+    """The Blood Shark, side on: a long dark-red shark, pale belly, one red eye, and that smile."""
+    w, h = 120, 48
+    P = {k: hx(v) for k, v in {'S0': '3a0a12', 'S1': '6a1420', 'S2': '9a2a34', 'S3': 'd8c0c0', 'EYE': 'ff2a2a', 'T': 'f6f1e6', 'BK': '15111c'}.items()}
+    L = []
+    b = Layer('body', w, h, P)
+    b.poly([(6, 24), (0, 6), (14, 20)], 'S0'); b.poly([(6, 24), (0, 42), (14, 28)], 'S0')
+    b.ell(60, 25, 50, 15, 'S1'); b.ell(62, 30, 44, 8, 'S3'); b.ell(56, 20, 40, 7, 'S2')
+    b.poly([(54, 12), (66, -2), (74, 12)], 'S1'); b.poly([(60, 34), (72, 46), (76, 34)], 'S0')
+    for x in (88, 92, 96): b.line([(x, 20), (x - 2, 28)], 'S0')
+    b.line([(98, 30), (112, 26)], 'BK', 2)
+    for x in range(100, 112, 3): b.poly([(x, 28), (x + 1, 31), (x + 2, 28)], 'T')
+    L.append(b)
+    e = Layer('eye', w, h, P); e.ell(100, 19, 2.5, 2.5, 'EYE'); e.px(99, 18, 'T'); L.append(e)
+    return composite(L)

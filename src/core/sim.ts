@@ -6,6 +6,7 @@
 import { C, DEFAULT_TUNING, DIFFICULTY, type Difficulty, type Tuning } from './config';
 import { Kit } from './crafting';
 import { FISH, Fishing, type FishDef } from './fishing';
+import { INGREDIENTS, ingredientById } from '../data/elixir';
 import { angDiff, clamp, dirTo, inRect, mulberry32, type Rng, type Vec } from './math';
 import { Room } from './room';
 import { Rope } from './rope';
@@ -19,20 +20,21 @@ export type GooseState = 'held' | 'flying' | 'latched' | 'loose' | 'returning';
 export type { EnemyKind };
 
 /** How close Rocco must get before an entranced critter notices him. Room 01's pests see across the room. */
-const AGGRO: Partial<Record<EnemyKind, number>> = { blackswan: 900, pelican: 800, mimic: 46, turtle: 320, bellhop: 420, eel: 130, crab: 230, gull: 420, gullbeard: 900, elder: 620, frog: 160, snapper: 210, heron: 520, squirrel: 260, badger: 230, king: 700 };
+const AGGRO: Partial<Record<EnemyKind, number>> = { queen: 900, blackswan: 900, pelican: 800, mimic: 46, turtle: 320, bellhop: 420, eel: 130, crab: 230, gull: 420, gullbeard: 900, elder: 620, frog: 160, snapper: 210, heron: 520, squirrel: 260, badger: 230, king: 700 };
 const HEAVY: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['knight', 'snapper', 'heron', 'badger', 'king', 'elder', 'turtle', 'pelican', 'blackswan']);
 /** Animals under the blood moon's trance. Beaten, they wake up and wander off instead of dying. */
-const ENTRANCED: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['frog', 'snapper', 'heron', 'squirrel', 'badger', 'king', 'elder', 'crab', 'gull', 'gullbeard', 'eel', 'turtle', 'bellhop', 'mimic', 'pelican', 'blackswan']);
+const ENTRANCED: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['frog', 'snapper', 'heron', 'squirrel', 'badger', 'king', 'elder', 'crab', 'gull', 'gullbeard', 'eel', 'turtle', 'bellhop', 'mimic', 'pelican', 'blackswan', 'queen']);
 /** They fly (or live in the water): they don't swim back to shore, they move themselves, and above 30 they're out of reach. */
 const FLIERS: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['gull', 'gullbeard', 'eel']);
 /** Bosses stand their ground: no knockback, they never fall in, and they stay once woken. */
-const BOSS: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['heron', 'king', 'elder', 'gullbeard', 'pelican', 'blackswan']);
+const BOSS: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['heron', 'king', 'elder', 'gullbeard', 'pelican', 'blackswan', 'queen']);
 export const ELDER_HP = 24;
 export const HERON_HP = 40;
 export const KING_HP = 50;
 export const GULLBEARD_HP = 46;
 export const PELICAN_HP = 44;
 export const BLACKSWAN_HP = 52;
+export const QUEEN_HP = 60;
 /** Seconds a woken critter takes to hop away. */
 const WAKE_TIME = 1.6;
 
@@ -93,11 +95,11 @@ export type CritterMode = 'stalk' | 'wind' | 'leap' | 'lash' | 'charge' | 'recov
   /** Old Snapper: winded after a charge, hiding in his shell, flipped on his back. */
   | 'tired' | 'shell' | 'flipped'
   /** Driftwood Wharf: crabs guard with their claws; gulls circle, dive and make off with loot; the Captain swoops and gets tangled. */
-  | 'guard' | 'snap' | 'circle' | 'dive' | 'escape' | 'aim' | 'swoop' | 'tangled' | 'fall' | 'lurk' | 'up' | 'beached' | 'bash' | 'ring' | 'cling' | 'hop' | 'scoop' | 'gulp' | 'stir' | 'stuck' | 'stagger' | 'flame';
-export type AttackKind = 'leap' | 'lash' | 'charge' | 'bite' | 'spear' | 'gust' | 'dart' | 'slam' | 'peck' | 'acorn' | 'erupt' | 'rock' | 'thorn' | 'dig' | 'rocks' | 'pinch' | 'dive' | 'bottle' | 'swoop' | 'burn' | 'crush' | 'pot' | 'ember' | 'lance';
+  | 'guard' | 'snap' | 'circle' | 'dive' | 'escape' | 'aim' | 'swoop' | 'tangled' | 'fall' | 'lurk' | 'up' | 'beached' | 'bash' | 'ring' | 'cling' | 'hop' | 'scoop' | 'gulp' | 'stir' | 'stuck' | 'stagger' | 'flame' | 'quills' | 'song' | 'under' | 'surface' | 'glide';
+export type AttackKind = 'leap' | 'lash' | 'charge' | 'bite' | 'spear' | 'gust' | 'dart' | 'slam' | 'peck' | 'acorn' | 'erupt' | 'rock' | 'thorn' | 'dig' | 'rocks' | 'pinch' | 'dive' | 'bottle' | 'swoop' | 'burn' | 'crush' | 'pot' | 'ember' | 'lance' | 'quill';
 
 /** A feather dart lobbed at Bimbo: it lands on the marked spot when t reaches T. */
-export interface Dart { x0: number; y0: number; tx: number; ty: number; t: number; T: number; kind?: 'feather' | 'acorn' | 'rock' | 'bottle' | 'pot' | 'ember'; /** batted back by the oar: hits critters and bells, not Rocco */ back?: boolean; /** the critter it's batted at (it follows him) */ at?: number }
+export interface Dart { x0: number; y0: number; tx: number; ty: number; t: number; T: number; kind?: 'feather' | 'acorn' | 'rock' | 'bottle' | 'pot' | 'ember' | 'quill'; /** batted back by the oar: hits critters and bells, not Rocco */ back?: boolean; /** the critter it's batted at (it follows him) */ at?: number }
 
 export interface PostTarget { x: number; y: number; r: number; post: true }
 export type Target = Enemy | PostTarget;
@@ -168,6 +170,8 @@ export type SimEvent =
   | { type: 'shop' }
   /** Both Moray Twins landed: the Moray Pearl. */
   | { type: 'morays' }
+  /** The Swan Queen woke (her tear); the Moon Elixir brewed; the Blood Shark landed for good (the end). */
+  | { type: 'queen' } | { type: 'elixir' } | { type: 'finale' }
   /** A Royal Seal won (a castle wing cleared). */
   | { type: 'seal'; id: string }
   /** A tutorial prompt: shown on screen for a few seconds. */
@@ -227,6 +231,13 @@ export class Sim {
     sound: k => this.events.push({ type: 'sound', kind: k }),
     caught: (def, len, first, giant) => this.caughtFish(def, len, first, giant),
     pearl: () => this.kit.ingredients.has('pearl'),
+    bossLanded: () => {
+      this.sharkHits++;
+      const left = 3 - this.sharkHits, p = this.player;
+      this.fx('slam', p.x + 30, p.y); this.events.push({ type: 'sound', kind: 'slam' });
+      this.say(left > 0 ? `WHAM! The Blood Shark slams into the Last Rock. Biscuit bites its nose! ${left} more!` : 'WHAM! One last slam into the rock... and the red goes out of its eyes.');
+      return left;
+    },
   });
   feathersGot: boolean[] = [];
   /** Nests knocked down in this room. */
@@ -507,7 +518,7 @@ export class Sim {
     this.spoolsGot = (def.spools ?? []).map((_, i) => mem?.spools?.[i] ?? false);
     this.glassGot = (def.glass ?? []).map((_, i) => mem?.glass?.[i] ?? false);
     this.fishing.setGrounds(def.fishing ?? null);
-    this.crush = []; this.steamAll = 0; this.waveSpawned = 0; this.waveT = 1; this.waveDone = false; this.waveIds = new Set();
+    this.crush = []; this.sharkHits = 0; this.sharkCut = !!def.fishing?.boss && !mem?.boss; this.minionT = 3; this.steamAll = 0; this.waveSpawned = 0; this.waveT = 1; this.waveDone = false; this.waveIds = new Set();
     this.atShop = false;
     this.feathersGot = (def.feathers ?? []).map((_, i) => mem?.feathers?.[i] ?? false);
     this.nestsDown = (def.nests ?? []).map((_, i) => mem?.nests?.[i] ?? false);
@@ -526,7 +537,7 @@ export class Sim {
   mkEnemy(kind: EnemyKind, x: number, y: number): Enemy {
     const k = HEAVY.has(kind), boss = BOSS.has(kind);
     const stats: Partial<Record<EnemyKind, [number, number, number]>> = {   // hp, radius, speed
-      heron: [HERON_HP, 24, 0], king: [KING_HP, 34, 48], gullbeard: [GULLBEARD_HP, 28, 0], crab: [4, 14, 72], gull: [2, 11, 150], eel: [3, 12, 0], turtle: [9, 18, 36], bellhop: [3, 11, 125], mimic: [2, 10, 90], pelican: [PELICAN_HP, 28, 52], blackswan: [BLACKSWAN_HP, 26, 60], elder: [ELDER_HP, 26, 46], squirrel: [2, 10, 115], badger: [10, 18, 50],
+      heron: [HERON_HP, 24, 0], king: [KING_HP, 34, 48], gullbeard: [GULLBEARD_HP, 28, 0], crab: [4, 14, 72], gull: [2, 11, 150], eel: [3, 12, 0], turtle: [9, 18, 36], bellhop: [3, 11, 125], mimic: [2, 10, 90], pelican: [PELICAN_HP, 28, 52], blackswan: [BLACKSWAN_HP, 26, 60], queen: [QUEEN_HP, 26, 70], elder: [ELDER_HP, 26, 46], squirrel: [2, 10, 115], badger: [10, 18, 50],
     };
     const [hp0, r, spd] = stats[kind] ?? [k ? 8 : 3, k ? 20 : 13, k ? 42 : 78];
     const hp = boss ? Math.round(hp0 * this.diff.bossHp) : hp0;
@@ -652,6 +663,12 @@ export class Sim {
       this.hint('flip', 'Flipped! He can\'t get up for a moment: bite, bite, bite!');
       return;
     }
+    if (!isPost(t) && t.kind === 'queen' && t.mode === 'surface') {
+      const [dx, dy] = dirTo(t, p), land = this.nearestLand(t.x + dx * 60, t.y + dy * 60, t.r);
+      t.x = land.x; t.y = land.y; t.mode = 'beached'; t.modeT = 0; g.state = 'held';
+      this.fx('slam', t.x, t.y); this.say('HEAVE! Rocco hauls the Swan Queen right out of her pool! She flounders on the marble!');
+      return;
+    }
     if (!isPost(t) && t.kind === 'turtle' && t.mode !== 'flipped') {
       t.mode = 'flipped'; t.modeT = 0; t.fx_ = -(t.fx_ ?? 1); t.fy_ = -(t.fy_ ?? 0);
       this.fx('slam', t.x, t.y); this.say('HEAVE! The guard spins round, shield the wrong way. Bite!');
@@ -697,6 +714,7 @@ export class Sim {
           continue;
         }
         if (e.loot) this.dropLoot(e);
+        if (e.kind === 'queen' && e.mode === 'song') { e.mode = 'glide'; e.modeT = 0; e.cd = 1; e.stun = 0.8; this.say('HONK! Biscuit drowns out her song. She falters!'); continue; }
         const k = (e.heavy ? 260 : 470) * (furyB ? 1.4 : 1) * (0.8 + 0.1 * this.power());
         e.vx += (ex / (d || 1)) * k; e.vy += (ey / (d || 1)) * k; e.stun = Math.max(e.stun, 1.3 + (this.kit.has('h2') ? 0.7 : 0));
         if (g.state === 'latched' && g.target === e) g.state = 'held';
@@ -824,6 +842,7 @@ export class Sim {
       return;
     }
     this.calm();
+    this.songProof = 3;
     if (id === 'stale') this.say(wasFeral ? 'Bread accepted. Truce.' : 'Bread. The goose is (briefly) at peace.');
     if (id === 'sour') { this.buff.noFury = 8; this.say('Sourdough of Serenity. Zen goose for 8 s.'); }
     if (id === 'bagel') { this.buff.bagel = 20; this.say('Chain Bagel. Leash reinforced +2 for 20 s.'); }
@@ -935,6 +954,10 @@ export class Sim {
     if (e.kind === 'gullbeard' && !e.woke) amt *= e.mode === 'tangled' ? 2 : e.mode === 'dazed' ? 1.5 : 1;
     if (e.kind === 'eel' && e.mode === 'beached') amt *= 2;
     if (e.kind === 'pelican' && !e.woke) amt *= e.mode === 'dazed' ? 2 : e.mode === 'gulp' ? 0 : 1;
+    if (e.kind === 'queen' && !e.woke) {
+      if (e.mode === 'under') return;
+      amt *= e.mode === 'beached' ? 2 : e.mode === 'surface' ? 1.2 : 0.6;
+    }
     if (e.kind === 'blackswan' && !e.woke) {
       if (e.mode !== 'stuck' && e.mode !== 'stagger') { this.fx('block', e.x, e.y - 30); this.hint('blackswan', 'His armour turns every bite. Make him charge into a wall, or parry the lance with the oar, then bite!'); return; }
       amt *= 1.6;
@@ -965,6 +988,17 @@ export class Sim {
         if (e.kind === 'elder') this.say('Old Snapper blinks. The red drains away. "Hmph. Bimbo, is it? Go on through, the both of you."');
         else if (e.kind === 'king' || this.kit.oar) this.say(e.kind === 'king' ? 'The Burrow King shakes his great head. "...What was I digging for? Go on, little raccoon. Mind the fish."'
           : 'The red drains from the Heron\'s eyes. "...Raccoon. I am the Ferryman. The way on is open."');
+        if (e.kind === 'queen') {
+          const k = this.kit;
+          k.ingredients.add('tear'); k.mats.feather += 3; this.pack.needles += C.kitNeedles; this.pack.water = 1;
+          this.fx('pick', this.player.x, this.player.y - 46, { text: "THE SWAN QUEEN'S TEAR" });
+          this.fx('chest', this.player.x, this.player.y - 20);
+          this.say('The red drains from the Swan Queen\'s crown. She weeps one silver tear, and it falls into Rocco\'s paw.');
+          this.room.gateClosed = !this.brewElixir();
+          this.events.push({ type: 'queen' });
+          if (this.goose.target === e) this.goose.state = 'held';
+          return;
+        }
         if (e.kind === 'blackswan') {
           this.say('The Black Swan lowers his lance. "...I serve the Queen. I serve her still. Go up to her, raccoon. She is not herself."');
           this.kit.seals.add('keep'); this.kit.mats.feather += 2; this.kit.mats.chain += 3; this.kit.mats.egg++;
@@ -1000,6 +1034,8 @@ export class Sim {
         const elder = e.kind === 'elder';
         this.kit.mats.crest++; this.kit.mats.chain += elder ? 2 : 3; this.kit.mats.fluff += elder ? 3 : 4; this.kit.mats.feather += elder ? 1 : 2;
         if (!elder) this.kit.mats.egg++;
+        if (e.kind === 'heron' && !this.kit.ingredients.has('lilydew')) { this.kit.ingredients.add('lilydew'); this.events.push({ type: 'sound', kind: 'learn' }); }
+        if (e.kind === 'king' && !this.kit.ingredients.has('honey')) { this.kit.ingredients.add('honey'); this.events.push({ type: 'sound', kind: 'learn' }); }
         const oarGift = e.kind === 'heron' && !this.kit.oar;
         if (oarGift) {
           this.kit.oar = true;
@@ -1361,6 +1397,7 @@ export class Sim {
       else if (e.kind === 'mimic') [ax, ay] = this.mimicAI(e, edt);
       else if (e.kind === 'pelican') [ax, ay] = this.pelicanAI(e, edt);
       else if (e.kind === 'blackswan') [ax, ay] = this.blackswanAI(e, edt);
+      else if (e.kind === 'queen') [ax, ay] = this.queenAI(e, edt);
       else if (e.kind === 'gullbeard') [ax, ay] = this.gullbeardAI(e, edt);
       else if (critter) [ax, ay] = this.critterAI(e, edt, d, slow);
       else if (!e.stun && d < (AGGRO[e.kind] ?? 300)) { ax = dx * e.spd * slow; ay = dy * e.spd * slow; }
@@ -1410,7 +1447,7 @@ export class Sim {
         const kind = d.kind ?? 'feather', b = this.packPoint(10);
         this.fx(kind === 'feather' ? 'splash' : 'thud', d.tx, d.ty - 6);
         if (kind === 'feather') this.addPuddle(d.tx, d.ty, 20);
-        const radius = kind === 'acorn' ? 18 : kind === 'rock' || kind === 'pot' ? 26 : kind === 'ember' ? 20 : 28;
+        const radius = kind === 'acorn' ? 18 : kind === 'rock' || kind === 'pot' ? 26 : kind === 'ember' || kind === 'quill' ? 20 : 28;
         if (d.back) { this.batted(d); continue; }
         if (Math.hypot(b.x - d.tx, b.y - d.ty) < radius + (p.guard > 0 ? 10 : 0) && !p.air) {
           const src = { x: d.x0, y: d.y0 };
@@ -1508,6 +1545,12 @@ export class Sim {
       if (this.room.gateClosed) { this.room.gateClosed = false; this.say(bell.parryOnly ? 'TOCK! The acorn smacks the chime. The way opens.' : 'DING! The cage is open.'); }
       else this.say('DING!');
       this.rang = true;
+      return;
+    }
+    const queen = this.enemies.find(o => o.kind === 'queen' && !o.dead && !o.woke && o.mode !== 'under');
+    if (queen && Math.hypot(queen.x - d.tx, queen.y - d.ty) < queen.r + 26) {
+      this.damage(queen, 3); queen.stun = Math.max(queen.stun, 0.8); this.fx('chomp', queen.x, queen.y - 30);
+      this.say('Her own quill, straight back at her. She flinches!');
       return;
     }
     const chef = this.enemies.find(o => o.kind === 'pelican' && !o.dead && !o.woke);
@@ -2067,6 +2110,12 @@ export class Sim {
 
   /** A fish landed: the journal, sea glass, and milestones. The second Moray Twin ends the trance and gives the Pearl. */
   private caughtFish(def: FishDef, len: number, first: boolean, giant: boolean): void {
+    if (def.id === 'bloodshark') {
+      this.world[this.room.def.id] = { ...(this.world[this.room.def.id] ?? { gateOpen: true, bread: [...this.breadGot], chest: false, rang: this.rang }), boss: true };
+      for (const e of this.enemies) if (this.active(e)) { e.woke = 0.001; this.fx('wake', e.x, e.y); }
+      this.events.push({ type: 'finale' });
+      return;
+    }
     const k = this.kit, rec = k.fish[def.id] ?? { n: 0, best: 0 };
     const record = len > rec.best && rec.n > 0;
     rec.n++; rec.best = Math.max(rec.best, len); k.fish[def.id] = rec;
@@ -2483,6 +2532,99 @@ export class Sim {
     }
   }
 
+  /** Seconds that bread keeps Biscuit deaf to the Swan Queen's song. */
+  songProof = 0;
+
+  /** With all six ingredients, the Moon Elixir is brewed (Bimbo's power comes back). Returns whether it is. */
+  brewElixir(): boolean {
+    const k = this.kit;
+    if (k.elixir) return true;
+    const missing = INGREDIENTS.filter(i => !k.ingredients.has(i.id));
+    if (missing.length) { this.say(`The elixir needs all six ingredients. Still missing: ${missing.map(i => i.name).join(', ')}.`); return false; }
+    k.elixir = true; this.pack.water = 1;
+    this.events.push({ type: 'elixir' });
+    this.say('Six legendary ingredients, one tired raccoon, a fish in a backpack: the MOON ELIXIR is brewed. Bimbo shines like the old moon!');
+    return true;
+  }
+
+  /**
+   * The Swan Queen, entranced by the blood moon through her crown. She glides round her moon pool and flings
+   * quills (bat them back), dives under and surfaces at the edge to strike (latch on and yank to haul her out
+   * onto the marble: bites do double), and sings: the song turns Biscuit on Rocco unless he's eating bread or a
+   * honk drowns her out. Below half she sings more and dives faster.
+   */
+  private queenAI(e: Enemy, dt: number): [number, number] {
+    const p = this.player, g = this.goose, room = this.room, angry = e.hp < e.max / 2;
+    e.modeT += dt; e.cd -= dt;
+    if (p.dead) return [0, 0];
+    const bimbo = this.packPoint(10), pool = room.def.pits?.[0], cx = pool ? pool.x + pool.w / 2 : e.hx, cy = pool ? pool.y + pool.h / 2 : e.hy;
+    const latched = g.state === 'latched' && g.target === e;
+    if (latched && e.mode !== 'surface' && e.mode !== 'beached') { e.grip += dt; if (e.grip > 1.2) { e.grip = 0; g.state = 'held'; this.say('She shrugs Biscuit off with a sweep of her wing.'); } } else e.grip = 0;
+    if (e.stun > 0 && e.mode !== 'under') return [0, 0];
+    switch (e.mode) {
+      case 'stalk': case 'glide': {
+        e.mode = 'glide'; e.air = 0;
+        // she glides round the pool's rim
+        const a = Math.atan2(e.y - cy, e.x - cx) + dt * (angry ? 0.55 : 0.4), R = pool ? Math.max(pool.w, pool.h) * 0.62 + 30 : 200;
+        const tx = cx + Math.cos(a) * R, ty = cy + Math.sin(a) * R * 0.85, k = 1 - Math.exp(-dt * 3);
+        e.x += (tx - e.x) * k; e.y += (ty - e.y) * k; room.collide(e);
+        if (e.cd > 0) return [0, 0];
+        const r = this.rng(); e.modeT = 0; e.hit = false;
+        if (r < (angry ? 0.35 : 0.25)) { e.mode = 'song'; this.say('The Swan Queen begins to sing... Biscuit\'s eyes start to go red!'); this.hint('song', 'Her song turns Biscuit against you. Toss him bread [F], or HONK to drown her out!'); }
+        else if (r < 0.62) e.mode = 'quills';
+        else e.mode = 'under';
+        return [0, 0];
+      }
+      case 'quills': {
+        if (e.modeT < (angry ? 0.45 : 0.6)) return [0, 0];
+        const n = angry ? 8 : 5;
+        for (let i = 0; i < n; i++) {
+          const sx = i ? (this.rng() - 0.5) * 160 : 0, sy = i ? (this.rng() - 0.5) * 110 : 0;
+          this.darts.push({ x0: e.x, y0: e.y - 50, tx: bimbo.x + p.vx * 0.5 + sx, ty: bimbo.y + p.vy * 0.5 + sy, t: 0, T: 0.75 + i * 0.09, kind: 'quill' });
+        }
+        this.say('A fan of quills!');
+        e.mode = 'glide'; e.cd = (angry ? 0.9 : 1.4) + this.rng() * 0.6;
+        return [0, 0];
+      }
+      case 'song': {
+        if (e.modeT < (angry ? 1.2 : 1.6)) return [0, 0];
+        if (this.songProof > 0) this.say('Biscuit munches loudly through the whole song. He didn\'t hear a note.');
+        else if (g.state !== 'loose' && g.state !== 'returning') { this.goFeral('The song gets into Biscuit\'s head. He turns on YOU! Bread [F] will bring him back.'); g.furious = Math.max(g.furious, 3); }
+        e.mode = 'glide'; e.modeT = 0; e.cd = 1.4;
+        return [0, 0];
+      }
+      case 'under': {                                  // she dives, and glides under the water to the edge nearest the pack
+        e.air = 60;
+        if (!pool) { e.mode = 'glide'; return [0, 0]; }
+        const edge = { x: Math.max(pool.x + 20, Math.min(pool.x + pool.w - 20, bimbo.x)), y: Math.max(pool.y + 20, Math.min(pool.y + pool.h - 20, bimbo.y)) };
+        if (e.modeT < 0.3) { const k = 1 - Math.exp(-dt * 6); e.x += (cx - e.x) * k; e.y += (cy - e.y) * k; return [0, 0]; }
+        const [ux, uy, l] = dirTo(e, edge), sp = (angry ? 260 : 200) * dt;
+        e.x += ux * Math.min(sp, l); e.y += uy * Math.min(sp, l);
+        if (l < 6 || e.modeT > 2.2) { e.mode = 'surface'; e.modeT = 0; e.air = 0; e.hit = false; this.fx('splash', e.x, e.y); }
+        return [0, 0];
+      }
+      case 'surface': {                                // up at the edge: a strike at the pack, then a moment to grab her
+        e.air = 0;
+        if (!e.hit && e.modeT > 0.35) { e.hit = true; if (Math.hypot(bimbo.x - e.x, bimbo.y - e.y) < 70) this.hurtPlayer(1, true, e, 'peck'); }
+        if (e.modeT > (angry ? 1.2 : 1.6)) {
+          if (latched) g.state = 'held';
+          const land = this.nearestLand(e.x, e.y, e.r); e.x = land.x; e.y = land.y; e.mode = 'glide'; e.modeT = 0; e.cd = 0.8;
+        }
+        return [0, 0];
+      }
+      case 'beached':
+        if (e.modeT > (angry ? 2.4 : 3)) { e.mode = 'glide'; e.modeT = 0; e.cd = 0.6; }
+        return [0, 0];
+      default: e.mode = 'glide'; return [0, 0];
+    }
+  }
+
+  /** The Blood Moat: Biscuit has been cut loose; the shark has to be landed three times. */
+  sharkHits = 0;
+  /** The shark has bitten through the leash (set by the Blood Moat's opening scene, or on arrival without one). */
+  sharkCut = false;
+  private minionT = 3;
+
   /** Seconds of the Pelican Chef's all-vents eruption left. */
   steamAll = 0;
 
@@ -2578,6 +2720,38 @@ export class Sim {
   /** Fire bars, slamming statues, and the guard waves in the Ballroom. */
   private stepCastle(dt: number): void {
     const p = this.player, g = this.goose, def = this.room.def;
+    this.songProof = Math.max(0, this.songProof - dt);
+    // the throne stair opens for three Royal Seals
+    if (def.sealGate && this.room.gateClosed) {
+      if (this.kit.seals.size >= def.sealGate) {
+        this.room.gateClosed = false; this.rang = true;
+        this.world[def.id] = { ...(this.world[def.id] ?? { gateOpen: true, bread: [...this.breadGot], chest: false, rang: true }), gateOpen: true };
+        this.fx('ring', p.x, p.y - 40); this.events.push({ type: 'sound', kind: 'chest' });
+        this.say('The three Royal Seals glow in the satchel. The great doors to the throne room swing open.');
+      } else if (p.y < 140 && Math.abs(p.x - (def.gate!.x + def.gate!.w / 2)) < 120) this.hint('seals', `The throne room doors are sealed. Royal Seals: ${this.kit.seals.size} of ${def.sealGate}. The Foyer, the Kitchens and the Keep each hold one.`);
+    }
+    // the Queen's door opens once she's beaten and the elixir is brewed
+    if (def.boss === 'queen' && this.room.gateClosed && this.world[def.id]?.boss && this.kit.elixir) this.room.gateClosed = false;
+    // the Blood Moat: the shark has bitten through the leash; Biscuit fights loose until it's beaten
+    if (def.fishing?.boss && !this.world[def.id]?.boss) {
+      if (g.state !== 'loose' && this.sharkCut) { g.state = 'loose'; g.feral = false; g.cut = 999; g.t = 99; }
+      if (g.state === 'loose') { g.cut = Math.max(g.cut ?? 0, 5); g.grabCd = 1; }   // the leash is gone: nothing to grab
+      this.minionT -= dt;
+      const alive = this.enemies.filter(e => this.active(e)).length;
+      if (this.sharkCut && this.minionT <= 0 && alive < 3 && def.vents.length) {
+        this.minionT = 5 / this.diff.tempo;
+        const v = def.vents[Math.floor(this.rng() * def.vents.length)]!;
+        const e = this.mkEnemy(this.rng() < 0.5 ? 'crab' : 'mimic', v.x, v.y); if (e.kind === 'mimic') { e.mode = 'hop'; e.air = 0; }
+        e.cd = 1; this.enemies.push(e); this.fx('ring', v.x, v.y);
+      }
+    } else if (def.fishing?.boss && this.sharkCut) { this.sharkCut = false; g.cut = 0; g.grabCd = 0; g.state = 'returning'; this.say('Biscuit waddles back. Rocco ties a brand new line. HONK.'); }
+    (def.herbs ?? []).forEach((h, i) => {
+      if (this.kit.ingredients.has(h.id) || Math.hypot(h.x - p.x, h.y - p.y) > 26) return;
+      this.kit.ingredients.add(h.id);
+      this.fx('chest', h.x, h.y - 10); this.events.push({ type: 'sound', kind: 'learn' });
+      this.say(`A legendary ingredient: ${ingredientById(h.id)?.name ?? h.id}! (${this.kit.ingredients.size} of ${INGREDIENTS.length} for the elixir)`);
+      void i;
+    });
     if (def.firebars) {
       for (const b of this.fireballs()) {
         if (!p.air && !p.dead && Math.hypot(b.x - p.x, b.y - (p.y - 10)) < 7 + p.r * 0.7) this.hurtPlayer(1, true, b, 'burn');

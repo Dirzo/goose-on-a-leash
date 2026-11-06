@@ -94,7 +94,7 @@ export const BOTTLE_NOTES = [
 ];
 
 export interface FishingSpot extends Vec { name: string; deep?: boolean }
-export interface FishingGrounds { spots: FishingSpot[]; water: Rect; trench?: Rect }
+export interface FishingGrounds { spots: FishingSpot[]; water: Rect; trench?: Rect; /** A boss on the line instead of the ladder ('bloodshark'). */ boss?: string }
 
 export interface Shadow { id: number; def: FishDef; x: number; y: number; tx: number; ty: number; mode: 'swim' | 'come' | 'flee'; t: number }
 export interface Hooked { def: FishDef; len: number; giant: boolean; stamina: number; tension: number; runIn: number; runT: number; warn: number; slack: number; twin: boolean }
@@ -117,7 +117,13 @@ export interface FishingHost {
   caught(def: FishDef, len: number, first: boolean, giant: boolean): void;
   /** The Moray Pearl has been found (the Moonfish rises after). */
   pearl(): boolean;
+  /** A boss on the line reached the rock: it slams into it. Returns how many more times it must. */
+  bossLanded?(def: FishDef): number;
 }
+
+/** The Blood Shark: not in the journal. Landed three times against the Last Rock, it is beaten. */
+export const BLOOD_SHARK: FishDef = { id: 'bloodshark', name: 'The Blood Shark', tier: 6, rarity: 'legendary', color: '#ff4a4a', len: [900, 900], size: 40, speed: 70,
+  pull: 0.92, stamina: 7, runEvery: 1.7, runFor: 1.5, bite: 0.38, glass: 0, fact: '' };
 
 const RANGE = 170;           // how far past its depth a shadow may roam
 const LAND = 30;             // the fish is at the shore
@@ -159,6 +165,7 @@ export class Fishing {
 
   /** Pick what a new shadow in open water (or the trench) is: the ladder so far plus the next rung, weighted by rarity. */
   private pick(trench: boolean): FishDef | null {
+    if (this.grounds?.boss) return trench ? null : BLOOD_SHARK;
     const top = this.topTier(), rec = this.host.record();
     const pool = FISH.filter(f => (trench ? f.tier === 5 : f.tier < 5 && f.tier <= top + 1) && f.id !== 'moray' && (!f.afterPearl || this.host.pearl()));
     if (trench) {
@@ -181,7 +188,7 @@ export class Fishing {
       const r = def.trench && g.trench ? g.trench : g.water;
       const x = r.x + this.host.rng() * r.w, y = r.y + this.host.rng() * r.h;
       if (!this.host.inWater(x, y)) continue;
-      if (def.trench) return { x, y };
+      if (def.trench || this.grounds?.boss) return { x, y };
       if (g.trench && x >= g.trench.x && x <= g.trench.x + g.trench.w && y >= g.trench.y && y <= g.trench.y + g.trench.h) continue;
       const d = Math.min(...g.spots.map(s => Math.hypot(s.x - x, s.y - y))), depth = TIER_DEPTH[def.tier]!;
       if (d >= depth && d <= depth + RANGE) return { x, y };
@@ -195,7 +202,7 @@ export class Fishing {
     const inTrench = (sh: Shadow) => !!sh.def.trench;
     for (const trench of [false, true]) {
       if (trench && !this.grounds.trench) continue;
-      const want = trench ? 3 : 9, have = this.shadows.filter(sh => inTrench(sh) === trench).length;
+      const want = this.grounds.boss ? (trench ? 0 : 1) : trench ? 3 : 9, have = this.shadows.filter(sh => inTrench(sh) === trench).length;
       if (have >= want || this.host.rng() > 0.2) continue;
       const def = this.pick(trench), p = def && this.place(def);
       if (def && p) this.shadows.push({ id: this.nextId++, def, x: p.x, y: p.y, tx: p.x, ty: p.y, mode: 'swim', t: 0 });
@@ -361,6 +368,16 @@ export class Fishing {
     if (h.tension >= 1) { this.host.fx('snap', this.bob.x, this.bob.y); this.host.sound('snap'); this.lose(`SNAP! The ${d.name} was too strong for a tight line. Let go when it runs!`); return; }
     if (!hold && h.tension < 0.05) { h.slack += dt; if (h.slack > 1.4) { this.lose(`The line went slack and the ${d.name} spat the hook.`); return; } }
     else h.slack = 0;
+    if (nd <= LAND && d.id === 'bloodshark' && this.host.bossLanded) {          // it slams into the rock, then bolts back out
+      const left = this.host.bossLanded(d);
+      if (left <= 0) { this.card = { def: d, len: h.len, first: true, giant: false, t: 0 }; this.host.caught(d, h.len, true, false); this.hooked = null; this.taker = null; this.phase = 'caught'; this.t = 0; return; }
+      const ox = (this.bob.x - s.x) / dist, oy = (this.bob.y - s.y) / dist;
+      this.bob.x = s.x + ox * 330; this.bob.y = s.y + oy * 330;
+      if (!this.host.inWater(this.bob.x, this.bob.y)) { this.bob.x = s.x + 300; this.bob.y = s.y; }
+      h.stamina = d.stamina; h.tension = 0.4; h.runIn = 0.6;
+      this.host.fx('splash', this.bob.x, this.bob.y);
+      return;
+    }
     if (nd <= LAND) { this.phase = 'land'; this.t = 0; this.host.say(`It leaps at the rocks! Biscuit, GRAB IT! [E]`); this.host.fx('splash', this.bob.x, this.bob.y); this.host.sound('splash'); }
   }
 

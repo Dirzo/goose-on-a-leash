@@ -1,0 +1,178 @@
+{
+ "id": "castle-6",
+ "name": "The Blood Moat",
+ "subtitle": "Castle Honkmore \u00b7 the Blood Shark",
+ "width": 1500,
+ "height": 1000,
+ "walls": [
+  {
+   "x": 178,
+   "y": 178,
+   "w": 44,
+   "h": 44,
+   "kind": "pillar"
+  },
+  {
+   "x": 178,
+   "y": 778,
+   "w": 44,
+   "h": 44,
+   "kind": "pillar"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1500,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 980,
+   "w": 1500,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 458.0,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 542.0,
+   "w": 20,
+   "h": 458.0,
+   "kind": "border"
+  },
+  {
+   "x": 1480,
+   "y": 0,
+   "w": 20,
+   "h": 1000,
+   "kind": "border"
+  }
+ ],
+ "pits": [
+  {
+   "x": 560,
+   "y": 20,
+   "w": 920,
+   "h": 960,
+   "kind": "water"
+  }
+ ],
+ "bridges": [],
+ "refills": [
+  {
+   "x": 60,
+   "y": 460,
+   "w": 80,
+   "h": 80
+  }
+ ],
+ "posts": [],
+ "vents": [
+  {
+   "x": 120,
+   "y": 120
+  },
+  {
+   "x": 120,
+   "y": 880
+  },
+  {
+   "x": 420,
+   "y": 120
+  },
+  {
+   "x": 420,
+   "y": 880
+  }
+ ],
+ "breadSpots": [],
+ "enemies": [],
+ "doors": [
+  {
+   "id": "w",
+   "x": 0,
+   "y": 458.0,
+   "w": 26,
+   "h": 84,
+   "to": "castle-5",
+   "toDoor": "e",
+   "spawn": {
+    "x": 66,
+    "y": 500
+   },
+   "label": "The Throne Room",
+   "side": "W"
+  }
+ ],
+ "paths": [],
+ "zones": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1500,
+   "h": 1000,
+   "name": "The Blood Moat"
+  }
+ ],
+ "lanterns": [
+  {
+   "x": 450,
+   "y": 500
+  },
+  {
+   "x": 250,
+   "y": 500
+  }
+ ],
+ "gate": null,
+ "bell": null,
+ "exit": null,
+ "bucket": null,
+ "knightSpawn": null,
+ "springs": [
+  {
+   "x": 100,
+   "y": 490
+  }
+ ],
+ "fishing": {
+  "spots": [
+   {
+    "x": 540,
+    "y": 500,
+    "name": "The Last Rock"
+   }
+  ],
+  "water": {
+   "x": 560,
+   "y": 20,
+   "w": 920,
+   "h": 960
+  },
+  "boss": "bloodshark"
+ },
+ "biome": "castle",
+ "lightKind": "turtle",
+ "heavyKind": "turtle",
+ "ventSpawns": false,
+ "blood": true,
+ "rooms": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1500,
+   "h": 1000
+  }
+ ],
+ "playerStart": {
+  "x": 66,
+  "y": 500
+ }
+}

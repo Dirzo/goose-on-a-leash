@@ -581,7 +581,7 @@ export class ArtRenderer {
       if (e.dead) continue;
       alive.add(e.id);
       let s = this.foes.get(e.id);
-      if (!s) { s = this.worldIgnore(this.scene.add.sprite(0, 0, ({ snapper: 'snapper', elder: 'snapper', heron: 'heron', squirrel: 'squirrel', badger: 'badger', king: 'king', crab: 'crab', gull: 'gull', gullbeard: 'gullbeard', eel: 'eel', turtle: 'turtle', bellhop: 'bellhop', pelican: 'pelican', mimic: 'crab', blackswan: 'blackswan' } as Record<string, string>)[e.kind] ?? 'frog')); this.foes.set(e.id, s); }
+      if (!s) { s = this.worldIgnore(this.scene.add.sprite(0, 0, ({ snapper: 'snapper', elder: 'snapper', heron: 'heron', squirrel: 'squirrel', badger: 'badger', king: 'king', crab: 'crab', gull: 'gull', gullbeard: 'gullbeard', eel: 'eel', turtle: 'turtle', bellhop: 'bellhop', pelican: 'pelican', mimic: 'crab', blackswan: 'blackswan', queen: 'queen' } as Record<string, string>)[e.kind] ?? 'frog')); this.foes.set(e.id, s); }
       const { x, y } = EP(e);
       const awake = e.woke > 0 || (e.stun > 0 && e.kind !== 'snapper');
       const kind = e.kind === 'heron' ? (e.woke > 0 ? 'heron_awake' : 'heron')
@@ -596,6 +596,7 @@ export class ArtRenderer {
       if (e.kind === 'mimic') { s.setVisible(false); this.drawMimic(sim, e, x, y, time); continue; }
       if (e.kind === 'pelican') { this.drawPelican(sim, e, s, x, y, time); continue; }
       if (e.kind === 'blackswan') { this.drawBlackSwan(sim, e, s, x, y, time); continue; }
+      if (e.kind === 'queen') { this.drawQueen(sim, e, s, x, y, time); continue; }
       if (e.kind === 'crab' || e.kind === 'gull' || e.kind === 'gullbeard' || e.kind === 'eel') {
         this.drawWharfCritter(sim, e, s, x, y, time);
         continue;
@@ -731,6 +732,7 @@ export class ArtRenderer {
       this.floor.fillStyle(0xff4a4a, 0.15 * u); this.floor.fillEllipse(d.tx, d.ty, r * 2.2, r * 1.1);
       const fx2 = d.x0 + (d.tx - d.x0) * u, fy2 = d.y0 + (d.ty - d.y0) * u - Math.sin(u * Math.PI) * (kind === 'acorn' ? 50 : 90);
       if (kind === 'feather') { f2.lineStyle(2, 0xe8eef2, 1); f2.lineBetween(fx2 - 3, fy2 - 6, fx2 + 3, fy2 + 6); f2.fillStyle(0x7890aa, 1); f2.fillRect(fx2 - 2, fy2 - 6, 3, 6); }
+      else if (kind === 'quill') { f2.lineStyle(2, 0xf6f8fa, 1); f2.lineBetween(fx2 - 4, fy2 - 5, fx2 + 4, fy2 + 5); f2.fillStyle(0xf0c040, 1); f2.fillRect(fx2 + 3, fy2 + 4, 2, 2); }
       else if (kind === 'ember') {
         const fl = 1 + Math.sin(d.t * 40) * 0.2;
         f2.fillStyle(0xff6a1a, 0.3); f2.fillCircle(fx2, fy2, 9 * fl); f2.fillStyle(0xff8a2a, 1); f2.fillCircle(fx2, fy2, 4.5 * fl); f2.fillStyle(0xffe08a, 1); f2.fillCircle(fx2 - 1, fy2 - 1, 2);
@@ -847,7 +849,7 @@ export class ArtRenderer {
       g.fillStyle(0x1a1522, 1); g.fillRect(W - 282, 82, 252, 6);
       g.fillStyle(0xd8ecf4, 1); g.fillRect(W - 282, 82, 252 * Math.min(1, out / max), 6);
       const canCut = (go.fury >= C.castCutFury || go.furious > 0) && (go.state === 'held' || go.state === 'latched');
-      const label = cut > 0 ? `CUT LOOSE · ${Math.ceil(cut)}s` : canCut ? '[Q] CUT THE LINE' : go.state === 'held' ? `LINE ${Math.round(out)}/${max} · hold, release to cast` : `LINE ${Math.round(out)}/${max} · hold to let out`;
+      const label = sim.sharkCut ? 'THE SHARK BIT THROUGH THE LEASH' : cut > 0 ? `CUT LOOSE · ${Math.ceil(cut)}s` : canCut ? '[Q] CUT THE LINE' : go.state === 'held' ? `LINE ${Math.round(out)}/${max} · hold, release to cast` : `LINE ${Math.round(out)}/${max} · hold to let out`;
       this.ht('mono', label, W - 282, 104, 11, cut > 0 ? '#ff8a6a' : canCut ? '#f2c230' : '#9aa3a6', canCut && cut <= 0 ? 0.6 + 0.4 * Math.sin(this.time * 6) : 1, 'left', true);
     }
 
@@ -889,11 +891,11 @@ export class ArtRenderer {
     if (this.wtWave) { panel(W / 2 - 110, 124, 220, 30); this.ht('mono', this.wtWave, W / 2, 144, 13, '#ff8a6a', 0.8 + 0.2 * Math.sin(this.time * 6), 'center', true); }
 
     // boss health
-    const boss = sim.enemies.find(e => (e.kind === 'heron' || e.kind === 'king' || (e.kind === 'pelican' && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < 700) || (e.kind === 'blackswan' && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < 750) || (e.kind === 'gullbeard' && e.mode !== 'stalk') || (e.kind === 'elder' && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < 620)) && !e.woke);
+    const boss = sim.enemies.find(e => (e.kind === 'heron' || e.kind === 'king' || (e.kind === 'pelican' && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < 700) || (e.kind === 'blackswan' && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < 750) || e.kind === 'queen' || (e.kind === 'gullbeard' && e.mode !== 'stalk') || (e.kind === 'elder' && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < 620)) && !e.woke);
     if (boss) {
       const bw2 = 520, bx2 = W / 2 - bw2 / 2, by2 = 150, angry = boss.hp < boss.max / 2;
       g.fillStyle(0x0b0a10, 0.8); g.fillRect(bx2 - 12, by2 - 30, bw2 + 24, 52);
-      this.ht('display', boss.kind === 'king' ? 'THE BURROW KING' : boss.kind === 'gullbeard' ? 'CAPTAIN GULLBEARD' : boss.kind === 'pelican' ? 'THE PELICAN CHEF' : boss.kind === 'blackswan' ? 'THE BLACK SWAN' : boss.kind === 'elder' ? 'OLD SNAPPER' : 'THE HERON FERRYMAN', W / 2, by2 - 8, 16, angry ? '#ff8a8a' : '#e9e4d6');
+      this.ht('display', boss.kind === 'king' ? 'THE BURROW KING' : boss.kind === 'gullbeard' ? 'CAPTAIN GULLBEARD' : boss.kind === 'pelican' ? 'THE PELICAN CHEF' : boss.kind === 'blackswan' ? 'THE BLACK SWAN' : boss.kind === 'queen' ? 'THE SWAN QUEEN' : boss.kind === 'elder' ? 'OLD SNAPPER' : 'THE HERON FERRYMAN', W / 2, by2 - 8, 16, angry ? '#ff8a8a' : '#e9e4d6');
       g.fillStyle(0x1a1522, 1); g.fillRect(bx2, by2, bw2, 12);
       g.fillStyle(angry ? 0xe05a47 : 0xc94b3a, 1); g.fillRect(bx2 + 2, by2 + 2, (bw2 - 4) * Math.max(0, boss.hp / boss.max), 8);
       g.fillStyle(0xe9e4d6, 0.5); g.fillRect(bx2 + bw2 / 2, by2, 1, 12);
@@ -1320,6 +1322,31 @@ export class ArtRenderer {
     if (e.mode === 'stuck' || e.mode === 'stagger') for (let i = 0; i < 3; i++) { const a = time * 5 + i * 2.1; f.fillStyle(0xf2c230, 1); this.star(f, x + Math.cos(a) * 24, y - 100 + Math.sin(a) * 3, 3.5); }
   }
 
+  /** The Swan Queen: her song's red rings, her ripple under the water, the moment to haul her out. */
+  private drawQueen(sim: Sim, e: Enemy, s: Phaser.GameObjects.Sprite, x: number, y: number, time: number): void {
+    const g = this.floor, f = this.fxg, awake = e.woke > 0;
+    const blink = ((time * 1.1 + e.id * 0.37) % 3.2) < 0.14;
+    const under = !awake && e.mode === 'under';
+    s.setVisible(!under);
+    if (under) { g.lineStyle(2, 0xd8f0ff, 0.5); g.strokeEllipse(x, y, 50 + Math.sin(time * 6) * 6, 16); g.lineStyle(1, 0xff4a4a, 0.4); g.strokeEllipse(x, y, 30, 10); return; }
+    let frame = blink ? 1 : 0;
+    if (!awake) frame = e.mode === 'quills' ? 2 : e.mode === 'song' ? 3 : e.mode === 'surface' ? 4 : e.mode === 'beached' ? 5 : frame;
+    this.show(s, awake ? 'queen_awake' : 'queen', awake ? Math.min(1, frame) : frame);
+    s.setPosition(Math.round(x), Math.round(y + (e.mode === 'glide' ? Math.sin(time * 2) * 2 : 0))).setDepth(y).setFlipX(sim.player.x < x).setAlpha(1);
+    const tell = (e.mode === 'quills' || e.mode === 'song') && Math.floor(e.modeT * 12) % 2 === 0;
+    if (e.hitT > 0 || tell) s.setTint(e.hitT > 0 ? 0xffffff : 0xffd0d0).setTintMode(Phaser.TintModes.FILL); else s.clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
+    if (e.mode !== 'surface') { g.fillStyle(0x000000, 0.3); g.fillEllipse(x, y + 2, 64, 14); }
+    if (awake) { if (e.woke < 8) this.wt('The Swan Queen', x, y - 110, 10, '#d8f0ff', Math.min(1, 8 - e.woke)); return; }
+    if (e.mode === 'song') {                             // red rings rolling out, and a note or two
+      for (let i = 0; i < 3; i++) { const k = ((time * 0.8 + i / 3) % 1); f.lineStyle(2, 0xff4a4a, 0.6 * (1 - k)); f.strokeEllipse(x, y - 40, 40 + k * 320, 20 + k * 160); }
+      this.wt('♪', x + 30 + Math.sin(time * 4) * 10, y - 100 - (time * 20) % 20, 12, '#ff8a8a', 0.8);
+      this.wt('HONK or BREAD!', x, y - 118, 9, '#f2c230', 0.6 + 0.4 * Math.sin(time * 14));
+    }
+    if (e.mode === 'quills') this.wt('!', x, y - 110, 14, '#ff4a4a', 1);
+    if (e.mode === 'surface') this.wt('LATCH + YANK!', x, y - 100, 9, '#9ae0ff', 0.6 + 0.4 * Math.sin(time * 14));
+    if (e.mode === 'beached' || e.stun > 0) for (let i = 0; i < 3; i++) { const a = time * 5 + i * 2.1; f.fillStyle(0xf2c230, 1); this.star(f, x + Math.cos(a) * 22, y - 60 + Math.sin(a) * 3, 3.5); }
+  }
+
   /** Fire bars (a stone hub, a chain of fireballs, an ember glow) and the slamming goose statues. */
   private drawCastle(sim: Sim, time: number): void {
     const g = this.floor, f = this.fxg, def = sim.room.def;
@@ -1414,7 +1441,7 @@ export class ArtRenderer {
       const cx = Math.cos(dir), cy = Math.sin(dir);
       // a glint of moonlight on the water above it, so it reads against the dark sea
       f.lineStyle(1, 0x9ad8e8, 0.22 + 0.12 * Math.sin(time * 3 + sh.id)); f.strokeEllipse(sh.x, sh.y, big * 3 + Math.sin(time * 2 + sh.id) * 3, big * 1.4);
-      g.fillStyle(0x000204, a);
+      g.fillStyle(sh.def.id === 'bloodshark' ? 0x2a0004 : 0x000204, sh.def.id === 'bloodshark' ? 0.75 : a);
       if (sh.def.id === 'moray') {
         for (let i = 0; i < 9; i++) { const k = i * 5, w = Math.sin(time * 6 + i * 0.8 + sh.id) * 4; g.fillCircle(sh.x - cx * k - cy * w, sh.y - cy * k + cx * w, 5 - i * 0.3); }
       } else {
@@ -1470,13 +1497,13 @@ export class ArtRenderer {
     const known = (id: string) => !!sim.kit.fish[id]?.n;
     if (F.phase === 'ready' && !F.card) {
       const n = FISH.filter(f => known(f.id)).length;
-      this.ht('mono', `FISHING · hold to wind up, let go to cast · ${n}/${FISH.length} in the journal [J]`, W / 2, H - 180, 12, '#9ad8e8', 0.85, 'center', true);
+      this.ht('mono', sim.room.def.fishing.boss ? `THE LAST CAST · hook the Blood Shark, slam it into the rock · ${sim.sharkHits}/3` : `FISHING · hold to wind up, let go to cast · ${n}/${FISH.length} in the journal [J]`, W / 2, H - 180, 12, sim.room.def.fishing.boss ? '#ff8a8a' : '#9ad8e8', 0.85, 'center', true);
     }
     const h = F.hooked;
     if (h && (F.phase === 'reel' || F.phase === 'land')) {
       const x0 = W / 2 - 220, y0 = H - 228;
       panel(x0, y0, 440, 74);
-      const name = known(h.def.id) ? h.def.name : '???';
+      const name = h.def.id === 'bloodshark' ? `THE BLOOD SHARK · ${3 - sim.sharkHits} MORE` : known(h.def.id) ? h.def.name : '???';
       this.ht('display', `${h.giant ? 'GIANT ' : ''}${name}`, x0 + 14, y0 + 22, 15, h.def.color, 1, 'left');
       const run = h.runT > 0, warn = h.warn > 0, tired = h.stamina <= 0;
       const label = F.phase === 'land' ? 'GRAB IT! [E]' : run ? 'LET GO!' : warn ? 'IT\'S GOING TO RUN...' : tired ? 'TIRED: REEL IT IN' : 'HOLD TO REEL';

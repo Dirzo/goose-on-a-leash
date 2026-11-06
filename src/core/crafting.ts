@@ -27,6 +27,8 @@ export class Kit {
   reel = false;
   /** Legendary elixir ingredients gathered (see data/elixir.ts). */
   ingredients = new Set<string>();
+  /** The Moon Elixir has been brewed (all six ingredients). */
+  elixir = false;
   /** Castle Honkmore's Royal Seals (one per wing): together they open the throne room. */
   seals = new Set<string>();
   /** The fish journal: how many of each, and the biggest (cm). */

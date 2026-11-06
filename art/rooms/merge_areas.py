@@ -37,6 +37,8 @@ AREAS = [
     ('castle-2', 'The Grand Foyer', 'Castle Honkmore · the first wing', ['castle-4', 'castle-3', 'castle-2']),
     ('castle-3', 'The Royal Kitchens', 'Castle Honkmore · the second wing', ['castle-5', 'castle-6', 'castle-7']),
     ('castle-4', 'The Lava Keep', 'Castle Honkmore · the third wing', ['castle-8', 'castle-9', 'castle-10']),
+    ('castle-5', 'The Throne Room', 'Castle Honkmore · the Swan Queen', ['castle-11']),
+    ('castle-6', 'The Blood Moat', 'Castle Honkmore · the Blood Shark', ['castle-12']),
 ]
 ROOM_TO_AREA = {r: a for a, _, _, rs in AREAS for r in rs}
 
@@ -111,7 +113,7 @@ def merge(area_id, name, subtitle, ids):
            'doors': [], 'paths': [], 'zones': [], 'lanterns': [], 'gate': None, 'bell': None, 'exit': None, 'bucket': None,
            'knightSpawn': None}
     lists = ['pits', 'bridges', 'refills', 'posts', 'vents', 'breadSpots', 'enemies', 'kits', 'spools', 'brambles',
-             'bushes', 'barrels', 'shrooms', 'feathers', 'nests', 'glass', 'springs', 'firebars', 'crushers', 'carpets', 'grease', 'steam', 'embers']
+             'bushes', 'barrels', 'shrooms', 'feathers', 'nests', 'glass', 'springs', 'firebars', 'crushers', 'carpets', 'grease', 'steam', 'embers', 'herbs']
     for i in ids:
         R, (ox, oy) = rooms[i], pos[i]
         x0, y0, w, h = rects[i]
@@ -125,13 +127,13 @@ def merge(area_id, name, subtitle, ids):
         if R.get('fishing'):
             fg = R['fishing']
             out['fishing'] = {'spots': [shift_pt(p, ox, oy) for p in fg['spots']], 'water': shift_pt(fg['water'], ox, oy),
-                              **({'trench': shift_pt(fg['trench'], ox, oy)} if fg.get('trench') else {})}
+                              **({'trench': shift_pt(fg['trench'], ox, oy)} if fg.get('trench') else {}), **({'boss': fg['boss']} if fg.get('boss') else {})}
         if R.get('waves'): out['waves'] = R['waves']
         for k in ('gate', 'bell', 'chest', 'shrine', 'ferry', 'shop', 'pump'):
             if R.get(k):
                 assert not out.get(k), f'{area_id}: two {k}s'
                 out[k] = shift_pt(R[k], ox, oy)
-        for k in ('biome', 'lightKind', 'heavyKind', 'weather', 'stormRefill', 'stormDrain', 'ventSpawns', 'boss', 'winText', 'tiles'):
+        for k in ('biome', 'lightKind', 'heavyKind', 'weather', 'stormRefill', 'stormDrain', 'ventSpawns', 'boss', 'winText', 'tiles', 'sealGate', 'blood'):
             if k in R and R[k] is not None: out[k] = R[k]
         # doors that leave the area, and the border walls around this room with openings cut
         gaps = {s: list(opens.get((i, s), [])) for s in 'NSWE'}

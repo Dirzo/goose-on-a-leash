@@ -171,6 +171,8 @@ def render(R):
     bank = (sd >= 0) & (sd < 6)
     img[bank] = P['D1']; img[bank & (sd < 2.5)] = P['MUD']; img[(sd >= 4.5) & (sd < 6)] = P['D2']
     wn = np.sin(xx * 0.045 + np.sin(yy * 0.05) * 2 + yy * 0.012 + seed) * np.sin(yy * 0.21 + np.sin(xx * 0.03) * 1.5) + 0.6 * np.sin(xx * 0.013 - yy * 0.02)
+    if R.get('blood'):                                     # the moat under the blood moon
+        for k_, v_ in (('W0', '1a0306'), ('W1', '2e060c'), ('W2', '4a0e16'), ('W3', 'c86a70')): P[k_] = hx(v_)
     img[water] = P['W1']; img[water & (wn < -0.9)] = P['W0']; img[water & (wn >= 0.7)] = P['W2']
     img[water & (sd < -40) & (wn < 0.2)] = P['W0']
     img[water & (sd > -3)] = P['W2']
@@ -417,6 +419,16 @@ def render(R):
             disk(cx, cy, r + 1, 'OUT'); disk(cx, cy, r, 'COL1'); disk(cx - 2, cy - 2, r - 3, 'COL2'); disk(cx - r * 0.35, cy - r * 0.35, r * 0.3, 'COL3')
             for a in range(0, 360, 30):
                 ax_, ay_ = cx + math.cos(math.radians(a)) * (r - 1), cy + math.sin(math.radians(a)) * (r - 1); px(ax_, ay_, 'COL0')
+            continue
+        if kind == 'throne':
+            x0, y0, x1, y1 = int(w['x']), int(w['y']), int(w['x'] + w['w']), int(w['y'] + w['h'])
+            shadow((x0 + x1) / 2 + 6, y1 + 6, w['w'] / 2 + 12, 10, 0.5)
+            img[y0 + 30:y1, x0 - 10:x1 + 10] = P['COL1']; img[y0 + 30, x0 - 10:x1 + 10] = P['COL3']        # the dais
+            img[y0:y1 - 12, x0 + 20:x1 - 20] = P['CP1']; img[y0 + 4:y1 - 16, x0 + 26:x1 - 26] = P['CP2']   # the seat
+            img[y0:y0 + 4, x0 + 16:x1 - 16] = P['GOLD']; img[y0:y1 - 12, x0 + 16:x0 + 20] = P['GOLD']; img[y0:y1 - 12, x1 - 20:x1 - 16] = P['GOLD']
+            cx = (x0 + x1) // 2
+            for k, dx in enumerate((-10, 0, 10)): img[y0 - 10 + (k % 2) * 4:y0, cx + dx - 2:cx + dx + 2] = P['GOLD']        # a crown on the back
+            img[y1 - 1, x0 - 10:x1 + 10] = P['OUT']
             continue
         if kind == 'statue':
             x0, y0, x1, y1 = int(w['x']), int(w['y']), int(w['x'] + w['w']), int(w['y'] + w['h'])

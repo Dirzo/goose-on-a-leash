@@ -141,6 +141,7 @@ ROOMS.append(room(
     bushes=[{'x': 692, 'y': 118, 'r': 26}],
     chest={'x': 440, 'y': 200, 'leash': 'vine'},
     kits=[{'x': 300, 'y': 400}], feathers=[{'x': 790, 'y': 80}],
+    herbs=[{'x': 830, 'y': 110, 'id': 'sap'}],                # Heartwood Sap, in the nook behind the bramble bush
     ferry={'x': 560, 'y': 430, 'name': 'Hollow Stump Spring'},
     bread=[{'x': 150, 'y': 450}],
     lantern={'x': 480, 'y': 180},

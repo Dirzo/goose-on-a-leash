@@ -814,6 +814,36 @@
   ],
   "points": {}
  },
+ "queen": {
+  "w": 104,
+  "h": 100,
+  "frames": 6,
+  "anchor": [
+   46,
+   98
+  ],
+  "points": {}
+ },
+ "queen_awake": {
+  "w": 104,
+  "h": 100,
+  "frames": 2,
+  "anchor": [
+   46,
+   98
+  ],
+  "points": {}
+ },
+ "fish_bloodshark": {
+  "w": 120,
+  "h": 48,
+  "frames": 1,
+  "anchor": [
+   60,
+   24
+  ],
+  "points": {}
+ },
  "tree": {
   "w": 96,
   "h": 140,

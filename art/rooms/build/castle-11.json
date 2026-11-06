@@ -1,0 +1,220 @@
+{
+ "id": "castle-11",
+ "name": "The Throne Room",
+ "subtitle": "Castle Honkmore \u00b7 the Swan Queen",
+ "width": 1300,
+ "height": 1000,
+ "playerStart": {
+  "x": 650,
+  "y": 930
+ },
+ "walls": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1300,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 980,
+   "w": 608.0,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 692.0,
+   "y": 980,
+   "w": 608.0,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 1000,
+   "kind": "border"
+  },
+  {
+   "x": 1280,
+   "y": 0,
+   "w": 20,
+   "h": 458.0,
+   "kind": "border"
+  },
+  {
+   "x": 1280,
+   "y": 542.0,
+   "w": 20,
+   "h": 458.0,
+   "kind": "border"
+  },
+  {
+   "x": 590,
+   "y": 50,
+   "w": 120,
+   "h": 80,
+   "kind": "throne"
+  },
+  {
+   "x": 238,
+   "y": 228,
+   "w": 44,
+   "h": 44,
+   "kind": "pillar"
+  },
+  {
+   "x": 1018,
+   "y": 228,
+   "w": 44,
+   "h": 44,
+   "kind": "pillar"
+  },
+  {
+   "x": 238,
+   "y": 728,
+   "w": 44,
+   "h": 44,
+   "kind": "pillar"
+  },
+  {
+   "x": 1018,
+   "y": 728,
+   "w": 44,
+   "h": 44,
+   "kind": "pillar"
+  }
+ ],
+ "gate": {
+  "x": 1254,
+  "y": 454,
+  "w": 12,
+  "h": 92
+ },
+ "pits": [
+  {
+   "x": 450,
+   "y": 330,
+   "w": 400,
+   "h": 300,
+   "kind": "water"
+  }
+ ],
+ "bridges": [],
+ "refills": [
+  {
+   "x": 80,
+   "y": 450,
+   "w": 90,
+   "h": 90
+  }
+ ],
+ "posts": [],
+ "bell": null,
+ "exit": null,
+ "vents": [],
+ "bucket": null,
+ "breadSpots": [
+  {
+   "x": 160,
+   "y": 160
+  },
+  {
+   "x": 1140,
+   "y": 160
+  },
+  {
+   "x": 160,
+   "y": 860
+  },
+  {
+   "x": 1140,
+   "y": 860
+  }
+ ],
+ "enemies": [
+  {
+   "kind": "queen",
+   "x": 650,
+   "y": 220
+  }
+ ],
+ "knightSpawn": null,
+ "doors": [
+  {
+   "id": "s",
+   "x": 608.0,
+   "y": 974,
+   "w": 84,
+   "h": 26,
+   "to": "castle-1",
+   "toDoor": "throne",
+   "spawn": {
+    "x": 650,
+    "y": 930
+   },
+   "label": "Honkmore Gate"
+  },
+  {
+   "id": "e",
+   "x": 1274,
+   "y": 458.0,
+   "w": 26,
+   "h": 84,
+   "to": "castle-12",
+   "toDoor": "w",
+   "spawn": {
+    "x": 1234,
+    "y": 500
+   },
+   "gated": true,
+   "label": "The Blood Moat"
+  }
+ ],
+ "paths": [],
+ "biome": "castle",
+ "lightKind": "turtle",
+ "heavyKind": "turtle",
+ "boss": "queen",
+ "ventSpawns": false,
+ "springs": [
+  {
+   "x": 120,
+   "y": 480
+  }
+ ],
+ "lanterns": [
+  {
+   "x": 650,
+   "y": 300
+  },
+  {
+   "x": 300,
+   "y": 500
+  },
+  {
+   "x": 1000,
+   "y": 500
+  },
+  {
+   "x": 650,
+   "y": 700
+  }
+ ],
+ "carpets": [
+  {
+   "x": 610,
+   "y": 130,
+   "w": 80,
+   "h": 200
+  },
+  {
+   "x": 610,
+   "y": 630,
+   "w": 80,
+   "h": 340
+  }
+ ]
+}

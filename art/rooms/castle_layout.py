@@ -40,12 +40,14 @@ ROOMS.append(room(
     [dict(id='s', side='S', at=640, to='tide-3', toDoor='n', label='Moonlit Cove'),
      dict(id='w', side='W', at=360, to='castle-2', toDoor='e', label='The Grand Foyer'),
      dict(id='e', side='E', at=360, to='castle-5', toDoor='w', label='The Royal Kitchens'),
-     dict(id='n', side='N', at=1060, to='castle-8', toDoor='s', label='The Lava Keep')],
+     dict(id='n', side='N', at=1060, to='castle-8', toDoor='s', label='The Lava Keep'),
+     dict(id='throne', side='N', at=640, to='castle-11', toDoor='s', gated=True, label='The Throne Room')],
     's', subtitle='Castle Honkmore · the gate', **K(),
+    gate=rect(598, 24, 84, 12), sealGate=3,
     pits=[rect(20, 640, 1240, 120, kind='water')],                           # the moat
     bridges=[rect(596, 630, 88, 140, kind='dock')],                          # the drawbridge
     props=[pillar(380, 220, 56), pillar(900, 220, 56), pillar(380, 520, 56), pillar(900, 520, 56),
-           rect(560, 60, 160, 70, kind='statue')],                         # the Swan Queen's statue
+           rect(430, 50, 110, 60, kind='statue'), rect(740, 50, 110, 60, kind='statue')],   # her statues flank the throne stair
     refills=[rect(580, 330, 120, 90)],
     springs=[{'x': 640, 'y': 370}],                                          # the courtyard fountain
     enemies=[turtle(300, 360), turtle(1000, 360), bellhop(640, 520)],
@@ -225,6 +227,40 @@ ROOMS.append(room(
     refills=[rect(80, 400, 80, 90)], springs=[{'x': 120, 'y': 430}],
     lanterns=[{'x': 600, 'y': 450}, {'x': 300, 'y': 450}, {'x': 900, 'y': 450}],
     carpets=[rect(160, 420, 900, 60)],
+    paths=[],
+))
+
+# ================================================================ the throne room and the Blood Moat
+# 11 --------------------------------------------------------------- The Throne Room (the Swan Queen)
+ROOMS.append(room(
+    'castle-11', 'The Throne Room', 1300, 1000,
+    [dict(id='s', side='S', at=650, to='castle-1', toDoor='throne', label='Honkmore Gate'),
+     dict(id='e', side='E', at=500, to='castle-12', toDoor='w', gated=True, label='The Blood Moat')],
+    's', subtitle='Castle Honkmore · the Swan Queen', **K(),
+    gate=rect(1254, 454, 12, 92),
+    pits=[rect(450, 330, 400, 300, kind='water')],                         # the Queen's moon pool
+    props=[rect(590, 50, 120, 80, kind='throne'), pillar(260, 250), pillar(1040, 250), pillar(260, 750), pillar(1040, 750)],
+    enemies=[foe('queen', 650, 220)],
+    boss='queen', ventSpawns=False,
+    bread=[{'x': 160, 'y': 160}, {'x': 1140, 'y': 160}, {'x': 160, 'y': 860}, {'x': 1140, 'y': 860}],
+    refills=[rect(80, 450, 90, 90)], springs=[{'x': 120, 'y': 480}],
+    lanterns=[{'x': 650, 'y': 300}, {'x': 300, 'y': 500}, {'x': 1000, 'y': 500}, {'x': 650, 'y': 700}],
+    carpets=[rect(610, 130, 80, 200), rect(610, 630, 80, 340)],
+    paths=[],
+))
+
+# 12 --------------------------------------------------------------- The Blood Moat (the Blood Shark)
+ROOMS.append(room(
+    'castle-12', 'The Blood Moat', 1500, 1000,
+    [dict(id='w', side='W', at=500, to='castle-11', toDoor='e', label='The Throne Room')],
+    'w', subtitle='Castle Honkmore · the Blood Shark', **K(),
+    pits=[rect(560, 20, 920, 960, kind='water')],
+    props=[pillar(200, 200), pillar(200, 800)],
+    fishing={'spots': [{'x': 540, 'y': 500, 'name': 'The Last Rock'}], 'water': {'x': 560, 'y': 20, 'w': 920, 'h': 960}, 'boss': 'bloodshark'},
+    vents=[{'x': 120, 'y': 120}, {'x': 120, 'y': 880}, {'x': 420, 'y': 120}, {'x': 420, 'y': 880}],
+    blood=True, ventSpawns=False,
+    refills=[rect(60, 460, 80, 80)], springs=[{'x': 100, 'y': 490}],
+    lanterns=[{'x': 450, 'y': 500}, {'x': 250, 'y': 500}],
     paths=[],
 ))
 
