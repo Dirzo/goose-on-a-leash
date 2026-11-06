@@ -10,6 +10,7 @@ import type { Enemy, Sim, SimEvent } from '../core/sim';
 import type { Vec } from '../core/math';
 import { SPRITES } from './assets';
 import { Atmosphere } from './atmosphere';
+import { CinemaView, type CinemaState } from './cinema';
 import { TextPool, fillP, smoothRope, dashed, type Face, type Snapshot } from './render';
 
 /** HUD layout space (the HUD is laid out at 1280x720 and scaled up by HUD_SCALE). */
@@ -98,6 +99,7 @@ export class ArtRenderer {
     };
     this.worldIgnore = world;
     this.atmo = new Atmosphere(scene, world);
+    this.cinemaView = new CinemaView(scene, screen, HUD_SCALE);
     this.buildPackUi(screen);
 
     this.setRoom(sim);
@@ -105,6 +107,9 @@ export class ArtRenderer {
 
   private bg: Phaser.GameObjects.Image;
   atmo: Atmosphere;
+  /** Set by the scene: the cinematic playing (if any). */
+  cinema: CinemaState | null = null;
+  private cinemaView: CinemaView;
   private trees: Phaser.GameObjects.Sprite[] = [];
   private roomId = '';
 
@@ -170,7 +175,7 @@ export class ArtRenderer {
     this.time += dt;
     const time = this.time;
     for (const q of this.quips) q.life -= dt;
-    this.hintT = Math.max(0, this.hintT - dt);
+    if (!(this.cinema && this.cinema.bars > 0.02)) this.hintT = Math.max(0, this.hintT - dt);   // hints wait for a cinematic to end
     this.quips = this.quips.filter(q => q.life > 0);
     for (const f of this.fx) f.t += dt;
     this.fx = this.fx.filter(f => f.t < (f.kind === 'faint' ? 1.6 : 0.8));
@@ -190,7 +195,7 @@ export class ArtRenderer {
     // look ahead where Rocco is heading and a little toward the aim, so there is room to see what's coming
     this.lead.x += (Math.max(-70, Math.min(70, pl.vx * 0.45)) - this.lead.x) * Math.min(1, dt * 2.5);
     this.lead.y += (Math.max(-45, Math.min(45, pl.vy * 0.35)) - this.lead.y) * Math.min(1, dt * 2.5);
-    const want = { x: P.x + (G.x - P.x) * 0.2 + (aim.x - P.x) * 0.08 + this.lead.x, y: P.y - 18 + (G.y - P.y) * 0.2 + (aim.y - P.y) * 0.08 + this.lead.y };
+    const want = this.cinema?.cam ? { ...this.cinema.cam } : { x: P.x + (G.x - P.x) * 0.2 + (aim.x - P.x) * 0.08 + this.lead.x, y: P.y - 18 + (G.y - P.y) * 0.2 + (aim.y - P.y) * 0.08 + this.lead.y };
     if (!this.cam) this.cam = { ...want };
     const k = 1 - Math.exp(-dt * 5);
     this.cam.x += (want.x - this.cam.x) * k; this.cam.y += (want.y - this.cam.y) * k;
@@ -716,7 +721,9 @@ export class ArtRenderer {
       f2.strokeCircle(ax, ay, 6); f2.lineBetween(ax - 10, ay, ax - 4, ay); f2.lineBetween(ax + 4, ay, ax + 10, ay); f2.lineBetween(ax, ay - 10, ax, ay - 4); f2.lineBetween(ax, ay + 4, ax, ay + 10);
     }
 
-    this.drawHud(sim);
+    const film = this.cinema && (this.cinema.bars > 0.02 || this.cinema.fade > 0.02);
+    if (!film) this.drawHud(sim); else this.hud.clear();
+    if (this.cinema) this.cinemaView.draw(this.cinema, SCREEN_W, SCREEN_H, time);
     this.wtext.end(); this.endExtra(); for (const p of [...Object.values(this.htext), ...Object.values(this.utext)]) p.end();
   }
 

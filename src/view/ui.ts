@@ -69,6 +69,10 @@ export function mountUi(scene: GameScene): void {
   const soundBtn = $('b-sound'), soundLabel = () => { soundBtn.textContent = `Sound: ${sound.muted ? 'off' : 'on'} [M]`; };
   soundLabel(); sound.onChange = soundLabel;
   soundBtn.onclick = () => { sound.toggle(); scene.game.canvas.focus(); };
+  const cineBtn = $('b-cine'), cineLabel = () => { cineBtn.textContent = `Cinematics: ${scene.cinemaOn ? 'on' : 'off'}`; };
+  cineLabel();
+  cineBtn.onclick = () => { scene.setCinemaOn(!scene.cinemaOn); cineLabel(); scene.game.canvas.focus(); };
+  $('b-cine-replay').onclick = () => { scene.sim.seen.clear(); scene.replayHere(); scene.game.canvas.focus(); };
   $('b-game-reset').onclick = () => { clearStoredSave(); if (location.search) location.search = ''; else location.reload(); };
   setInterval(() => { if (document.activeElement !== pick) syncPick(); }, 1000);
 
@@ -196,6 +200,7 @@ export function mountUi(scene: GameScene): void {
   scene.onShrine = () => { if (!open) { scene.setPackOpen(false); tab = 'biscuit'; openBook(); } };
 
   scene.controls.onUi = a => {
+    if (scene.cinema.active) { if (a === 'advance') scene.cinema.advance(); else if (a === 'close') scene.cinema.skip(); return; }
     if (a === 'book') { if (open) closeBook(); else { scene.setPackOpen(false); openBook(); } }
     else if (a === 'pack') { if (open) closeBook(); scene.setPackOpen(!scene.packOpen); }
     else if (a === 'closeBook' || a === 'close') { if (open) closeBook(); if (ferryOpen) closeFerry(); scene.setPackOpen(false); }

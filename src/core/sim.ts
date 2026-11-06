@@ -166,6 +166,8 @@ export class Sim {
   enemies: Enemy[] = [];
   items: Item[] = [];
   darts: Dart[] = [];
+  /** Cinematics already shown (ids from data/cinematics.ts). */
+  seen = new Set<string>();
   /** Where Rocco is aiming (world), from the last input. */
   aim: Vec = { x: 0, y: 0 };
   breadGot: boolean[] = [];

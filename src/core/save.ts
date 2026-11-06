@@ -17,6 +17,7 @@ export interface SaveData {
   door: string | null;
   hp: number;
   pack: { water: number; holes: number; patches: number; needles: number };
+  seen?: string[];
   kit: { mats: Partial<Record<ItemId, number>>; owned: LeashId[]; leash: LeashId; bread: Partial<Record<BreadId, number>>; active: BreadId; toothFirst: boolean; traits?: TraitId[]; oar?: boolean; ferries?: string[] };
   world: Record<string, RoomMemory>;
   savedAt: number;
@@ -28,7 +29,7 @@ export function snapshotSave(sim: Sim): SaveData {
     v: 2, room: sim.room.def.id, door: sim.entryDoor, hp: sim.player.hp,
     pack: { water: sim.pack.water, holes: sim.pack.holes, patches: sim.pack.patches, needles: sim.pack.needles },
     kit: { mats: { ...k.mats }, owned: [...k.owned], leash: k.leash, bread: { ...k.bread }, active: k.active, toothFirst: k.toothFirst, traits: [...k.traits], oar: k.oar, ferries: [...k.ferries] },
-    world: structuredClone({ ...sim.world }),
+    world: structuredClone({ ...sim.world }), seen: [...sim.seen],
     savedAt: Date.now(),
   };
 }
@@ -64,7 +65,8 @@ export function validateSave(raw: unknown): SaveData | null {
     kit: { mats, owned, leash, bread, active, toothFirst: d.kit?.toothFirst !== false,
       traits: Array.isArray(d.kit?.traits) ? d.kit!.traits.filter(t => TRAITS.some(x => x.id === t)) : [], oar: d.kit?.oar === true,
       ferries: Array.isArray(d.kit?.ferries) ? d.kit!.ferries.filter(f => typeof f === 'string' && !!ROOMS[f]?.ferry) : [] },
-    world, savedAt: num(d.savedAt, 0, 8.64e15, 0),
+    world, seen: Array.isArray(d.seen) ? d.seen.filter(x => typeof x === 'string').slice(0, 64) : [],
+    savedAt: num(d.savedAt, 0, 8.64e15, 0),
   };
 }
 
@@ -75,6 +77,7 @@ export function applySave(sim: Sim, s: SaveData): void {
   k.owned = new Set(s.kit.owned); k.leash = s.kit.leash;
   Object.assign(k.bread, s.kit.bread); k.active = s.kit.active; k.toothFirst = s.kit.toothFirst; k.traits = new Set(s.kit.traits ?? []); k.oar = !!s.kit.oar; k.ferries = new Set(s.kit.ferries ?? []);
   sim.world = structuredClone(s.world);
+  sim.seen = new Set(s.seen ?? []);
   sim.pack.water = s.pack.water; sim.pack.holes = s.pack.holes; sim.pack.patches = s.pack.patches; sim.pack.needles = s.pack.needles;
   sim.player.hp = s.hp;
   sim.enterRoom(ROOMS[s.room]!, s.door, false, false);

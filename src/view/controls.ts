@@ -3,7 +3,7 @@ import type { InputFrame } from '../core/sim';
 import type { Vec } from '../core/math';
 
 type Verb = 'fling' | 'yank' | 'honk' | 'letGo' | 'feed' | 'cycle' | 'patch' | 'roll';
-export type UiAction = 'book' | 'reset' | 'closeBook' | 'pack' | 'close' | 'patch';
+export type UiAction = 'book' | 'reset' | 'closeBook' | 'pack' | 'close' | 'patch' | 'advance';
 
 const ARROWS = ['arrowup', 'arrowdown', 'arrowleft', 'arrowright'];
 const GAME_KEYS = ['w', 'a', 's', 'd', ' ', 'e', 'q', 'f', 'r', 'b', 'c', 'p', 'i', 'tab', 'm', 'shift', 'g', ...ARROWS];
@@ -24,6 +24,8 @@ export class Controls {
   private held = new Set<string>();
   /** Set by the scene: once Rocco has the Ferryman's Oar, right mouse / RB hold it up instead of yanking. */
   oar = false;
+  /** Set by the scene while a cinematic plays: Space / Enter / click advance it, Esc skips. */
+  cinema = false;
   private rmb = false;
   private padGuard = false;
   private pending = new Set<Verb>();
@@ -45,7 +47,7 @@ export class Controls {
     scene.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       this.canvas.focus();
       this.mouse = { x: p.x, y: p.y }; this.aimMode = 'mouse';
-      if (this.paused) return;
+      if (this.paused) { if (this.cinema) this.onUi('advance'); return; }
       if (p.rightButtonDown()) { if (this.oar) this.rmb = true; else this.pending.add('yank'); } else this.pending.add('fling');
     });
     scene.input.on('pointerup', (p: Phaser.Input.Pointer) => { if ((p.event as MouseEvent | undefined)?.button === 2 || !p.rightButtonDown()) this.rmb = false; });
@@ -67,6 +69,7 @@ export class Controls {
     const onButton = ae?.tagName === 'BUTTON';
     if (this.paused) {
       // a screen is open (book or backpack): the UI layer decides what each key does
+      if (this.cinema && (k === ' ' || k === 'enter')) { e.preventDefault(); if (!e.repeat) this.onUi('advance'); return; }
       if (k === 'b') { e.preventDefault(); this.onUi('book'); }
       else if (k === 'escape') { e.preventDefault(); this.onUi('close'); }
       else if (k === 'i' || k === 'tab') { e.preventDefault(); this.onUi('pack'); }

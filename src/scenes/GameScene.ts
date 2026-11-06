@@ -5,6 +5,7 @@ import { ROOMS, WILLOWMERE, type RoomDef } from '../data/rooms';
 import { Controls } from '../view/controls';
 import { Renderer, snapshot, type Snapshot } from '../view/render';
 import { ArtRenderer, CANVAS_H, CANVAS_W } from '../view/art';
+import { Cinema } from '../view/cinema';
 import { ROOM_ART, nearestFilter, preloadArt } from '../view/assets';
 import { applySave, loadStoredSave, snapshotSave, storeSave } from '../core/save';
 import { sound } from '../view/audio';
@@ -38,6 +39,8 @@ export class GameScene extends Phaser.Scene {
   onReady: (scene: GameScene) => void = () => {};
   /** Set by the UI: Rocco stepped up to Biscuit's shrine. */
   onShrine: () => void = () => {};
+  /** The cinematic player (chapter cards, boss entrances and wake-ups). */
+  cinema = new Cinema();
   /** Set by the UI: Rocco called the ferry. */
   onFerry: () => void = () => {};
 
@@ -60,6 +63,9 @@ export class GameScene extends Phaser.Scene {
       this.view = new Renderer(this);
     }
     this.controls = new Controls(this, this.game.canvas);
+    this.cinema.onCue = c => { if (c.sound) sound.play(c.sound as Parameters<typeof sound.play>[0]); if (c.shake) this.cameras.main.shake(c.shake * 1000, 0.012); };
+    this.cinema.onEnd = () => { this.controls.dropPending(); this.lastNow = performance.now(); };
+    if (this.view instanceof ArtRenderer) this.view.cinema = this.cinema.state;
     this.feed(this.sim.drainEvents());
     this.onReady(this);
   }
@@ -71,9 +77,11 @@ export class GameScene extends Phaser.Scene {
     const now = performance.now();
     const dt = this.lastNow ? Math.min(0.25, (now - this.lastNow) / 1000) : STEP;
     this.lastNow = now;
-    this.controls.paused = this.paused;
+    const film = this.cinema.active;
+    this.controls.paused = this.paused || film; this.controls.cinema = film;
     this.controls.pollPad();
-    if (!this.paused && this.hitStop > 0) { this.hitStop -= dt; }
+    if (film) { this.cinema.update(dt, this.sim, this.sim.player); this.acc = 0; }
+    else if (!this.paused && this.hitStop > 0) { this.hitStop -= dt; }
     else if (!this.paused) {
       this.acc += dt;
       let steps = 0, first = true;
@@ -86,10 +94,45 @@ export class GameScene extends Phaser.Scene {
       if (steps === MAX_STEPS) this.acc = 0;
       this.feed(this.sim.drainEvents());
     }
+    if (!film) { this.cinema.update(dt, this.sim, this.sim.player); this.cues(); }
     this.listen();
-    const alpha = this.paused ? 1 : this.acc / STEP;
-    this.view.draw(this.sim, this.paused ? null : this.prev, alpha, this.paused ? 0 : dt, this.controls.aim(this.sim.player), true);
+    const still = this.paused || film, alpha = still ? 1 : this.acc / STEP;
+    this.view.draw(this.sim, still ? null : this.prev, alpha, this.paused ? 0 : dt, this.controls.aim(this.sim.player), !film);
   }
+
+  /** Start a cinematic once (the save remembers which were shown). */
+  /** Cinematics can be switched off (remembered in this browser). */
+  cinemaOn = (() => { try { return localStorage.getItem('goose-on-a-leash/cinematics') !== 'off'; } catch { return true; } })();
+  setCinemaOn(on: boolean): void {
+    this.cinemaOn = on;
+    try { localStorage.setItem('goose-on-a-leash/cinematics', on ? 'on' : 'off'); } catch { /* per-browser nicety only */ }
+    if (!on) this.cinema.skip();
+  }
+  /** Forget which were shown and replay the one for this area (if any). */
+  replayHere(): void { this.cueRoom = ''; }
+
+  playCinematic(id: string): void {
+    if (!this.cinemaOn || this.sim.seen.has(id) || !(this.view instanceof ArtRenderer) || this.paused) return;
+    if (this.cinema.play(id)) { this.sim.seen.add(id); this.controls.dropPending(); }
+  }
+
+  /** Cues that start cinematics: arriving in a chapter's first area, meeting a boss, waking one. */
+  private cues(): void {
+    const sim = this.sim, id = sim.room.def.id;
+    if (this.cueRoom !== id) {
+      this.cueRoom = id;
+      const ch = ({ willowmere: 'ch1', 'reedmarsh-1': 'ch2', 'hollowbark-1': 'ch3' } as Record<string, string>)[id];
+      if (ch) this.playCinematic(ch);
+    }
+    if (this.cinema.active) return;
+    for (const e of sim.enemies) {
+      const k = e.kind === 'elder' || e.kind === 'heron' || e.kind === 'king' ? e.kind : null;
+      if (!k) continue;
+      if (e.woke > 1.0) this.playCinematic(`${k}-out`);
+      else if (!e.woke && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < (k === 'elder' ? 430 : 900)) this.playCinematic(`${k}-in`);
+    }
+  }
+  private cueRoom = '';
 
   private modes = new Map<number, string>();
   /** Sounds that come from state, not events: critters winding up, the leash creak, the rain. */
