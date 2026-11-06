@@ -190,10 +190,10 @@ export class GameScene extends Phaser.Scene {
     if (this.cinema.active) return;
     if (this.pendingCine && !sim.fishing.card) { this.playCinematic(this.pendingCine); this.pendingCine = ''; }
     for (const e of sim.enemies) {
-      const k = e.kind === 'elder' || e.kind === 'heron' || e.kind === 'king' || e.kind === 'gullbeard' || e.kind === 'pelican' ? e.kind : null;
+      const k = e.kind === 'elder' || e.kind === 'heron' || e.kind === 'king' || e.kind === 'gullbeard' || e.kind === 'pelican' || e.kind === 'blackswan' ? e.kind : null;
       if (!k) continue;
       if (e.woke > 1.0) this.playCinematic(`${k}-out`);
-      else if (!e.woke && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < (k === 'elder' ? 430 : k === 'pelican' ? 650 : 900)) this.playCinematic(`${k}-in`);
+      else if (!e.woke && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < (k === 'elder' ? 430 : k === 'pelican' || k === 'blackswan' ? 700 : 900)) this.playCinematic(`${k}-in`);
     }
   }
   private cueRoom = '';
@@ -260,7 +260,7 @@ export class GameScene extends Phaser.Scene {
       const before = this.modes.get(e.id), now = e.mode;
       if (before !== now) {
         this.modes.set(e.id, now);
-        if (now === 'wind') sound.play(({ frog: 'ribbit', snapper: 'hiss', squirrel: 'chatter', badger: 'growl', king: 'growl', crab: 'chatter' } as Record<string, string>)[e.kind] ?? 'kraa');
+        if (now === 'wind') sound.play(({ frog: 'ribbit', snapper: 'hiss', squirrel: 'chatter', badger: 'growl', king: 'growl', crab: 'chatter', turtle: 'growl', blackswan: 'kraa' } as Record<string, string>)[e.kind] ?? 'kraa');
         if (now === 'tunnel' || now === 'surface') sound.play('dust');
         if (now === 'lash') sound.play('tongue');
         if (now === 'leap' || now === 'charge' || now === 'takeoff') sound.play('whoosh');

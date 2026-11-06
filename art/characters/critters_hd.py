@@ -752,3 +752,54 @@ def pelican_chef(blink=False, awake=False, pose='idle'):
     if pose == 'stir':
         sp = Layer('spoon', w, h, P); sp.line([(30, 74), (60, 20)], 'POT0', 3); sp.ell(30, 76, 4, 3, 'POT1'); L.append(sp)
     return composite(L)
+
+
+def black_swan(blink=False, awake=False, pose='idle'):
+    """The Black Swan, the Queen's champion: a black swan in dark plate with a red plume and a long lance.
+    Poses: idle, wind (lance lowered), charge (low, lance forward), stuck (lance jammed, rearing), stagger."""
+    w, h = 112, 92
+    P = dict(KPAL)
+    P.update({k: hx(v) for k, v in {'BS0': '0e0c14', 'BS1': '22202c', 'BS2': '3a3846', 'PL0': '2a2e3a', 'PL1': '4a5262', 'PL2': '7a8494', 'PL3': 'b8c0cc',
+                                      'PLM': 'c83a3a', 'PLM2': 'ff6a5a', 'LN0': '5a3a1a', 'LN1': '8a6a3a', 'TIP': 'd8dce4', 'BK2': 'f6a020'}.items()})
+    L = []
+    low = pose == 'charge'
+    body = Layer('body', w, h, P)
+    by = 62 if not low else 66
+    body.line([(40, by + 14), (38, h - 2)], 'BK2', 3); body.line([(54, by + 14), (56, h - 2)], 'BK2', 3)
+    body.ell(46, by, 24, 16, 'BS1'); body.ell(40, by - 4, 16, 8, 'BS2')
+    body.poly([(24, by), (8, by - 8), (12, by + 6)], 'BS1')
+    L.append(body)
+    armor = Layer('armor', w, h, P)
+    armor.poly([(30, by - 10), (64, by - 14), (70, by + 6), (56, by + 16), (32, by + 12)], 'PL1')
+    armor.poly([(34, by - 8), (60, by - 12), (62, by - 4), (36, by - 2)], 'PL2')
+    for x in (40, 50, 60): armor.line([(x, by - 10), (x + 2, by + 12)], 'PL0')
+    L.append(armor)
+    neck = Layer('neck', w, h, P)
+    nx, ny = (72, 22) if not low else (86, 44)
+    for i in range(12):
+        t = i / 11
+        neck.ell(58 + (nx - 58) * t, by - 10 + (ny - by + 10) * t, 5, 5, 'BS1')
+    neck.ell(nx, ny, 8, 7, 'BS1')
+    neck.poly([(nx + 6, ny), (nx + 16, ny + 3), (nx + 6, ny + 5)], 'PLM')
+    L.append(neck)
+    helm = Layer('helm', w, h, P)
+    helm.ell(nx, ny - 2, 8, 6, 'PL1'); helm.rect(nx - 8, ny - 2, nx + 8, ny, 'PL2'); helm.line([(nx + 2, ny + 1), (nx + 7, ny + 1)], 'BS0')
+    tilt = 4 if pose in ('stuck', 'stagger') else 0
+    for i in range(5): helm.ell(nx - 6 - i * 2.5 + tilt, ny - 8 - i * 1.5 + abs(i - 2), 2.5, 2, 'PLM' if i % 2 else 'PLM2')   # the plume
+    L.append(helm)
+    eye = Layer('eye', w, h, P)
+    if blink or pose == 'stagger': eye.line([(nx + 1, ny - 1), (nx + 4, ny - 1)], 'PL0')
+    else: eye.rect(nx + 2, ny - 2, nx + 3, ny - 1, 'BK2' if awake else 'FR'); eye.px(nx + 2, ny - 2, 'BW' if awake else 'FR2')
+    L.append(eye)
+    lance = Layer('lance', w, h, P)
+    if pose in ('wind', 'charge'):
+        y0 = by - 2 if pose == 'charge' else by - 8
+        lance.line([(30, y0 + 4), (w - 2, y0)], 'LN1', 3); lance.poly([(w - 14, y0 - 3), (w - 1, y0), (w - 14, y0 + 3)], 'TIP')
+        lance.poly([(40, y0 - 6), (48, y0), (40, y0 + 8)], 'PL2')
+    elif pose == 'stuck':
+        lance.line([(40, by - 4), (w - 6, by + 18)], 'LN1', 3); lance.poly([(w - 12, by + 12), (w - 2, by + 20), (w - 14, by + 20)], 'TIP')
+    else:
+        lance.line([(36, by + 10), (44, 6)], 'LN1', 3); lance.poly([(41, 10), (44, 0), (47, 10)], 'TIP')
+        lance.poly([(30, by), (38, by - 6), (38, by + 8)], 'PL2')
+    L.append(lance)
+    return composite(L)

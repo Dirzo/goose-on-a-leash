@@ -1,0 +1,211 @@
+{
+ "id": "castle-8",
+ "name": "The Lava Bridges",
+ "subtitle": "Castle Honkmore \u00b7 the Lava Keep",
+ "width": 1300,
+ "height": 720,
+ "playerStart": {
+  "x": 200,
+  "y": 650
+ },
+ "walls": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1300,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 700,
+   "w": 158.0,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 242.0,
+   "y": 700,
+   "w": 1058.0,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 720,
+   "kind": "border"
+  },
+  {
+   "x": 1280,
+   "y": 0,
+   "w": 20,
+   "h": 288.0,
+   "kind": "border"
+  },
+  {
+   "x": 1280,
+   "y": 372.0,
+   "w": 20,
+   "h": 348.0,
+   "kind": "border"
+  }
+ ],
+ "gate": null,
+ "pits": [
+  {
+   "x": 380,
+   "y": 20,
+   "w": 640,
+   "h": 680,
+   "kind": "lava"
+  }
+ ],
+ "bridges": [
+  {
+   "x": 510,
+   "y": 280,
+   "w": 100,
+   "h": 100,
+   "kind": "pillar"
+  },
+  {
+   "x": 770,
+   "y": 200,
+   "w": 100,
+   "h": 100,
+   "kind": "pillar"
+  }
+ ],
+ "refills": [
+  {
+   "x": 60,
+   "y": 80,
+   "w": 100,
+   "h": 80
+  }
+ ],
+ "posts": [
+  {
+   "x": 300,
+   "y": 250,
+   "r": 9
+  },
+  {
+   "x": 560,
+   "y": 330,
+   "r": 9
+  },
+  {
+   "x": 820,
+   "y": 250,
+   "r": 9
+  },
+  {
+   "x": 1080,
+   "y": 330,
+   "r": 9
+  }
+ ],
+ "bell": null,
+ "exit": null,
+ "vents": [],
+ "bucket": null,
+ "breadSpots": [],
+ "enemies": [
+  {
+   "kind": "turtle",
+   "x": 1180,
+   "y": 560
+  },
+  {
+   "kind": "bellhop",
+   "x": 1180,
+   "y": 150
+  }
+ ],
+ "knightSpawn": null,
+ "doors": [
+  {
+   "id": "s",
+   "x": 158.0,
+   "y": 694,
+   "w": 84,
+   "h": 26,
+   "to": "castle-1",
+   "toDoor": "n",
+   "spawn": {
+    "x": 200,
+    "y": 650
+   },
+   "label": "Honkmore Gate"
+  },
+  {
+   "id": "e",
+   "x": 1274,
+   "y": 288.0,
+   "w": 26,
+   "h": 84,
+   "to": "castle-9",
+   "toDoor": "w",
+   "spawn": {
+    "x": 1234,
+    "y": 330
+   },
+   "label": "The Forge"
+  }
+ ],
+ "paths": [],
+ "biome": "castle",
+ "lightKind": "turtle",
+ "heavyKind": "turtle",
+ "embers": [
+  {
+   "x": 450,
+   "y": 120,
+   "period": 2.4,
+   "phase": 0
+  },
+  {
+   "x": 700,
+   "y": 480,
+   "period": 2.4,
+   "phase": 0.8
+  },
+  {
+   "x": 950,
+   "y": 140,
+   "period": 2.4,
+   "phase": 1.6
+  },
+  {
+   "x": 650,
+   "y": 640,
+   "period": 3,
+   "phase": 0.4
+  }
+ ],
+ "springs": [
+  {
+   "x": 110,
+   "y": 110
+  }
+ ],
+ "kits": [
+  {
+   "x": 140,
+   "y": 640
+  }
+ ],
+ "lanterns": [
+  {
+   "x": 250,
+   "y": 420
+  },
+  {
+   "x": 1150,
+   "y": 420
+  }
+ ]
+}

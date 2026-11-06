@@ -216,6 +216,32 @@ def render(R):
     else:
         rav = np.zeros((H, W), bool)
 
+    # ---- lava: molten rock, bright where it's deep and moving, a black crust at the edge; pillars stand in it
+    lavas = [p for p in allpits if p.get('kind') == 'lava']
+    if lavas:
+        dl = np.stack([sdf_rect(p, 10) for p in lavas]).min(axis=0) - noise * 0.4
+        for pl in pillars:
+            dl = np.maximum(dl, -(sdf_rect(pl, 10) - noise * 0.3))
+        lv = dl < 0
+        flow = fbm(H, W, 40, 3, int(seed * 31) % 9999)
+        heat = np.clip(np.clip(-dl / 90, 0, 1) * 0.45 + flow * 0.5 - 0.12, 0, 1) ** 1.3
+        cols = np.stack([hx('5a1206'), hx('a8280a'), hx('e85a10'), hx('ffa830'), hx('ffe08a')])
+        band = dither_bands(np.clip(heat, 0, 1), 5)
+        img[lv] = cols[band][lv]
+        crust = lv & (flow < 0.3) & (dither_bands(fbm(H, W, 14, 2, int(seed * 7) % 999), 3) > 0)
+        img[crust] = hx('2a0a06')
+        lip = (dl >= 0) & (dl < 6)
+        img[lip] = hx('1a1214'); img[lip & (dl > 3)] = hx('3a1a10')
+        glow = (dl >= 0) & (dl < 30) & ~lip
+        img[glow] = img[glow] * 0.75 + hx('ff6a1a') * 0.25 * (1 - dl[glow, None] / 30)
+        for pl in pillars:
+            sp_ = sdf_rect(pl, 10) - noise * 0.3
+            top = sp_ < 0
+            img[top] = P['ROCK1']; img[top & (sp_ > -3)] = P['ROCK0']
+            img[(sp_ >= 0) & (sp_ < 8) & lv] = hx('2a0a06')
+        water &= ~lv; bank &= ~lv
+        rav = rav | lv
+
     # ---- dirt trails
     path = np.zeros((H, W), bool)
     for seq in R.get('paths', []):

@@ -794,6 +794,26 @@
   ],
   "points": {}
  },
+ "blackswan": {
+  "w": 112,
+  "h": 92,
+  "frames": 6,
+  "anchor": [
+   46,
+   90
+  ],
+  "points": {}
+ },
+ "blackswan_awake": {
+  "w": 112,
+  "h": 92,
+  "frames": 2,
+  "anchor": [
+   46,
+   90
+  ],
+  "points": {}
+ },
  "tree": {
   "w": 96,
   "h": 140,

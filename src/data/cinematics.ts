@@ -4,7 +4,7 @@
  * View-only scripts: the game is paused while one plays. Seen ones are saved.
  */
 
-export type Speaker = 'rocco0' | 'rocco' | 'bimbo' | 'biscuit' | 'elder' | 'heron' | 'king' | 'gullbeard' | 'pickett' | 'pelican';
+export type Speaker = 'rocco0' | 'rocco' | 'bimbo' | 'biscuit' | 'elder' | 'heron' | 'king' | 'gullbeard' | 'pickett' | 'pelican' | 'blackswan';
 /** Where to point the camera: Rocco, the boss in the room, or a world point. */
 export type CamTarget = 'player' | 'boss' | { x: number; y: number };
 
@@ -30,6 +30,7 @@ export const SPEAKERS: Record<Speaker, { name: string; color: string; strip: str
   king: { name: 'The Burrow King', color: '#d8b890', strip: 'king', frame: 0, scale: 1.5, ax: 0.5, ay: 0.1 },
   gullbeard: { name: 'Captain Gullbeard', color: '#8fe0d0', strip: 'gullbeard', frame: 0, scale: 1.5, ax: 0.72, ay: 0.12 },
   pelican: { name: 'The Pelican Chef', color: '#f2c94c', strip: 'pelican', frame: 0, scale: 1.7, ax: 0.6, ay: 0.08 },
+  blackswan: { name: 'The Black Swan', color: '#e0e6ee', strip: 'blackswan', frame: 0, scale: 1.6, ax: 0.66, ay: 0.06 },
   pickett: { name: 'Pickett', color: '#c49a6a', strip: 'pickett', frame: 2, scale: 2.4, ax: 0.5, ay: 0.05 },
 };
 
@@ -229,6 +230,26 @@ export const CINEMATICS: Record<string, Step[]> = {
     { wait: 0.3 },
     { title: 'The Kitchen Seal', sub: 'Two of three Royal Seals. The Lava Keep holds the last.', hold: 3 },
     { say: 'Lava. Of course it is lava. Next to a koi. Wonderful.', who: 'bimbo' },
+  ],
+  'blackswan-in': [
+    { pan: 'boss', dur: 1.2 },
+    { sound: 'kraa' }, { shake: 0.6 },
+    { say: 'Halt. None climb to the Queen while I hold the Keep.', who: 'blackswan' },
+    { say: "He's in full armour, Rocco. Biscuit can't bite through PLATE.", who: 'bimbo' },
+    { say: "Then we let him charge. A lance stuck in a wall isn't much of a lance.", who: 'rocco' },
+    { say: 'HONK.', who: 'biscuit' },
+    { pan: 'player', dur: 0.8 },
+  ],
+  'blackswan-out': [
+    { wait: 0.8 },
+    { pan: 'boss', dur: 1 },
+    { say: '...The red moon. It took me, too. I swore to guard her, and I could not guard my own mind.', who: 'blackswan' },
+    { say: 'Take the Keep Seal. The throne room lies above the gate. Be gentle with her, raccoon.', who: 'blackswan' },
+    { pan: 'player', dur: 0.7 },
+  ],
+  'seal-keep': [
+    { wait: 0.3 },
+    { title: 'The Keep Seal', sub: 'All three Royal Seals... once the others are found. The throne room waits above the gate.', hold: 3.2 },
   ],
   'moray-out': [
     { wait: 0.6 },

@@ -200,6 +200,14 @@ export class Atmosphere {
       L.push({ x: bx, y: by, r: 60 + 60 * w, c: 0x8ad8ff, a: (0.2 + 0.3 * w) * pulse });
       L.push({ x: bx, y: by + 4, r: 14 + 6 * w, c: 0x9ae8ff, a: 0, bloom: 0.5 * w * pulse });   // the glow through the pack's mesh
     }
+    // lava lights itself: warm pools of light across every lava pit, breathing slowly
+    for (const pt of def.pits ?? []) {
+      if ((pt as { kind?: string }).kind !== 'lava') continue;
+      const vw = this.scene.cameras.main.worldView;
+      for (let x = pt.x + 60; x < pt.x + pt.w; x += 140) for (let y = pt.y + 50; y < pt.y + pt.h; y += 120)
+        if (x > vw.x - 200 && x < vw.right + 200 && y > vw.y - 200 && y < vw.bottom + 200) L.push({ x, y, r: 170, c: 0xff6a1a, a: 0.9 + 0.1 * Math.sin(time * 1.3 + x * 0.01 + y * 0.02), bloom: 0.15, wash: 0.2 });
+    }
+    for (const f of def.firebars ?? []) L.push({ x: f.x, y: f.y, r: 130, c: 0xff8a2a, a: 0.7, bloom: 0.3, wash: 0.15 });
     (def.lanterns ?? (def.lantern ? [def.lantern] : [])).forEach((ln, i) => L.push({ x: ln.x, y: ln.y - 20, r: 210, c: 0xffa04a, a: 1.0 * flick(1 + i), bloom: 0.55, wash: 0.28 * flick(2 + i) }));
     for (const r of def.refills ?? []) L.push({ x: r.x + r.w / 2, y: r.y + r.h / 2, r: Math.max(r.w, r.h) * 0.85, c: 0x4a9ad8, a: sim.storming ? 0.25 : 0.45, wash: 0.07 });
     (def.barrels ?? []).forEach((b, i) => { if ((sim.barrelWater[i] ?? 0) > 0) L.push({ x: b.x, y: b.y - 12, r: 46, c: 0x4a9ad8, a: 0.35 }); });

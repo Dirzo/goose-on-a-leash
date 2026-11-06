@@ -123,6 +123,10 @@ strip('pelican', [critters_hd.pelican_chef(), critters_hd.pelican_chef(blink=Tru
                   critters_hd.pelican_chef(pose='gulp'), critters_hd.pelican_chef(pose='stir'), critters_hd.pelican_chef(pose='dazed')], (44, 98))
 strip('pelican_awake', [critters_hd.pelican_chef(awake=True), critters_hd.pelican_chef(blink=True, awake=True)], (44, 98))
 
+strip('blackswan', [critters_hd.black_swan(), critters_hd.black_swan(blink=True), critters_hd.black_swan(pose='wind'), critters_hd.black_swan(pose='charge'),
+                    critters_hd.black_swan(pose='stuck'), critters_hd.black_swan(pose='stagger')], (46, 90))
+strip('blackswan_awake', [critters_hd.black_swan(awake=True), critters_hd.black_swan(blink=True, awake=True)], (46, 90))
+
 strip('tree', [props_hd.tree(v) for v in range(3)], props_hd.TREE_ANCHOR)
 
 # backpack screen: Bimbo (happy, worried, gasping x open/blink), the pack, patches, tears

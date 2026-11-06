@@ -130,6 +130,18 @@ describe('every room can be finished', () => {
     expect([...back.doors]).toContain('e');
   });
 
+  it('the Lava Keep: grapple across the lava bridges, through the Forge to the Golden Tether and the tower, and back', () => {
+    const def = ROOMS['castle-4']!, at = reachableCells(def, CAST, 's'), z = def.zones!.find(q => q.name === 'The Keep Tower')!;
+    expect(at(def.chest!.x, def.chest!.y + 24)).toBe(true);
+    expect(at(z.x + 300, z.y + 450)).toBe(true);
+    expect([...reachable(def, CAST, null).doors]).toContain('s');
+  });
+
+  it('the Kitchens wing can be walked to the Pantry', () => {
+    const def = ROOMS['castle-3']!, z = def.zones!.find(q => q.name === 'The Royal Pantry')!;
+    expect(reachableCells(def, CAST, 'w')(z.x + 300, z.y + 400)).toBe(true);
+  });
+
   it('the sandbar feather in the harbour needs the Spinning Reel', () => {
     const def = ROOMS['driftwood-2']!, f = def.feathers![0]!;
     expect(reachableCells(def, (230 + 50) * C.castReachMul, 'w')(f.x, f.y)).toBe(false);

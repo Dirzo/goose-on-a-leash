@@ -19,19 +19,20 @@ export type GooseState = 'held' | 'flying' | 'latched' | 'loose' | 'returning';
 export type { EnemyKind };
 
 /** How close Rocco must get before an entranced critter notices him. Room 01's pests see across the room. */
-const AGGRO: Partial<Record<EnemyKind, number>> = { pelican: 800, mimic: 46, turtle: 320, bellhop: 420, eel: 130, crab: 230, gull: 420, gullbeard: 900, elder: 620, frog: 160, snapper: 210, heron: 520, squirrel: 260, badger: 230, king: 700 };
-const HEAVY: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['knight', 'snapper', 'heron', 'badger', 'king', 'elder', 'turtle', 'pelican']);
+const AGGRO: Partial<Record<EnemyKind, number>> = { blackswan: 900, pelican: 800, mimic: 46, turtle: 320, bellhop: 420, eel: 130, crab: 230, gull: 420, gullbeard: 900, elder: 620, frog: 160, snapper: 210, heron: 520, squirrel: 260, badger: 230, king: 700 };
+const HEAVY: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['knight', 'snapper', 'heron', 'badger', 'king', 'elder', 'turtle', 'pelican', 'blackswan']);
 /** Animals under the blood moon's trance. Beaten, they wake up and wander off instead of dying. */
-const ENTRANCED: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['frog', 'snapper', 'heron', 'squirrel', 'badger', 'king', 'elder', 'crab', 'gull', 'gullbeard', 'eel', 'turtle', 'bellhop', 'mimic', 'pelican']);
+const ENTRANCED: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['frog', 'snapper', 'heron', 'squirrel', 'badger', 'king', 'elder', 'crab', 'gull', 'gullbeard', 'eel', 'turtle', 'bellhop', 'mimic', 'pelican', 'blackswan']);
 /** They fly (or live in the water): they don't swim back to shore, they move themselves, and above 30 they're out of reach. */
 const FLIERS: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['gull', 'gullbeard', 'eel']);
 /** Bosses stand their ground: no knockback, they never fall in, and they stay once woken. */
-const BOSS: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['heron', 'king', 'elder', 'gullbeard', 'pelican']);
+const BOSS: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['heron', 'king', 'elder', 'gullbeard', 'pelican', 'blackswan']);
 export const ELDER_HP = 24;
 export const HERON_HP = 40;
 export const KING_HP = 50;
 export const GULLBEARD_HP = 46;
 export const PELICAN_HP = 44;
+export const BLACKSWAN_HP = 52;
 /** Seconds a woken critter takes to hop away. */
 const WAKE_TIME = 1.6;
 
@@ -92,11 +93,11 @@ export type CritterMode = 'stalk' | 'wind' | 'leap' | 'lash' | 'charge' | 'recov
   /** Old Snapper: winded after a charge, hiding in his shell, flipped on his back. */
   | 'tired' | 'shell' | 'flipped'
   /** Driftwood Wharf: crabs guard with their claws; gulls circle, dive and make off with loot; the Captain swoops and gets tangled. */
-  | 'guard' | 'snap' | 'circle' | 'dive' | 'escape' | 'aim' | 'swoop' | 'tangled' | 'fall' | 'lurk' | 'up' | 'beached' | 'bash' | 'ring' | 'cling' | 'hop' | 'scoop' | 'gulp' | 'stir';
-export type AttackKind = 'leap' | 'lash' | 'charge' | 'bite' | 'spear' | 'gust' | 'dart' | 'slam' | 'peck' | 'acorn' | 'erupt' | 'rock' | 'thorn' | 'dig' | 'rocks' | 'pinch' | 'dive' | 'bottle' | 'swoop' | 'burn' | 'crush' | 'pot';
+  | 'guard' | 'snap' | 'circle' | 'dive' | 'escape' | 'aim' | 'swoop' | 'tangled' | 'fall' | 'lurk' | 'up' | 'beached' | 'bash' | 'ring' | 'cling' | 'hop' | 'scoop' | 'gulp' | 'stir' | 'stuck' | 'stagger' | 'flame';
+export type AttackKind = 'leap' | 'lash' | 'charge' | 'bite' | 'spear' | 'gust' | 'dart' | 'slam' | 'peck' | 'acorn' | 'erupt' | 'rock' | 'thorn' | 'dig' | 'rocks' | 'pinch' | 'dive' | 'bottle' | 'swoop' | 'burn' | 'crush' | 'pot' | 'ember' | 'lance';
 
 /** A feather dart lobbed at Bimbo: it lands on the marked spot when t reaches T. */
-export interface Dart { x0: number; y0: number; tx: number; ty: number; t: number; T: number; kind?: 'feather' | 'acorn' | 'rock' | 'bottle' | 'pot'; /** batted back by the oar: hits critters and bells, not Rocco */ back?: boolean; /** the critter it's batted at (it follows him) */ at?: number }
+export interface Dart { x0: number; y0: number; tx: number; ty: number; t: number; T: number; kind?: 'feather' | 'acorn' | 'rock' | 'bottle' | 'pot' | 'ember'; /** batted back by the oar: hits critters and bells, not Rocco */ back?: boolean; /** the critter it's batted at (it follows him) */ at?: number }
 
 export interface PostTarget { x: number; y: number; r: number; post: true }
 export type Target = Enemy | PostTarget;
@@ -525,7 +526,7 @@ export class Sim {
   mkEnemy(kind: EnemyKind, x: number, y: number): Enemy {
     const k = HEAVY.has(kind), boss = BOSS.has(kind);
     const stats: Partial<Record<EnemyKind, [number, number, number]>> = {   // hp, radius, speed
-      heron: [HERON_HP, 24, 0], king: [KING_HP, 34, 48], gullbeard: [GULLBEARD_HP, 28, 0], crab: [4, 14, 72], gull: [2, 11, 150], eel: [3, 12, 0], turtle: [9, 18, 36], bellhop: [3, 11, 125], mimic: [2, 10, 90], pelican: [PELICAN_HP, 28, 52], elder: [ELDER_HP, 26, 46], squirrel: [2, 10, 115], badger: [10, 18, 50],
+      heron: [HERON_HP, 24, 0], king: [KING_HP, 34, 48], gullbeard: [GULLBEARD_HP, 28, 0], crab: [4, 14, 72], gull: [2, 11, 150], eel: [3, 12, 0], turtle: [9, 18, 36], bellhop: [3, 11, 125], mimic: [2, 10, 90], pelican: [PELICAN_HP, 28, 52], blackswan: [BLACKSWAN_HP, 26, 60], elder: [ELDER_HP, 26, 46], squirrel: [2, 10, 115], badger: [10, 18, 50],
     };
     const [hp0, r, spd] = stats[kind] ?? [k ? 8 : 3, k ? 20 : 13, k ? 42 : 78];
     const hp = boss ? Math.round(hp0 * this.diff.bossHp) : hp0;
@@ -934,6 +935,10 @@ export class Sim {
     if (e.kind === 'gullbeard' && !e.woke) amt *= e.mode === 'tangled' ? 2 : e.mode === 'dazed' ? 1.5 : 1;
     if (e.kind === 'eel' && e.mode === 'beached') amt *= 2;
     if (e.kind === 'pelican' && !e.woke) amt *= e.mode === 'dazed' ? 2 : e.mode === 'gulp' ? 0 : 1;
+    if (e.kind === 'blackswan' && !e.woke) {
+      if (e.mode !== 'stuck' && e.mode !== 'stagger') { this.fx('block', e.x, e.y - 30); this.hint('blackswan', 'His armour turns every bite. Make him charge into a wall, or parry the lance with the oar, then bite!'); return; }
+      amt *= 1.6;
+    }
     if (e.kind === 'turtle' && !e.woke) {
       if (e.mode !== 'flipped' && this.turtleFront(e, this.goose)) { this.fx('block', e.x, e.y - 14); this.hint('turtle', 'CLANG. Shield guards block from the front: cast from the side or behind, or latch on and YANK [E] to spin one round.'); return; }
       if (e.mode === 'flipped') amt *= 2;
@@ -960,6 +965,16 @@ export class Sim {
         if (e.kind === 'elder') this.say('Old Snapper blinks. The red drains away. "Hmph. Bimbo, is it? Go on through, the both of you."');
         else if (e.kind === 'king' || this.kit.oar) this.say(e.kind === 'king' ? 'The Burrow King shakes his great head. "...What was I digging for? Go on, little raccoon. Mind the fish."'
           : 'The red drains from the Heron\'s eyes. "...Raccoon. I am the Ferryman. The way on is open."');
+        if (e.kind === 'blackswan') {
+          this.say('The Black Swan lowers his lance. "...I serve the Queen. I serve her still. Go up to her, raccoon. She is not herself."');
+          this.kit.seals.add('keep'); this.kit.mats.feather += 2; this.kit.mats.chain += 3; this.kit.mats.egg++;
+          this.pack.needles += C.kitNeedles; this.pack.water = 1;
+          this.events.push({ type: 'seal', id: 'keep' });
+          this.fx('pick', this.player.x, this.player.y - 46, { text: 'THE KEEP SEAL · 2 Golden Feathers, a Golden Egg, 3 Scute, a sewing kit' });
+          this.fx('chest', this.player.x, this.player.y - 20);
+          if (this.goose.target === e) this.goose.state = 'held';
+          return;
+        }
         if (e.kind === 'pelican') {
           this.say('The Pelican Chef blinks. "...Why is my kitchen on FIRE? Oh, the moon. Take the seal, raccoon. And wash your goose."');
           this.kit.seals.add('kitchens'); this.kit.mats.feather += 2; this.kit.mats.crust += 4; this.kit.bread.muffin += 2;
@@ -1042,7 +1057,7 @@ export class Sim {
       const heavyLine = kind === 'slam' ? 'THOOM! The Heron lands right on the pack!' : kind === 'dart' ? 'A feather dart smacks into the pack!'
         : kind === 'erupt' ? 'The ground bursts open under Bimbo!' : kind === 'rock' ? 'A rock clonks the pack!'
         : kind === 'charge' && this.enemies.some(o => o.kind === 'king') ? 'The Burrow King bowls you over!'
-        : kind === 'swoop' ? 'The Captain rakes the pack as he swoops past!' : kind === 'bottle' ? 'A bottle smashes on the pack!' : kind === 'pot' ? 'A copper pot clangs off the pack!' : kind === 'burn' ? 'Scalding! The water hisses away.'
+        : kind === 'swoop' ? 'The Captain rakes the pack as he swoops past!' : kind === 'bottle' ? 'A bottle smashes on the pack!' : kind === 'pot' ? 'A copper pot clangs off the pack!' : kind === 'burn' || kind === 'ember' ? 'Scalding! The water hisses away.' : kind === 'lance' ? 'The lance tears into the pack!'
         : kind === 'spear' || kind === 'peck' ? 'The beak jabs at Bimbo!' : 'WHAM. Old Snapper rams the pack.';
       if (pk.water > 0.3) this.say(heavy ? heavyLine : kind === 'thorn' ? 'Thorns! They snag the pack.' : kind === 'acorn' ? 'Bonk! An acorn hits the pack.' : side > 1 ? 'It leapt at Bimbo! Water everywhere.' : 'Splash! Rocco blocks most of it.');
     }
@@ -1258,11 +1273,18 @@ export class Sim {
       p.roll = 0;
       const pond = this.pack.enabled;
       if (!pond) this.hurtPlayer();
+      const lavaFall = (room.pitAt(p.x, p.y, 6) as { kind?: string } | null)?.kind === 'lava';
       const sp = room.def.respawns ? room.def.respawns[room.pitSide(p.x)] : this.lastSafe;
       p.x = sp.x; p.y = sp.y; p.vx = p.vy = 0;
       g.state = 'held'; g.x = p.x - 30; g.y = p.y;
-      if (pond) this.fx('splash', p.x, p.y - 20);
-      this.say(this.pick(pond ? 'swim' : 'fall'));
+      if (lavaFall) {
+        if (pond) { this.pack.water = Math.max(0, this.pack.water - 0.18 * this.diff.hurt); if (this.pack.holes < C.maxHoles) this.pack.holes++; }
+        this.fx('tear', p.x, p.y - 30); p.inv = C.invulnerable;
+        this.say('LAVA! Rocco scrambles out, the pack sizzling and scorched.');
+      } else {
+        if (pond) this.fx('splash', p.x, p.y - 20);
+        this.say(this.pick(pond ? 'swim' : 'fall'));
+      }
     }
     if (!p.air && !p.pull && !room.inPit(p.x, p.y, -22)) this.lastSafe = { x: p.x, y: p.y };
     this.stepPack(dt);
@@ -1303,6 +1325,11 @@ export class Sim {
       const critter = ENTRANCED.has(e.kind);
       if (critter && !BOSS.has(e.kind) && !FLIERS.has(e.kind) && e.mode !== 'tunnel' && room.inPit(e.x, e.y, 2)) {
         // Frogs and turtles swim. In the water a critter is harmless: it paddles back to the nearest bank.
+        if ((room.pitAt(e.x, e.y, 2) as { kind?: string } | null)?.kind === 'lava') {   // into the lava: gone in a puff
+          e.dead = true; this.handled++; this.fx('poof', e.x, e.y); this.say('Into the lava! That guard won\'t be back.');
+          if (g.target === e) g.state = 'held';
+          continue;
+        }
         if (e.mode !== 'swim') {
           e.mode = 'swim'; e.modeT = 0;
           const land = this.nearestLand(e.x, e.y, e.r); e.tx = land.x; e.ty = land.y;
@@ -1333,6 +1360,7 @@ export class Sim {
       else if (e.kind === 'bellhop') [ax, ay] = this.bellhopAI(e, edt, slow);
       else if (e.kind === 'mimic') [ax, ay] = this.mimicAI(e, edt);
       else if (e.kind === 'pelican') [ax, ay] = this.pelicanAI(e, edt);
+      else if (e.kind === 'blackswan') [ax, ay] = this.blackswanAI(e, edt);
       else if (e.kind === 'gullbeard') [ax, ay] = this.gullbeardAI(e, edt);
       else if (critter) [ax, ay] = this.critterAI(e, edt, d, slow);
       else if (!e.stun && d < (AGGRO[e.kind] ?? 300)) { ax = dx * e.spd * slow; ay = dy * e.spd * slow; }
@@ -1382,7 +1410,7 @@ export class Sim {
         const kind = d.kind ?? 'feather', b = this.packPoint(10);
         this.fx(kind === 'feather' ? 'splash' : 'thud', d.tx, d.ty - 6);
         if (kind === 'feather') this.addPuddle(d.tx, d.ty, 20);
-        const radius = kind === 'acorn' ? 18 : kind === 'rock' || kind === 'pot' ? 26 : 28;
+        const radius = kind === 'acorn' ? 18 : kind === 'rock' || kind === 'pot' ? 26 : kind === 'ember' ? 20 : 28;
         if (d.back) { this.batted(d); continue; }
         if (Math.hypot(b.x - d.tx, b.y - d.ty) < radius + (p.guard > 0 ? 10 : 0) && !p.air) {
           const src = { x: d.x0, y: d.y0 };
@@ -1419,6 +1447,11 @@ export class Sim {
     this.fx(parry ? 'parry' : 'block', ox, oy);
     if ('kind' in from) {
       const e = from as Enemy;
+      if (e.kind === 'blackswan' && kind === 'lance' && parry) {
+        e.mode = 'stagger'; e.modeT = 0;
+        this.say('PARRY! The oar turns the lance aside. He staggers, wide open!');
+        return;
+      }
       if (e.kind === 'king' && kind === 'charge' && parry) {
         e.mode = 'dazed'; e.modeT = 0; this.damage(e, 2);
         this.say('PARRY! The oar stops the Burrow King dead. He sees stars. Bite him now!');
@@ -2384,6 +2417,72 @@ export class Sim {
       default: e.mode = 'stalk'; return [0, 0];
     }
   }
+  /**
+   * The Black Swan, the Queen's champion, armoured head to tail: bites only clang. He aims his lance (a red
+   * line) and charges. Sidestep and he rams a pillar or the wall and sticks fast; or raise the oar as he hits
+   * to parry, and he staggers. Either way: bite now, he's open. He raises the lance and the lava spits embers at
+   * the pack. Below half he charges twice in a row.
+   */
+  private blackswanAI(e: Enemy, dt: number): [number, number] {
+    const p = this.player, g = this.goose, room = this.room, angry = e.hp < e.max / 2;
+    e.modeT += dt; e.cd -= dt;
+    if (p.dead) return [0, 0];
+    const bimbo = this.packPoint(10), [ux, uy, db] = dirTo(e, bimbo);
+    const latched = g.state === 'latched' && g.target === e;
+    if (latched && e.mode !== 'stuck' && e.mode !== 'stagger') { e.grip += dt; if (e.grip > 0.8) { e.grip = 0; g.state = 'held'; g.vx = -ux * 450; g.vy = -uy * 450; this.say('He shakes Biscuit off his armour.'); } } else e.grip = 0;
+    switch (e.mode) {
+      case 'stalk': case 'recover': {
+        if (e.mode === 'recover' && e.modeT < 0.5) return [0, 0];
+        if (db > 140) { const nx = e.x + ux * e.spd * dt, ny = e.y + uy * e.spd * dt; if (!room.inPit(nx, ny, -e.r)) { e.x = nx; e.y = ny; room.collide(e); } }
+        if (e.cd > 0) return [0, 0];
+        e.modeT = 0; e.hit = false;
+        if (this.rng() < 0.28) e.mode = 'flame';
+        else { e.mode = 'wind'; e.grip2 = angry ? 2 : 1; e.hx = ux; e.hy = uy; }
+        return [0, 0];
+      }
+      case 'wind': {                                   // the lance comes down: it tracks, then commits
+        const T = angry ? 0.6 : 0.8;
+        if (e.modeT < T * 0.75) { e.hx = ux; e.hy = uy; }
+        if (e.modeT >= T) { e.mode = 'charge'; e.modeT = 0; e.hit = false; }
+        return [0, 0];
+      }
+      case 'charge': {
+        const sp = (angry ? 560 : 480) * dt, sub = 4;
+        for (let i = 0; i < sub; i++) {
+          const nx = e.x + (e.hx * sp) / sub, ny = e.y + (e.hy * sp) / sub;
+          if (room.inPit(nx, ny, -e.r * 0.4)) { e.mode = 'recover'; e.modeT = 0; e.cd = 0.6; return [0, 0]; }    // pulls up at the lava's edge
+          e.x = nx; e.y = ny;
+          if (room.collide(e) || e.x < e.r + 24 || e.y < e.r + 24 || e.x > room.def.width - e.r - 24 || e.y > room.def.height - e.r - 24) {
+            this.keepInside(e); e.mode = 'stuck'; e.modeT = 0; this.fx('slam', e.x, e.y);
+            this.say('CRUNCH! His lance sticks fast in the stone. Bite him!');
+            return [0, 0];
+          }
+          if (!e.hit && Math.hypot(bimbo.x - e.x, bimbo.y - e.y) < e.r + 14) { e.hit = true; this.hurtPlayer(1, true, e, 'lance'); if ((e.mode as string) === 'stagger') return [0, 0]; }
+        }
+        if (e.modeT > 1.2) {
+          e.grip2--;
+          if (e.grip2 > 0) { e.mode = 'wind'; e.modeT = 0.2; }
+          else { e.mode = 'recover'; e.modeT = 0; e.cd = 0.8 + this.rng() * 0.5; }
+        }
+        return [0, 0];
+      }
+      case 'stuck': case 'stagger':
+        if (e.modeT > (e.mode === 'stuck' ? (angry ? 1.8 : 2.4) : 2)) { e.mode = 'recover'; e.modeT = 0; e.cd = 0.5; if (latched) g.state = 'held'; }
+        return [0, 0];
+      case 'flame': {                                  // the lance raised: the lava answers
+        if (e.modeT < 0.7) return [0, 0];
+        for (let i = 0; i < (angry ? 6 : 4); i++) {
+          const a = this.rng() * Math.PI * 2, r = i === 0 ? 0 : 40 + this.rng() * 110;
+          this.darts.push({ x0: e.x, y0: e.y - 60, tx: bimbo.x + Math.cos(a) * r + p.vx * 0.4, ty: bimbo.y + Math.sin(a) * r * 0.7 + p.vy * 0.4, t: 0, T: 0.9 + i * 0.1, kind: 'ember' });
+        }
+        this.say('He raises the lance. The lava spits fire at the pack!');
+        e.mode = 'recover'; e.modeT = 0; e.cd = 1;
+        return [0, 0];
+      }
+      default: e.mode = 'stalk'; return [0, 0];
+    }
+  }
+
   /** Seconds of the Pelican Chef's all-vents eruption left. */
   steamAll = 0;
 
@@ -2488,6 +2587,14 @@ export class Sim {
         }
       }
     }
+    (def.embers ?? []).forEach(v => {
+      const t0 = (this.time - dt + v.phase) % v.period, t1 = (this.time + v.phase) % v.period;
+      if (t1 < t0 && Math.hypot(v.x - p.x, v.y - p.y) < 340 && !p.dead) {   // it just came round: an ember at the pack
+        const bk = this.packPoint(10);
+        this.darts.push({ x0: v.x, y0: v.y - 10, tx: bk.x + p.vx * 0.5 + (this.rng() - 0.5) * 40, ty: bk.y + p.vy * 0.5 + (this.rng() - 0.5) * 30, t: 0, T: 0.85, kind: 'ember' });
+        this.fx('splash', v.x, v.y);
+      }
+    });
     this.steamAll = Math.max(0, this.steamAll - dt);
     for (const v of def.steam ?? []) {
       const st = this.steamAll > 0 ? 'burst' : this.steamState(v);

@@ -2,7 +2,7 @@ import type { Circle, Rect, Vec } from '../core/math';
 import type { LeashId } from './recipes';
 import type { FishingGrounds } from '../core/fishing';
 
-export type EnemyKind = 'bunny' | 'knight' | 'frog' | 'snapper' | 'heron' | 'squirrel' | 'badger' | 'king' | 'elder' | 'crab' | 'gull' | 'gullbeard' | 'eel' | 'turtle' | 'bellhop' | 'mimic' | 'pelican';
+export type EnemyKind = 'bunny' | 'knight' | 'frog' | 'snapper' | 'heron' | 'squirrel' | 'badger' | 'king' | 'elder' | 'crab' | 'gull' | 'gullbeard' | 'eel' | 'turtle' | 'bellhop' | 'mimic' | 'pelican' | 'blackswan';
 
 /** A doorway on a room edge. Walking into it travels to `toDoor` in room `to` (or ends the slice when `to` is 'END'). */
 export interface Door {
@@ -84,6 +84,8 @@ export interface RoomDef {
   firebars?: (Vec & { n: number; speed: number; phase: number })[];
   /** Stone goose statues that slam down on anyone who walks under them. */
   crushers?: Rect[];
+  /** Lava spouts: every `period` seconds one flings an ember at the pack (when Rocco is near). */
+  embers?: (Vec & { period: number; phase: number })[];
   /** Greasy kitchen floor: Rocco slides. */
   grease?: Rect[];
   /** Stove vents that burst with scalding steam every `period` seconds (with a hiss first). */

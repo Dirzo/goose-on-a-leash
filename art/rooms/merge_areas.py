@@ -36,6 +36,7 @@ AREAS = [
     ('castle-1', 'Honkmore Gate', 'Castle Honkmore', ['castle-1']),
     ('castle-2', 'The Grand Foyer', 'Castle Honkmore · the first wing', ['castle-4', 'castle-3', 'castle-2']),
     ('castle-3', 'The Royal Kitchens', 'Castle Honkmore · the second wing', ['castle-5', 'castle-6', 'castle-7']),
+    ('castle-4', 'The Lava Keep', 'Castle Honkmore · the third wing', ['castle-8', 'castle-9', 'castle-10']),
 ]
 ROOM_TO_AREA = {r: a for a, _, _, rs in AREAS for r in rs}
 
@@ -110,7 +111,7 @@ def merge(area_id, name, subtitle, ids):
            'doors': [], 'paths': [], 'zones': [], 'lanterns': [], 'gate': None, 'bell': None, 'exit': None, 'bucket': None,
            'knightSpawn': None}
     lists = ['pits', 'bridges', 'refills', 'posts', 'vents', 'breadSpots', 'enemies', 'kits', 'spools', 'brambles',
-             'bushes', 'barrels', 'shrooms', 'feathers', 'nests', 'glass', 'springs', 'firebars', 'crushers', 'carpets', 'grease', 'steam']
+             'bushes', 'barrels', 'shrooms', 'feathers', 'nests', 'glass', 'springs', 'firebars', 'crushers', 'carpets', 'grease', 'steam', 'embers']
     for i in ids:
         R, (ox, oy) = rooms[i], pos[i]
         x0, y0, w, h = rects[i]

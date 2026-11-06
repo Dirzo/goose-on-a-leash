@@ -543,7 +543,7 @@ export class ArtRenderer {
     this.drawOar(sim, P, time);
     if (sim.castMode && sim.charging) this.drawCharge(sim, P, time);
     if (sim.room.def.fishing) this.drawFishing(sim, P, time);
-    if (sim.room.def.firebars || sim.room.def.crushers || sim.room.def.steam || sim.room.def.grease) this.drawCastle(sim, time);
+    if (sim.room.def.firebars || sim.room.def.crushers || sim.room.def.steam || sim.room.def.grease || sim.room.def.embers) this.drawCastle(sim, time);
 
     // ---- Biscuit
     const hauled = go.state === 'held' && go.drag > 0;     // dragged along after a roll: flapping
@@ -581,7 +581,7 @@ export class ArtRenderer {
       if (e.dead) continue;
       alive.add(e.id);
       let s = this.foes.get(e.id);
-      if (!s) { s = this.worldIgnore(this.scene.add.sprite(0, 0, ({ snapper: 'snapper', elder: 'snapper', heron: 'heron', squirrel: 'squirrel', badger: 'badger', king: 'king', crab: 'crab', gull: 'gull', gullbeard: 'gullbeard', eel: 'eel', turtle: 'turtle', bellhop: 'bellhop', pelican: 'pelican', mimic: 'crab' } as Record<string, string>)[e.kind] ?? 'frog')); this.foes.set(e.id, s); }
+      if (!s) { s = this.worldIgnore(this.scene.add.sprite(0, 0, ({ snapper: 'snapper', elder: 'snapper', heron: 'heron', squirrel: 'squirrel', badger: 'badger', king: 'king', crab: 'crab', gull: 'gull', gullbeard: 'gullbeard', eel: 'eel', turtle: 'turtle', bellhop: 'bellhop', pelican: 'pelican', mimic: 'crab', blackswan: 'blackswan' } as Record<string, string>)[e.kind] ?? 'frog')); this.foes.set(e.id, s); }
       const { x, y } = EP(e);
       const awake = e.woke > 0 || (e.stun > 0 && e.kind !== 'snapper');
       const kind = e.kind === 'heron' ? (e.woke > 0 ? 'heron_awake' : 'heron')
@@ -595,6 +595,7 @@ export class ArtRenderer {
       if (e.kind === 'turtle' || e.kind === 'bellhop') { this.drawCastleCritter(sim, e, s, x, y, time); continue; }
       if (e.kind === 'mimic') { s.setVisible(false); this.drawMimic(sim, e, x, y, time); continue; }
       if (e.kind === 'pelican') { this.drawPelican(sim, e, s, x, y, time); continue; }
+      if (e.kind === 'blackswan') { this.drawBlackSwan(sim, e, s, x, y, time); continue; }
       if (e.kind === 'crab' || e.kind === 'gull' || e.kind === 'gullbeard' || e.kind === 'eel') {
         this.drawWharfCritter(sim, e, s, x, y, time);
         continue;
@@ -730,6 +731,10 @@ export class ArtRenderer {
       this.floor.fillStyle(0xff4a4a, 0.15 * u); this.floor.fillEllipse(d.tx, d.ty, r * 2.2, r * 1.1);
       const fx2 = d.x0 + (d.tx - d.x0) * u, fy2 = d.y0 + (d.ty - d.y0) * u - Math.sin(u * Math.PI) * (kind === 'acorn' ? 50 : 90);
       if (kind === 'feather') { f2.lineStyle(2, 0xe8eef2, 1); f2.lineBetween(fx2 - 3, fy2 - 6, fx2 + 3, fy2 + 6); f2.fillStyle(0x7890aa, 1); f2.fillRect(fx2 - 2, fy2 - 6, 3, 6); }
+      else if (kind === 'ember') {
+        const fl = 1 + Math.sin(d.t * 40) * 0.2;
+        f2.fillStyle(0xff6a1a, 0.3); f2.fillCircle(fx2, fy2, 9 * fl); f2.fillStyle(0xff8a2a, 1); f2.fillCircle(fx2, fy2, 4.5 * fl); f2.fillStyle(0xffe08a, 1); f2.fillCircle(fx2 - 1, fy2 - 1, 2);
+      }
       else if (kind === 'bottle') {
         const a = d.t * 14;
         f2.fillStyle(0x1a1522, 1); f2.fillCircle(fx2, fy2, 5);
@@ -884,11 +889,11 @@ export class ArtRenderer {
     if (this.wtWave) { panel(W / 2 - 110, 124, 220, 30); this.ht('mono', this.wtWave, W / 2, 144, 13, '#ff8a6a', 0.8 + 0.2 * Math.sin(this.time * 6), 'center', true); }
 
     // boss health
-    const boss = sim.enemies.find(e => (e.kind === 'heron' || e.kind === 'king' || (e.kind === 'pelican' && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < 700) || (e.kind === 'gullbeard' && e.mode !== 'stalk') || (e.kind === 'elder' && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < 620)) && !e.woke);
+    const boss = sim.enemies.find(e => (e.kind === 'heron' || e.kind === 'king' || (e.kind === 'pelican' && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < 700) || (e.kind === 'blackswan' && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < 750) || (e.kind === 'gullbeard' && e.mode !== 'stalk') || (e.kind === 'elder' && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < 620)) && !e.woke);
     if (boss) {
       const bw2 = 520, bx2 = W / 2 - bw2 / 2, by2 = 150, angry = boss.hp < boss.max / 2;
       g.fillStyle(0x0b0a10, 0.8); g.fillRect(bx2 - 12, by2 - 30, bw2 + 24, 52);
-      this.ht('display', boss.kind === 'king' ? 'THE BURROW KING' : boss.kind === 'gullbeard' ? 'CAPTAIN GULLBEARD' : boss.kind === 'pelican' ? 'THE PELICAN CHEF' : boss.kind === 'elder' ? 'OLD SNAPPER' : 'THE HERON FERRYMAN', W / 2, by2 - 8, 16, angry ? '#ff8a8a' : '#e9e4d6');
+      this.ht('display', boss.kind === 'king' ? 'THE BURROW KING' : boss.kind === 'gullbeard' ? 'CAPTAIN GULLBEARD' : boss.kind === 'pelican' ? 'THE PELICAN CHEF' : boss.kind === 'blackswan' ? 'THE BLACK SWAN' : boss.kind === 'elder' ? 'OLD SNAPPER' : 'THE HERON FERRYMAN', W / 2, by2 - 8, 16, angry ? '#ff8a8a' : '#e9e4d6');
       g.fillStyle(0x1a1522, 1); g.fillRect(bx2, by2, bw2, 12);
       g.fillStyle(angry ? 0xe05a47 : 0xc94b3a, 1); g.fillRect(bx2 + 2, by2 + 2, (bw2 - 4) * Math.max(0, boss.hp / boss.max), 8);
       g.fillStyle(0xe9e4d6, 0.5); g.fillRect(bx2 + bw2 / 2, by2, 1, 12);
@@ -1293,9 +1298,36 @@ export class ArtRenderer {
     if (e.mode === 'dazed') for (let i = 0; i < 3; i++) { const a = time * 5 + i * 2.1; f.fillStyle(0xf2c230, 1); this.star(f, x + Math.cos(a) * 22, y - 108 + Math.sin(a) * 3, 3.5); }
   }
 
+  /** The Black Swan: the lance's line while he aims, sparks when he's stuck, stars when he staggers. */
+  private drawBlackSwan(sim: Sim, e: Enemy, s: Phaser.GameObjects.Sprite, x: number, y: number, time: number): void {
+    const g = this.floor, f = this.fxg, awake = e.woke > 0;
+    const blink = ((time * 1.1 + e.id * 0.37) % 3.2) < 0.14;
+    let frame = blink ? 1 : 0;
+    if (!awake) frame = e.mode === 'wind' ? 2 : e.mode === 'charge' ? 3 : e.mode === 'stuck' ? 4 : e.mode === 'stagger' || e.mode === 'flame' ? 5 : frame;
+    this.show(s, awake ? 'blackswan_awake' : 'blackswan', awake ? Math.min(frame, 1) : frame);
+    const dirX = e.mode === 'charge' || e.mode === 'wind' || e.mode === 'stuck' ? e.hx : sim.player.x - x;
+    s.setPosition(Math.round(x), Math.round(y)).setDepth(y).setFlipX(dirX < 0).setAlpha(1);
+    const tell = e.mode === 'wind' && Math.floor(e.modeT * 16) % 2 === 0;
+    if (e.hitT > 0 || tell) s.setTint(e.hitT > 0 ? 0xffffff : 0xffd0d0).setTintMode(Phaser.TintModes.FILL); else s.clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
+    g.fillStyle(0x000000, 0.35); g.fillEllipse(x, y + 2, 60, 14);
+    if (awake) { if (e.woke < 6) this.wt('The Black Swan', x, y - 104, 9, '#e0e6ee', Math.min(1, 6 - e.woke)); return; }
+    if (e.mode === 'wind') {
+      g.lineStyle(3, 0xff4a4a, 0.35 + 0.35 * Math.sin(time * 18)); g.lineBetween(x, y - 4, x + e.hx * 700, y - 4 + e.hy * 700);
+      this.wt('!', x, y - 104, 16, '#ff4a4a', 1);
+    }
+    if (e.mode === 'flame') this.wt('!', x, y - 104, 14, '#ff8a2a', 1);
+    if (e.mode === 'stuck' && Math.floor(time * 12) % 2) { f.fillStyle(0xffe08a, 1); f.fillRect(x + e.hx * 50 + (Math.random() - 0.5) * 10, y - 20 + (Math.random() - 0.5) * 10, 2, 2); }
+    if (e.mode === 'stuck' || e.mode === 'stagger') for (let i = 0; i < 3; i++) { const a = time * 5 + i * 2.1; f.fillStyle(0xf2c230, 1); this.star(f, x + Math.cos(a) * 24, y - 100 + Math.sin(a) * 3, 3.5); }
+  }
+
   /** Fire bars (a stone hub, a chain of fireballs, an ember glow) and the slamming goose statues. */
   private drawCastle(sim: Sim, time: number): void {
     const g = this.floor, f = this.fxg, def = sim.room.def;
+    for (const v of def.embers ?? []) {                // a lava spout, bubbling; it gathers itself before it spits
+      const ph = ((time + v.phase) % v.period) / v.period;
+      g.fillStyle(0xffe08a, 0.25 + ph * 0.4); g.fillCircle(v.x, v.y, 6 + ph * 6);
+      g.lineStyle(1, 0xffa830, 0.6); g.strokeCircle(v.x, v.y, 10 + Math.sin(time * 8) * 2);
+    }
     for (const r of def.grease ?? []) {                // a greasy sheen that shimmers
       for (let k = 0; k < 6; k++) { const gx = r.x + ((k * 97 + time * 12) % r.w), gy = r.y + ((k * 53) % r.h); g.fillStyle(0xf0d890, 0.12); g.fillEllipse(gx, gy, 22, 6); }
     }

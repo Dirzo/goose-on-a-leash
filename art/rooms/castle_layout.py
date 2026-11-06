@@ -39,7 +39,8 @@ ROOMS.append(room(
     'castle-1', 'Honkmore Gate', 1280, 900,
     [dict(id='s', side='S', at=640, to='tide-3', toDoor='n', label='Moonlit Cove'),
      dict(id='w', side='W', at=360, to='castle-2', toDoor='e', label='The Grand Foyer'),
-     dict(id='e', side='E', at=360, to='castle-5', toDoor='w', label='The Royal Kitchens')],
+     dict(id='e', side='E', at=360, to='castle-5', toDoor='w', label='The Royal Kitchens'),
+     dict(id='n', side='N', at=1060, to='castle-8', toDoor='s', label='The Lava Keep')],
     's', subtitle='Castle Honkmore · the gate', **K(),
     pits=[rect(20, 640, 1240, 120, kind='water')],                           # the moat
     bridges=[rect(596, 630, 88, 140, kind='dock')],                          # the drawbridge
@@ -52,7 +53,7 @@ ROOMS.append(room(
     kits=[{'x': 1150, 'y': 160}],
     bread=[{'x': 160, 'y': 160}],
     lanterns=[{'x': 520, 'y': 600}, {'x': 760, 'y': 600}, {'x': 640, 'y': 160}],
-    paths=[[[640, 834], [640, 420]], [[640, 300], [66, 360]], [[640, 300], [1214, 360]]],
+    paths=[[[640, 834], [640, 420]], [[640, 300], [66, 360]], [[640, 300], [1214, 360]], [[640, 300], [1060, 200], [1060, 66]]],
     ventSpawns=False,
 ))
 
@@ -166,6 +167,65 @@ ROOMS.append(room(
     refills=[rect(1080, 360, 90, 80)], springs=[{'x': 1120, 'y': 390}],
     lanterns=[{'x': 600, 'y': 400}, {'x': 300, 'y': 400}, {'x': 900, 'y': 400}],
     tiles=True, paths=[],
+))
+
+# ================================================================ the Lava Keep (north wing)
+lava = lambda x, y, w, h: rect(x, y, w, h, kind='lava')
+ember = lambda x, y, period=2.6, phase=0.0: {'x': x, 'y': y, 'period': period, 'phase': phase}
+
+# 8 ---------------------------------------------------------------- The Lava Bridges
+B1, B2, B3, B4 = (300, 250), (560, 330), (820, 250), (1080, 330)
+cast('bridges: landing to the first chain', (200, 520), B1)
+for a, b in ((B1, B2), (B2, B3), (B3, B4)):
+    cast('bridges: chain to chain', a, b); cast('bridges: back', b, a)
+ROOMS.append(room(
+    'castle-8', 'The Lava Bridges', 1300, 720,
+    [dict(id='s', side='S', at=200, to='castle-1', toDoor='n', label='Honkmore Gate'),
+     dict(id='e', side='E', at=330, to='castle-9', toDoor='w', label='The Forge')],
+    's', subtitle='Castle Honkmore · the Lava Keep', **K(),
+    pits=[lava(380, 20, 640, 680)],
+    bridges=[rect(510, 280, 100, 100, kind='pillar'), rect(770, 200, 100, 100, kind='pillar')],
+    posts=[post(*B1), post(*B2), post(*B3), post(*B4)],
+    embers=[ember(450, 120, 2.4, 0), ember(700, 480, 2.4, 0.8), ember(950, 140, 2.4, 1.6), ember(650, 640, 3, 0.4)],
+    enemies=[turtle(1180, 560), bellhop(1180, 150)],
+    refills=[rect(60, 80, 100, 80)], springs=[{'x': 110, 'y': 110}],
+    kits=[{'x': 140, 'y': 640}],
+    lanterns=[{'x': 250, 'y': 420}, {'x': 1150, 'y': 420}],
+    paths=[],
+))
+
+# 9 ---------------------------------------------------------------- The Forge
+ROOMS.append(room(
+    'castle-9', 'The Forge', 1300, 760,
+    [dict(id='w', side='W', at=330, to='castle-8', toDoor='e', label='The Lava Bridges'),
+     dict(id='e', side='E', at=380, to='castle-10', toDoor='w', label='The Keep Tower')],
+    'w', subtitle='Castle Honkmore · the Lava Keep', **K(),
+    pits=[lava(340, 80, 140, 220), lava(340, 460, 140, 220), lava(820, 80, 140, 220), lava(820, 460, 140, 220)],
+    firebars=[fire(640, 380, 8, 1.3), fire(400, 380, 4, -2.2), fire(890, 380, 4, 2.2)],
+    crushers=[crusher(600, 120), crusher(600, 580)],
+    embers=[ember(410, 190, 2.8, 0.5), ember(890, 570, 2.8, 1.9)],
+    enemies=[turtle(220, 200), turtle(1100, 560), bellhop(1120, 160), mimic(200, 600)],
+    chest={'x': 1180, 'y': 680, 'leash': 'golden'},
+    bread=[{'x': 160, 'y': 600}],
+    refills=[rect(60, 640, 90, 80)], springs=[{'x': 100, 'y': 670}],
+    lanterns=[{'x': 640, 'y': 250}, {'x': 640, 'y': 520}],
+    paths=[],
+))
+
+# 10 --------------------------------------------------------------- The Keep Tower (boss)
+ROOMS.append(room(
+    'castle-10', 'The Keep Tower', 1200, 900,
+    [dict(id='w', side='W', at=450, to='castle-9', toDoor='e', label='The Forge')],
+    'w', subtitle='Castle Honkmore · the Black Swan', **K(),
+    pits=[lava(20, 20, 1160, 110), lava(20, 770, 1160, 110), lava(1060, 20, 120, 860)],          # the tower floor, ringed by lava
+    props=[pillar(300, 260), pillar(900, 260), pillar(300, 640), pillar(900, 640)],
+    embers=[ember(200, 70, 2.2, 0), ember(800, 830, 2.2, 1.1), ember(1120, 450, 2.2, 0.6)],
+    enemies=[foe('blackswan', 700, 450)],
+    boss='blackswan', ventSpawns=False,
+    refills=[rect(80, 400, 80, 90)], springs=[{'x': 120, 'y': 430}],
+    lanterns=[{'x': 600, 'y': 450}, {'x': 300, 'y': 450}, {'x': 900, 'y': 450}],
+    carpets=[rect(160, 420, 900, 60)],
+    paths=[],
 ))
 
 os.makedirs(OUT, exist_ok=True)

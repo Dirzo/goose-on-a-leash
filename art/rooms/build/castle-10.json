@@ -1,0 +1,193 @@
+{
+ "id": "castle-10",
+ "name": "The Keep Tower",
+ "subtitle": "Castle Honkmore \u00b7 the Black Swan",
+ "width": 1200,
+ "height": 900,
+ "playerStart": {
+  "x": 66,
+  "y": 450
+ },
+ "walls": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1200,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 880,
+   "w": 1200,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 408.0,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 492.0,
+   "w": 20,
+   "h": 408.0,
+   "kind": "border"
+  },
+  {
+   "x": 1180,
+   "y": 0,
+   "w": 20,
+   "h": 900,
+   "kind": "border"
+  },
+  {
+   "x": 278,
+   "y": 238,
+   "w": 44,
+   "h": 44,
+   "kind": "pillar"
+  },
+  {
+   "x": 878,
+   "y": 238,
+   "w": 44,
+   "h": 44,
+   "kind": "pillar"
+  },
+  {
+   "x": 278,
+   "y": 618,
+   "w": 44,
+   "h": 44,
+   "kind": "pillar"
+  },
+  {
+   "x": 878,
+   "y": 618,
+   "w": 44,
+   "h": 44,
+   "kind": "pillar"
+  }
+ ],
+ "gate": null,
+ "pits": [
+  {
+   "x": 20,
+   "y": 20,
+   "w": 1160,
+   "h": 110,
+   "kind": "lava"
+  },
+  {
+   "x": 20,
+   "y": 770,
+   "w": 1160,
+   "h": 110,
+   "kind": "lava"
+  },
+  {
+   "x": 1060,
+   "y": 20,
+   "w": 120,
+   "h": 860,
+   "kind": "lava"
+  }
+ ],
+ "bridges": [],
+ "refills": [
+  {
+   "x": 80,
+   "y": 400,
+   "w": 80,
+   "h": 90
+  }
+ ],
+ "posts": [],
+ "bell": null,
+ "exit": null,
+ "vents": [],
+ "bucket": null,
+ "breadSpots": [],
+ "enemies": [
+  {
+   "kind": "blackswan",
+   "x": 700,
+   "y": 450
+  }
+ ],
+ "knightSpawn": null,
+ "doors": [
+  {
+   "id": "w",
+   "x": 0,
+   "y": 408.0,
+   "w": 26,
+   "h": 84,
+   "to": "castle-9",
+   "toDoor": "e",
+   "spawn": {
+    "x": 66,
+    "y": 450
+   },
+   "label": "The Forge"
+  }
+ ],
+ "paths": [],
+ "biome": "castle",
+ "lightKind": "turtle",
+ "heavyKind": "turtle",
+ "embers": [
+  {
+   "x": 200,
+   "y": 70,
+   "period": 2.2,
+   "phase": 0
+  },
+  {
+   "x": 800,
+   "y": 830,
+   "period": 2.2,
+   "phase": 1.1
+  },
+  {
+   "x": 1120,
+   "y": 450,
+   "period": 2.2,
+   "phase": 0.6
+  }
+ ],
+ "boss": "blackswan",
+ "ventSpawns": false,
+ "springs": [
+  {
+   "x": 120,
+   "y": 430
+  }
+ ],
+ "lanterns": [
+  {
+   "x": 600,
+   "y": 450
+  },
+  {
+   "x": 300,
+   "y": 450
+  },
+  {
+   "x": 900,
+   "y": 450
+  }
+ ],
+ "carpets": [
+  {
+   "x": 160,
+   "y": 420,
+   "w": 900,
+   "h": 60
+  }
+ ]
+}
