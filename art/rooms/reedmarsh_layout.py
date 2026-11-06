@@ -165,12 +165,12 @@ ROOMS.append(room(
     pits=[rect(640, 30, 290, 190)],
     bridges=[rect(720, 70, 120, 96, kind='island')],
     refills=[rect(630, 218, 300, 26), rect(616, 30, 26, 190)],
-    props=[rect(330, 250, 40, 28, kind='stump'), rect(600, 400, 56, 24, kind='log'), rect(150, 380, 40, 30, kind='rock')],
+    # open ground for the fight; rocks and a log round the edges to bait his charge into
+    props=[rect(150, 80, 40, 30, kind='rock'), rect(140, 500, 40, 30, kind='rock'), rect(500, 540, 56, 24, kind='log'), rect(560, 60, 40, 30, kind='rock')],
     boss='elder', ventSpawns=False,
-    vents=[{'x': 170, 'y': 140}, {'x': 210, 'y': 500}, {'x': 520, 'y': 520}, {'x': 470, 'y': 110}],
     enemies=[foe('elder', 440, 330)],
     bread=[{'x': 100, 'y': 540}, {'x': 560, 'y': 300}, {'x': 860, 'y': 520}],
-    spools=[{'x': 300, 'y': 540}, {'x': 850, 'y': 430}],
+    spools=[{'x': 300, 'y': 560}, {'x': 850, 'y': 430}],
     lantern={'x': 640, 'y': 236},
     paths=[[[66, 300], [560, 300], [894, 300]]],
 ))

@@ -49,6 +49,8 @@ export class Atmosphere {
   private nextBolt = 4;
   private honks: { x: number; y: number; t: number; c: number; r: number }[] = [];
   enabled = true;
+  /** 0..1: the night before the blood moon (the prologue fades it out). */
+  calm = 0;
   /** Dark out-of-focus silhouettes close to the camera (parallax > 1): reeds, branches, leaves. */
   private fg: Phaser.GameObjects.Image[] = [];
   private world: <T extends Phaser.GameObjects.GameObject>(o: T) => T;
@@ -146,6 +148,7 @@ export class Atmosphere {
 
     // ---- storm lightning
     let ambient = sim.storming ? STORM_AMBIENT : this.look.ambient;
+    if (this.calm > 0) ambient = mix(ambient, 0xc4d4f0, this.calm);     // before the moon turns: a pale, quiet night
     if (sim.storming) {
       this.nextBolt -= dt;
       if (this.nextBolt <= 0) { this.lightning = 1; this.nextBolt = 5 + Math.random() * 7; }

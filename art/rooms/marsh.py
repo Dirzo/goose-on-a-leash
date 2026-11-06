@@ -358,6 +358,16 @@ def render(R):
         img[trail] = P['D1']; img[trail & (pn > 0.45)] = P['D2']
     band = np.where(solid, 0, d_edge)
     canopy = (solid & ~gap) | ((band < wobble - 1) & ~gap)
+    # walls inside an area (between two of its parts) get a thick hedge so they read as walls
+    inner_w = np.zeros((H, W), bool)
+    for w in R['walls']:
+        if w.get('kind') != 'border': continue
+        if w['x'] <= 0 or w['y'] <= 0 or w['x'] + w['w'] >= W or w['y'] + w['h'] >= H: continue
+        x0, y0 = max(0, int(w['x'])), max(0, int(w['y']))
+        inner_w[y0:int(w['y'] + w['h']), x0:int(w['x'] + w['w'])] = True
+    if inner_w.any():
+        d_in = distance_transform_edt(~inner_w).astype(np.float32)
+        canopy |= (d_in < 9 + wobble * 0.6) & ~gap
     img[canopy] = P['TREE']; img[canopy & (((xx * 7 + yy * 3) % 11) < 2)] = P['TREE2']
     img[(band >= wobble - 1) & (band < wobble + 2) & ~gap & ~solid] = P['TREE3']
     # the forest mass seen from above: crowns of leaves, moonlit on their tops, darker the deeper in

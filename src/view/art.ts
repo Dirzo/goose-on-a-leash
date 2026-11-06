@@ -98,6 +98,7 @@ export class ArtRenderer {
       body: new TextPool(scene, 'body', 9500, t => screen(t), HUD_SCALE),
     };
     this.worldIgnore = world;
+    this.screenOnly = screen;
     this.atmo = new Atmosphere(scene, world);
     this.cinemaView = new CinemaView(scene, screen, HUD_SCALE);
     this.buildPackUi(screen);
@@ -139,6 +140,14 @@ export class ArtRenderer {
   }
 
   private worldIgnore: <T extends Phaser.GameObjects.GameObject>(o: T) => T;
+  private screenOnly!: <T extends Phaser.GameObjects.GameObject>(o: T) => T;
+  /** For overlays (the prologue): put a game object on the world layer or the HUD layer. */
+  layers(): { world: <T extends Phaser.GameObjects.GameObject>(o: T) => T; screen: <T extends Phaser.GameObjects.GameObject>(o: T) => T } {
+    return { world: this.worldIgnore, screen: this.screenOnly };
+  }
+  /** Staging for the prologue: hide Biscuit and the leash until he's tied on; where the rod tip is. */
+  stage: { hideGoose: boolean } | null = null;
+  rodTip: Vec = { x: 0, y: 0 };
 
   private setOrigin(s: Phaser.GameObjects.Sprite, strip: string): void {
     const d = SPRITES[strip]!;
@@ -515,14 +524,14 @@ export class ArtRenderer {
     const waddle = go.state === 'loose' || go.state === 'returning';
     this.show(this.biscuit, bstrip, Math.floor(time * (flying ? 16 : waddle ? 12 : 6)));
     const glift = go.state === 'flying' ? 10 : hauled ? 3 + Math.abs(Math.sin(time * 20)) * 3 : 0;
-    this.biscuit.setFlipX(bflip).setPosition(Math.round(G.x), Math.round(G.y - glift)).setDepth(G.y);
+    this.biscuit.setFlipX(bflip).setPosition(Math.round(G.x), Math.round(G.y - glift)).setDepth(G.y).setVisible(!this.stage?.hideGoose);
     const sb = Math.sin(this.sqB * Math.PI) * 0.22, stretch = go.state === 'flying' ? 0.1 : 0;
     this.biscuit.setScale(1 + sb + stretch, 1 - sb - stretch * 0.6);
     const furious = go.furious > 0;
     if (go.feral) this.biscuit.setTint(Math.floor(time * 8) % 2 ? 0xff6a5a : 0xff9a8a);
     else if (furious) this.biscuit.setTint(0xffc4b8);
     else this.biscuit.clearTint();
-    g.fillStyle(0x000000, glift ? 0.22 : 0.35); g.fillEllipse(G.x, G.y + (flying ? 6 : 1), 22, 6);
+    if (!this.stage?.hideGoose) { g.fillStyle(0x000000, glift ? 0.22 : 0.35); g.fillEllipse(G.x, G.y + (flying ? 6 : 1), 22, 6); }
     const neck = point(bstrip, 'neck', bflip);
     const neckW = { x: Math.round(G.x) + neck.x, y: Math.round(G.y - glift) + neck.y };
     if (furious || go.feral) for (let i = 0; i < 2; i++) {
@@ -632,9 +641,11 @@ export class ArtRenderer {
     const d1 = { x: neckW.x - rp[n]!.x, y: neckW.y - rp[n]!.y };
     for (let i = 0; i <= n; i++) { const u = i / n; rp[i] = { x: rp[i]!.x + d0.x * (1 - u) + d1.x * u, y: rp[i]!.y + d0.y * (1 - u) + d1.y * u }; }
     const smooth = smoothRope(rp);
+    this.rodTip = tipW;
     const taut = Math.hypot(G.x - P.x, G.y - P.y) > sim.leashLen() * 0.97;
+    if (this.stage?.hideGoose) smooth.length = 0;
     this.line.lineStyle(leash.heavy ? 2 : 1, hex(leash.ropeColor), 1);
-    if (leash.heavy) dashed(this.line, smooth, 4, 2); else this.line.strokePoints(smooth as unknown as Phaser.Math.Vector2[], false);
+    if (!smooth.length) { /* no leash yet */ } else if (leash.heavy) dashed(this.line, smooth, 4, 2); else this.line.strokePoints(smooth as unknown as Phaser.Math.Vector2[], false);
     if (taut || go.strain > 0.7) { this.line.lineStyle(1, 0xf2c230, 0.4 + 0.4 * Math.sin(time * 20)); this.line.strokePoints(smooth as unknown as Phaser.Math.Vector2[], false); }
     if (sim.leashAttached) { this.line.fillStyle(0xd8ecf4, 1); this.line.fillRect(tipW.x - 1, tipW.y - 1, 2, 2); }
 
@@ -830,13 +841,15 @@ export class ArtRenderer {
     // room banner
     if (this.banner > 0) {
       const a = Math.min(1, this.banner / 0.8, (3.5 - this.banner) / 0.4);
-      this.ht('display', sim.room.def.name.toUpperCase(), W / 2, 200, 44, '#f6f1e6', a);
-      if (sim.room.def.subtitle) this.ht('body', sim.room.def.subtitle, W / 2, 234, 18, '#c9a46a', a, 'center', true);
+      const dy = boss ? 80 : 0;                         // keep clear of the boss's health bar
+      this.ht('display', sim.room.def.name.toUpperCase(), W / 2, 200 + dy, 44, '#f6f1e6', a);
+      if (sim.room.def.subtitle) this.ht('body', sim.room.def.subtitle, W / 2, 234 + dy, 18, '#c9a46a', a, 'center', true);
     }
     if (this.zoneBanner > 0 && this.banner <= 0) {
       const a = Math.min(1, this.zoneBanner / 0.6, (2.6 - this.zoneBanner) / 0.4);
-      this.ht('display', this.zoneName.toUpperCase(), W / 2, 150, 26, '#e9e4d6', a * 0.9);
-      g.fillStyle(0xc9a46a, a * 0.7); g.fillRect(W / 2 - 40, 162, 80, 1);
+      const zy = boss ? 226 : 150;
+      this.ht('display', this.zoneName.toUpperCase(), W / 2, zy, 26, '#e9e4d6', a * 0.9);
+      g.fillStyle(0xc9a46a, a * 0.7); g.fillRect(W / 2 - 40, zy + 12, 80, 1);
     }
     if (this.flash > 0) { g.fillStyle(0x05040a, Math.min(0.85, this.flash)); g.fillRect(0, 0, W, H); }
     if (this.snapFlash > 0) { g.fillStyle(0xffffff, this.snapFlash * 0.5); g.fillRect(0, 0, W, H); }

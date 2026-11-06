@@ -15,7 +15,9 @@ export type Step =
   | { wait: number }
   | { shake: number }
   | { fadeIn: number }
-  | { sound: string };
+  | { sound: string }
+  /** A cue for whoever is staging the scene (the prologue): 'redmoon', 'pack', 'goose', 'tie'. */
+  | { act: string };
 
 /** Portrait: which sprite, zoom, and where to frame it (ax/ay: 0 = left/top edge of the sprite, 1 = right/bottom). */
 export const SPEAKERS: Record<Speaker, { name: string; color: string; strip: string; frame: number; scale: number; ax: number; ay: number }> = {
@@ -28,17 +30,41 @@ export const SPEAKERS: Record<Speaker, { name: string; color: string; strip: str
 };
 
 export const CINEMATICS: Record<string, Step[]> = {
-  ch1: [
-    { fadeIn: 1.4 },
-    { title: 'Chapter One · The Blood Moon', sub: 'Willowmere Pond', hold: 3 },
+  // ---- the prologue (playable fishing in between: see src/view/prologue.ts)
+  'pro-open': [
+    { fadeIn: 2 },
+    { title: 'Prologue · One More Cast', sub: 'Willowmere Pond, a quiet night', hold: 3 },
     { pan: 'player', dur: 0.6 },
-    { say: 'Biggest catch of my life, and it talks.', who: 'rocco' },
-    { say: 'I am a MOON KOI. And I am drying out. Water. Now.', who: 'bimbo' },
-    { say: "Backpack's full, Your Fishness. Mind the holes.", who: 'rocco' },
+    { say: "Quiet night. Big moon. One more cast and I'll head home.", who: 'rocco' },
+  ],
+  'pro-catch': [
+    { sound: 'splash' },
+    { say: "Whoa. WHOA. That's no carp.", who: 'rocco' },
+    { say: 'Put. Me. DOWN. I am a Moon Koi, and this is MY pond.', who: 'bimbo' },
+    { say: "A talking fish. Grandpa said there'd be nights like this.", who: 'rocco' },
+    { act: 'redmoon' }, { sound: 'wake' }, { shake: 0.6 },
+    { wait: 1.6 },
+    { say: "Oh no. The moon. It's turning red. Everything that looks at it goes... hungry.", who: 'bimbo' },
+    { pan: { x: 240, y: 170 }, dur: 1.2 },
+    { sound: 'ribbit' },
+    { say: "And I'm the tastiest thing in Willowmere. Somewhere wet. NOW.", who: 'bimbo' },
+    { pan: 'player', dur: 0.8 },
+    { act: 'pack' }, { sound: 'splash' },
+    { say: "In the backpack you go. It sloshes a bit. Don't mind the holes.", who: 'rocco' },
+    { sound: 'honk' }, { act: 'goose' },
+    { wait: 0.8 },
     { say: 'HONK.', who: 'biscuit' },
-    { say: 'And why is there a goose tied to your fishing line?', who: 'bimbo' },
-    { say: "Because the moon's gone red, and everything out there wants a bite of you. Biscuit bites back.", who: 'rocco' },
-    { say: '...I hate everything about this.', who: 'bimbo' },
+    { say: "Biscuit! Farmer Hollis's goose. Meanest bird in the valley.", who: 'rocco' },
+    { say: 'It is looking at me. Why is it looking at me.', who: 'bimbo' },
+    { say: "He bites anything that moves. That's exactly what we need.", who: 'rocco' },
+    { act: 'tie' }, { sound: 'patch' },
+    { say: 'There. Tied to my fishing line. Point him at trouble, and let him go.', who: 'rocco' },
+    { say: 'HONK!!', who: 'biscuit' },
+    { say: "I'm going to die in a backpack.", who: 'bimbo' },
+  ],
+  ch1: [
+    { title: 'Chapter One · The Blood Moon', sub: 'Willowmere Pond', hold: 3 },
+    { say: 'Fine. FINE. North, to the marsh. And keep me WET.', who: 'bimbo' },
   ],
   ch2: [
     { fadeIn: 0.8 },

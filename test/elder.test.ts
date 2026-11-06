@@ -78,6 +78,33 @@ describe('Old Snapper', () => {
     void e;
   });
 
+  it('in the real area, the fight stays in his walled wallow and Rocco can win it', () => {
+    const sim = new Sim({ seed: 4 });
+    sim.enterRoom(ROOMS['reedmarsh-1']!, 's');
+    const def = sim.room.def, z = def.zones!.find(q => q.name === 'Burrow Field')!;
+    const e = sim.enemies.find(x => x.kind === 'elder')!;
+    sim.player.x = z.x + 200; sim.player.y = e.y; sim.goose.x = sim.player.x - 30; sim.goose.y = e.y;
+    let outside = 0;
+    for (let i = 0; i < 60 * 40 && !e.woke; i++) {
+      const f: InputFrame = { moveX: 0, moveY: 0, aimX: e.x, aimY: e.y };
+      if (i % 90 === 10) f.fling = true;
+      if (e.mode === 'tired' && i % 30 === 0) f.fling = true;
+      if (e.mode === 'wind' && e.modeT > 0.6 && e.attack === 'charge') { f.roll = true; f.moveY = sim.player.y > e.y ? 1 : -1; }
+      sim.pack.water = 1;
+      sim.step(STEP, f);
+      if (e.x < z.x || e.x > z.x + z.w || e.y < z.y || e.y > z.y + z.h) outside++;
+    }
+    expect(outside).toBe(0);
+    expect(e.woke).toBeGreaterThan(0);
+  });
+
+  it('the wall between Mooring Run and his wallow is closed but for a doorway', () => {
+    const def = ROOMS['reedmarsh-1']!, z = def.zones!.find(q => q.name === 'Burrow Field')!;
+    const west = def.walls.filter(w => (w as { kind?: string }).kind === 'border' && Math.abs(w.x - z.x) < 2);
+    const covered = west.reduce((s, w) => s + Math.max(0, Math.min(w.y + w.h, z.y + z.h) - Math.max(w.y, z.y)), 0);
+    expect(z.h - covered).toBeLessThan(100);
+  });
+
   it('woken, he opens the gate and hands over a feather', () => {
     const sim = new Sim({ seed: 2 });
     sim.enterRoom(ROOMS['reedmarsh-1']!, 's');

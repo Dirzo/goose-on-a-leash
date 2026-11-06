@@ -79,6 +79,7 @@ def merge(area_id, name, subtitle, ids):
     def add_open(r, s, a, b): opens.setdefault((r, s), []).append((a, b))
     for a, b, sa, gated, dA in seams:
         xa, ya, wa, ha = rects[a]; xb, yb, wb, hb = rects[b]
+        gated = gated or bool(rooms[a].get('boss') or rooms[b].get('boss'))   # a boss arena keeps its walls: just a doorway in
         if sa == 'E':
             lo, hi = max(ya, yb), min(ya + ha, yb + hb)
             if gated:

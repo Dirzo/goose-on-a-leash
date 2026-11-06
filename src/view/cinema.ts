@@ -29,7 +29,7 @@ export class Cinema {
   private id = '';
   state: CinemaState = { bars: 0, fade: 0, cam: null, title: null, line: null };
   /** Called for side effects a step asks for (sound, shake). */
-  onCue: (cue: { sound?: string; shake?: number }) => void = () => {};
+  onCue: (cue: { sound?: string; shake?: number; act?: string }) => void = () => {};
   onEnd: (id: string) => void = () => {};
 
   get active(): boolean { return this.steps.length > 0 && this.i < this.steps.length; }
@@ -110,10 +110,11 @@ export class Cinema {
     const st = this.steps[this.i]!, s = this.state;
     s.title = null;
     if ('say' in st) s.line = { who: st.who, text: st.say, shown: 0, done: false };
-    else if (!('shake' in st) && !('sound' in st)) s.line = null;
+    else if (!('shake' in st) && !('sound' in st) && !('act' in st)) s.line = null;
     if ('fadeIn' in st) s.fade = 1;
     if ('sound' in st) { this.onCue({ sound: st.sound }); this.next(); return; }
     if ('shake' in st) { this.onCue({ shake: st.shake }); this.next(); return; }
+    if ('act' in st) { this.onCue({ act: st.act }); this.next(); return; }
   }
 
   private finish(): void {

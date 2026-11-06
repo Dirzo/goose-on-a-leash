@@ -2,6 +2,9 @@ import type { RoomDef } from '../data/rooms';
 import type { Circle, Rect } from './math';
 
 /** Live room state: the static definition plus what changes (gate, bell). */
+/** Props low enough for a goose to hop or flap over. */
+const LOW: ReadonlySet<string> = new Set(['rock', 'log', 'stump', 'reeds']);
+
 export class Room {
   gateClosed: boolean;
   /** Bramble bushes still standing (Biscuit chews through them). */
@@ -25,6 +28,18 @@ export class Room {
     return (this.solidCache = out);
   }
   private cacheGate = false;
+
+  /** What stops Biscuit: he flaps over low things (rocks, logs, stumps, reed clumps), not walls, hedges or trees. */
+  gooseSolids(): Rect[] {
+    if (this.gooseCache && this.gooseGate === this.gateClosed && this.gooseSrc === this.solids()) return this.gooseCache;
+    const src = this.solids();
+    this.gooseSrc = src; this.gooseGate = this.gateClosed;
+    return (this.gooseCache = src.filter(r => !LOW.has((r as { kind?: string }).kind ?? '')));
+  }
+  private gooseCache: Rect[] | null = null; private gooseGate = false; private gooseSrc: Rect[] | null = null;
+
+  /** Push a goose-sized circle out of what stops Biscuit. */
+  collideGoose(o: Circle): boolean { return this.collideWith(this.gooseSolids(), o); }
 
   /** Inside a thorn bramble patch. */
   inBramble(x: number, y: number): boolean {
@@ -69,9 +84,11 @@ export class Room {
   }
 
   /** Push a circle out of every solid. Returns true if it touched one. */
-  collide(o: Circle): boolean {
+  collide(o: Circle): boolean { return this.collideWith(this.solids(), o); }
+
+  private collideWith(rects: Rect[], o: Circle): boolean {
     let hit = false;
-    for (const r of this.solids()) {
+    for (const r of rects) {
       const cx = Math.max(r.x, Math.min(o.x, r.x + r.w));
       const cy = Math.max(r.y, Math.min(o.y, r.y + r.h));
       const dx = o.x - cx, dy = o.y - cy, d = Math.hypot(dx, dy);

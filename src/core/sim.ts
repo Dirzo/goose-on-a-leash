@@ -1595,6 +1595,11 @@ export class Sim {
     switch (e.mode) {
       case 'stalk': {
         e.cd -= dt;
+        const hz = this.elderHome(e);
+        if (hz && (p.x < hz.x || p.x > hz.x + hz.w || p.y < hz.y || p.y > hz.y + hz.h)) {   // you left his wallow: he goes back
+          const [hx, hy] = dirTo(e, { x: hz.x + hz.w / 2, y: hz.y + hz.h / 2 });
+          return Math.hypot(e.x - hz.x - hz.w / 2, e.y - hz.y - hz.h / 2) > 120 ? [hx * e.spd, hy * e.spd] : [0, 0];
+        }
         if (e.cd <= 0 && d < 420) {
           const close = Math.hypot(bimbo.x - e.x, bimbo.y - e.y) < 70;
           e.mode = 'wind'; e.modeT = 0; e.attack = close && angry ? 'bite' : 'charge';
@@ -1622,7 +1627,9 @@ export class Sim {
         const sp = (angry ? 400 : 340) * dt, sub = 4;
         for (let i = 0; i < sub; i++) {
           const nx = e.x + (e.hx * sp) / sub, ny = e.y + (e.hy * sp) / sub;
-          if (room.inPit(nx, ny, -e.r * 0.5) || e.modeT > 1.1) { this.elderTired(e, angry); return [0, 0]; }
+          const z = this.elderHome(e);
+          const outside = z && (nx < z.x + e.r + 20 || ny < z.y + e.r + 20 || nx > z.x + z.w - e.r - 20 || ny > z.y + z.h - e.r - 20);
+          if (room.inPit(nx, ny, -e.r * 0.5) || e.modeT > 1.1 || outside) { this.elderTired(e, angry, !!outside); return [0, 0]; }
           e.x = nx; e.y = ny;
           if (room.collide(e) || e.x < e.r + 22 || e.y < e.r + 22 || e.x > room.def.width - e.r - 22 || e.y > room.def.height - e.r - 22) {
             this.keepInside(e); this.fx('slam', e.x, e.y); this.elderTired(e, angry, true); return [0, 0];
@@ -1650,6 +1657,20 @@ export class Sim {
       default: e.mode = 'stalk'; return [0, 0];
     }
   }
+
+  /** The part of the area Old Snapper lives in (his zone), so he stays in his wallow. */
+  private elderHome(e: Enemy): { x: number; y: number; w: number; h: number } | null {
+    const zs = this.room.def.zones;
+    if (!zs) return null;
+    if (!this.elderZone || this.elderZoneRoom !== this.room.def.id) {
+      const sp = this.room.def.enemies.find(o => o.kind === e.kind) ?? e;          // where he lives (his spawn)
+      this.elderZone = zs.find(z => sp.x >= z.x && sp.x < z.x + z.w && sp.y >= z.y && sp.y < z.y + z.h) ?? null;
+      this.elderZoneRoom = this.room.def.id;
+    }
+    return this.elderZone;
+  }
+  private elderZone: { x: number; y: number; w: number; h: number } | null = null;
+  private elderZoneRoom = '';
 
   private elderTired(e: Enemy, angry: boolean, crashed = false): void {
     e.mode = 'tired'; e.modeT = 0;
@@ -1931,7 +1952,7 @@ export class Sim {
     let bounced = false;
     for (let i = 0; i < sub; i++) {
       if (g.state !== 'latched') { gb.x += (g.vx * dt) / sub; gb.y += (g.vy * dt) / sub; }
-      if (room.collide(gb) && g.state === 'flying' && !bounced) { g.vx *= -0.35; g.vy *= -0.35; bounced = true; }
+      if (room.collideGoose(gb) && g.state === 'flying' && !bounced) { g.vx *= -0.35; g.vy *= -0.35; bounced = true; }
     }
     this.keepInside(gb);
     g.x = gb.x; g.y = gb.y;
