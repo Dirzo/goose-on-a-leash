@@ -95,3 +95,17 @@ export const C = {
   spoolTwine: 2,          // twine on one spool
   faintHolesKept: 2,      // after Bimbo faints, Rocco ties emergency knots: at most this many tears stay open
 } as const;
+
+/**
+ * Difficulty. 'classic' is the original balance (the tests use it); the game starts on Normal, which is
+ * meant to be hard. tempo speeds every critter's thinking (wind-ups, cooldowns, dives); hurt scales what
+ * a hit spills and how often it tears; bossHp, spawn (seconds between burrow spawns) and fishPull (how hard
+ * fish fight) scale the rest.
+ */
+export type Difficulty = 'classic' | 'story' | 'normal' | 'brutal';
+export const DIFFICULTY: Record<Difficulty, { name: string; tempo: number; hurt: number; bossHp: number; spawn: number; fishPull: number; blurb: string }> = {
+  classic: { name: 'Classic', tempo: 1, hurt: 1, bossHp: 1, spawn: 1, fishPull: 1, blurb: '' },
+  story: { name: 'Story', tempo: 0.85, hurt: 0.7, bossHp: 0.85, spawn: 1.4, fishPull: 0.85, blurb: 'Gentler critters, more forgiving fish.' },
+  normal: { name: 'Normal', tempo: 1.12, hurt: 1.3, bossHp: 1.2, spawn: 0.85, fishPull: 1.1, blurb: 'The way it is meant to be played: hard.' },
+  brutal: { name: 'Brutal', tempo: 1.28, hurt: 1.65, bossHp: 1.45, spawn: 0.7, fishPull: 1.25, blurb: 'Everything is faster, angrier and thirstier.' },
+};

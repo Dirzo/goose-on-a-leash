@@ -144,6 +144,7 @@ export class ArtRenderer {
   }
 
   private pickett: Phaser.GameObjects.Sprite | null = null;
+  private lastP: Vec = { x: 0, y: 0 };
   private worldIgnore: <T extends Phaser.GameObjects.GameObject>(o: T) => T;
   private screenOnly!: <T extends Phaser.GameObjects.GameObject>(o: T) => T;
   /** For overlays (the prologue): put a game object on the world layer or the HUD layer. */
@@ -175,6 +176,7 @@ export class ArtRenderer {
         if (e.kind === 'snap') { cam.shake(320, 0.009); this.snapFlash = 1; }
         if (e.kind === 'chomp') { this.sqB = 1; cam.shake(70, 0.0012 * this.power); }
         if (e.kind === 'tear' || e.kind === 'splash') this.sqR = Math.max(this.sqR, e.kind === 'tear' ? 1 : 0.5);
+        if (e.kind === 'tear' || (e.kind === 'splash' && Math.hypot(e.x - this.lastP.x, e.y + 34 - this.lastP.y) < 40)) this.atmo.hurtFlash = e.kind === 'tear' ? 1 : 0.6;
         if (e.kind === 'tear') cam.shake(120, 0.003);
         if (e.kind === 'ring') this.bellSwing = 1;
         if (e.kind === 'faint') this.flash = 1;
@@ -202,6 +204,7 @@ export class ArtRenderer {
     g.clear(); this.line.clear(); this.fxg.clear(); this.hud.clear();
 
     const P = prev ? { x: lerp(prev.px, pl.x, alpha), y: lerp(prev.py, pl.y, alpha) } : { x: pl.x, y: pl.y };
+    this.lastP = P;
     const G = prev ? { x: lerp(prev.gx, go.x, alpha), y: lerp(prev.gy, go.y, alpha) } : { x: go.x, y: go.y };
     const EP = (e: Enemy): Vec => { const o = prev?.enemies.get(e.id); return o ? { x: lerp(o.x, e.x, alpha), y: lerp(o.y, e.y, alpha) } : e; };
 
@@ -209,12 +212,16 @@ export class ArtRenderer {
     // look ahead where Rocco is heading and a little toward the aim, so there is room to see what's coming
     this.lead.x += (Math.max(-70, Math.min(70, pl.vx * 0.45)) - this.lead.x) * Math.min(1, dt * 2.5);
     this.lead.y += (Math.max(-45, Math.min(45, pl.vy * 0.35)) - this.lead.y) * Math.min(1, dt * 2.5);
-    const want = this.cinema?.cam ? { ...this.cinema.cam } : { x: P.x + (G.x - P.x) * 0.2 + (aim.x - P.x) * 0.08 + this.lead.x, y: P.y - 18 + (G.y - P.y) * 0.2 + (aim.y - P.y) * 0.08 + this.lead.y };
+    const F = sim.fishing, line = F.busy ? F.bob : null;     // with a line out, the camera looks out over the water toward the bobber
+    const want = this.cinema?.cam ? { ...this.cinema.cam }
+      : line ? { x: P.x + (line.x - P.x) * 0.45, y: P.y - 18 + (line.y - P.y) * 0.45 }
+      : { x: P.x + (G.x - P.x) * 0.2 + (aim.x - P.x) * 0.08 + this.lead.x, y: P.y - 18 + (G.y - P.y) * 0.2 + (aim.y - P.y) * 0.08 + this.lead.y };
     if (!this.cam) this.cam = { ...want };
     const k = 1 - Math.exp(-dt * 5);
     this.cam.x += (want.x - this.cam.x) * k; this.cam.y += (want.y - this.cam.y) * k;
     this.scene.cameras.main.centerOn(this.cam.x, this.cam.y);
     this.atmo.draw(sim, P, EP, dt, time);
+    this.atmo.grade(sim.pack.enabled ? sim.pack.water : 1, time, dt, P);
     // walking into another part of a big area names it
     const z = def.zones?.find(q => P.x >= q.x && P.x < q.x + q.w && P.y >= q.y && P.y < q.y + q.h);
     if (z && z.name !== this.zone) {

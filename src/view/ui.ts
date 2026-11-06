@@ -1,5 +1,5 @@
 /** DOM layer: tuning bench and recipe book. Reads and writes the sim; never draws the game. */
-import { DEFAULT_TUNING, TUNING_RANGES, type Tuning } from '../core/config';
+import { DEFAULT_TUNING, DIFFICULTY, TUNING_RANGES, type Difficulty, type Tuning } from '../core/config';
 import { BREADS, BUILDS, CATALYSTS, ITEMS, LEASHES, MATERIALS, breadById, type BuildId, type Cost, type ItemId } from '../data/recipes';
 import type { GameScene } from '../scenes/GameScene';
 import { applySave, clearStoredSave, decodeSave, encodeSave, snapshotSave } from '../core/save';
@@ -71,6 +71,9 @@ export function mountUi(scene: GameScene): void {
   const soundBtn = $('b-sound'), soundLabel = () => { soundBtn.textContent = `Sound: ${sound.muted ? 'off' : 'on'} [M]`; };
   soundLabel(); sound.onChange = soundLabel;
   soundBtn.onclick = () => { sound.toggle(); scene.game.canvas.focus(); };
+  const diffBtn = $('b-diff'), diffLabel = () => { const d = DIFFICULTY[scene.difficulty]; diffBtn.textContent = `Difficulty: ${d.name}`; diffBtn.title = d.blurb + ' Bosses change from the next room you enter.'; };
+  diffLabel();
+  diffBtn.onclick = () => { const order: Difficulty[] = ['story', 'normal', 'brutal']; scene.setDifficulty(order[(order.indexOf(scene.difficulty) + 1) % 3]!); diffLabel(); scene.game.canvas.focus(); };
   const cineBtn = $('b-cine'), cineLabel = () => { cineBtn.textContent = `Cinematics: ${scene.cinemaOn ? 'on' : 'off'}`; };
   cineLabel();
   cineBtn.onclick = () => { scene.setCinemaOn(!scene.cinemaOn); cineLabel(); scene.game.canvas.focus(); };

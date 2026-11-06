@@ -3,7 +3,7 @@
  * In world rooms (those with water) Bimbo's water is Rocco's life; hearts only apply in the gray-box Room 01.
  * No Phaser imports: everything here runs headless in tests. Room 01 behaviour is ported 1:1 from the prototype.
  */
-import { C, DEFAULT_TUNING, type Tuning } from './config';
+import { C, DEFAULT_TUNING, DIFFICULTY, type Difficulty, type Tuning } from './config';
 import { Kit } from './crafting';
 import { FISH, Fishing, type FishDef } from './fishing';
 import { angDiff, clamp, dirTo, inRect, mulberry32, type Rng, type Vec } from './math';
@@ -212,6 +212,7 @@ export class Sim {
     inWater: (x, y) => this.room.inPit(x, y, 4),
     record: () => this.kit.fish,
     reel: () => this.kit.reel,
+    pull: () => this.diff.fishPull,
     castReach: pw => this.castReach(pw),
     say: t => this.say(t),
     fx: (k, x, y) => this.fx(k, x, y),
@@ -264,6 +265,9 @@ export class Sim {
    * alone for a while, then comes back to be tied on again.
    */
   castMode = false;
+  /** How hard the game is (see config DIFFICULTY). Tests run on 'classic'; the game sets Normal. */
+  difficulty: Difficulty = 'classic';
+  get diff() { return DIFFICULTY[this.difficulty]; }
   /** Casting mode: how much line is out. */
   castLen: number = C.castHeel;
   /** The line's working length: the whole leash, or in casting mode as much as is out. */
@@ -514,7 +518,8 @@ export class Sim {
     const stats: Partial<Record<EnemyKind, [number, number, number]>> = {   // hp, radius, speed
       heron: [HERON_HP, 24, 0], king: [KING_HP, 34, 48], gullbeard: [GULLBEARD_HP, 28, 0], crab: [4, 14, 72], gull: [2, 11, 150], eel: [3, 12, 0], elder: [ELDER_HP, 26, 46], squirrel: [2, 10, 115], badger: [10, 18, 50],
     };
-    const [hp, r, spd] = stats[kind] ?? [k ? 8 : 3, k ? 20 : 13, k ? 42 : 78];
+    const [hp0, r, spd] = stats[kind] ?? [k ? 8 : 3, k ? 20 : 13, k ? 42 : 78];
+    const hp = boss ? Math.round(hp0 * this.diff.bossHp) : hp0;
     return { id: this.nextId++, kind, x, y, r, hp, max: hp, heavy: k, stun: 0,
       vx: 0, vy: 0, falling: 0, dead: false, hitT: 0, spd, woke: 0,
       mode: 'stalk', modeT: 0, cd: boss ? 2 : 0.8 + this.rng() * 1.2, tx: x, ty: y, hit: false, attack: 'leap', grip: 0, wet: false, air: 0, hx: x, hy: y, grip2: 0 };
@@ -989,15 +994,15 @@ export class Sim {
     if (kind === 'thorn') side *= 1.5;
     const bk = this.packPoint(14);
     if (kind === 'lash') {
-      pk.water = Math.max(0, pk.water - C.slurpSpill * amt);
+      pk.water = Math.max(0, pk.water - C.slurpSpill * amt * this.diff.hurt);
       this.fx('splash', bk.x, bk.y - 34);
       if (pk.water > 0.3) this.say(this.pick('slurp'));
-    } else if (pk.holes < C.maxHoles && this.rng() < (heavy ? C.heavyHoleChance : C.holeChance) * side * (this.kit.has('z3') && this.goose.furious > 0 ? 0.5 : 1)) {
+    } else if (pk.holes < C.maxHoles && this.rng() < (heavy ? C.heavyHoleChance : C.holeChance) * side * this.diff.hurt * (this.kit.has('z3') && this.goose.furious > 0 ? 0.5 : 1)) {
       pk.holes++;
       this.fx('tear', bk.x, bk.y - 30);
       this.say(pk.holes === 1 ? 'RIP! It went for Bimbo and tore the pack. [P] to patch.' : `Another tear! ${pk.holes} leaking now.`);
     } else {
-      pk.water = Math.max(0, pk.water - (heavy ? C.heavySpill : C.hitSpill) * amt * (side < 1 ? 0.6 : 1));
+      pk.water = Math.max(0, pk.water - (heavy ? C.heavySpill : C.hitSpill) * amt * (side < 1 ? 0.6 : 1) * this.diff.hurt);
       this.fx('splash', bk.x, bk.y - 34);
       const heavyLine = kind === 'slam' ? 'THOOM! The Heron lands right on the pack!' : kind === 'dart' ? 'A feather dart smacks into the pack!'
         : kind === 'erupt' ? 'The ground bursts open under Bimbo!' : kind === 'rock' ? 'A rock clonks the pack!'
@@ -1135,7 +1140,7 @@ export class Sim {
     const light = room.def.lightKind ?? 'bunny', heavy = room.def.heavyKind ?? 'knight';
     const bunnies = this.enemies.filter(e => this.active(e) && !e.heavy).length;
     if (this.spawnT <= 0) {
-      this.spawnT = C.bunnySpawnEvery;
+      this.spawnT = C.bunnySpawnEvery * this.diff.spawn;
       const vents = room.def.vents;
       if (bunnies < C.maxBunnies && vents.length && room.def.ventSpawns !== false) {
         const v = vents[Math.floor(this.rng() * vents.length)]!;
@@ -1277,16 +1282,17 @@ export class Sim {
         continue;
       }
       if (e.mode === 'swim') { e.mode = 'recover'; e.modeT = 0; e.cd = 1.2; }   // climbed out, shaking off
-      if (e.kind === 'heron') [ax, ay] = this.heronAI(e, dt, d);
-      else if (e.kind === 'king') [ax, ay] = this.kingAI(e, dt);
-      else if (e.kind === 'elder') [ax, ay] = this.elderAI(e, dt, d);
-      else if (e.kind === 'squirrel') [ax, ay] = this.squirrelAI(e, dt, d, slow);
-      else if (e.kind === 'badger') [ax, ay] = this.badgerAI(e, dt, slow);
-      else if (e.kind === 'crab') [ax, ay] = this.crabAI(e, dt, slow);
-      else if (e.kind === 'gull') [ax, ay] = this.gullAI(e, dt);
-      else if (e.kind === 'eel') [ax, ay] = this.eelAI(e, dt);
-      else if (e.kind === 'gullbeard') [ax, ay] = this.gullbeardAI(e, dt);
-      else if (critter) [ax, ay] = this.critterAI(e, dt, d, slow);
+      const edt = dt * this.diff.tempo;
+      if (e.kind === 'heron') [ax, ay] = this.heronAI(e, edt, d);
+      else if (e.kind === 'king') [ax, ay] = this.kingAI(e, edt);
+      else if (e.kind === 'elder') [ax, ay] = this.elderAI(e, edt, d);
+      else if (e.kind === 'squirrel') [ax, ay] = this.squirrelAI(e, edt, d, slow);
+      else if (e.kind === 'badger') [ax, ay] = this.badgerAI(e, edt, slow);
+      else if (e.kind === 'crab') [ax, ay] = this.crabAI(e, edt, slow);
+      else if (e.kind === 'gull') [ax, ay] = this.gullAI(e, edt);
+      else if (e.kind === 'eel') [ax, ay] = this.eelAI(e, edt);
+      else if (e.kind === 'gullbeard') [ax, ay] = this.gullbeardAI(e, edt);
+      else if (critter) [ax, ay] = this.critterAI(e, edt, d, slow);
       else if (!e.stun && d < (AGGRO[e.kind] ?? 300)) { ax = dx * e.spd * slow; ay = dy * e.spd * slow; }
       if (FLIERS.has(e.kind)) {                     // fliers move themselves (over water too); knockback fades
         if (BOSS.has(e.kind)) { e.vx = e.vy = 0; continue; }

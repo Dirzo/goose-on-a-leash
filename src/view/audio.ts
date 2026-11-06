@@ -12,6 +12,17 @@ export class Sound {
   private master!: GainNode;
   private sfxBus!: GainNode;
   private musicBus!: GainNode;
+  private musicFilter!: BiquadFilterNode;
+  private ambBus!: GainNode;
+  private echo!: DelayNode;
+  private echoSend!: GainNode;
+  private bed: { src: AudioBufferSourceNode; filt: BiquadFilterNode; gain: GainNode } | null = null;
+  private bed2: { src: AudioBufferSourceNode; filt: BiquadFilterNode; gain: GainNode } | null = null;
+  /** What the game is doing, for the music and the ambience. */
+  scene: SoundScene = { biome: 'pond', boss: false, danger: 0, water: 1, fishing: false, quiet: false };
+  private theme: Theme = 'pond';
+  private ambT = 0;
+  private beatT = 0;
   private noiseBuf!: AudioBuffer;
   private creak: { osc: OscillatorNode; gain: GainNode; filt: BiquadFilterNode } | null = null;
   private rain: { src: AudioBufferSourceNode; gain: GainNode } | null = null;
@@ -47,7 +58,15 @@ export class Sound {
     const ctx = this.ctx = new AC();
     this.master = ctx.createGain(); this.master.gain.value = this.muted ? 0 : 0.8; this.master.connect(ctx.destination);
     this.sfxBus = ctx.createGain(); this.sfxBus.gain.value = 0.7; this.sfxBus.connect(this.master);
-    this.musicBus = ctx.createGain(); this.musicBus.gain.value = 0.22; this.musicBus.connect(this.master);
+    // music runs through a lowpass that closes when Bimbo is drying out (everything goes muffled and far away)
+    this.musicFilter = ctx.createBiquadFilter(); this.musicFilter.type = 'lowpass'; this.musicFilter.frequency.value = 12000; this.musicFilter.connect(this.master);
+    this.musicBus = ctx.createGain(); this.musicBus.gain.value = 0.22; this.musicBus.connect(this.musicFilter);
+    this.ambBus = ctx.createGain(); this.ambBus.gain.value = 0.5; this.ambBus.connect(this.master);
+    // a cave echo: a feedback delay the effects are sent into while underground
+    this.echo = ctx.createDelay(1); this.echo.delayTime.value = 0.23;
+    const fb = ctx.createGain(); fb.gain.value = 0.38; const ef = ctx.createBiquadFilter(); ef.type = 'lowpass'; ef.frequency.value = 2200;
+    this.echoSend = ctx.createGain(); this.echoSend.gain.value = 0;
+    this.sfxBus.connect(this.echoSend); this.echoSend.connect(this.echo); this.echo.connect(ef).connect(fb).connect(this.echo); ef.connect(this.master);
     this.noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const d = this.noiseBuf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -65,14 +84,14 @@ export class Sound {
     o.connect(g).connect(bus ?? this.sfxBus); o.start(t); o.stop(t + dur + 0.05);
   }
 
-  private noise(dur: number, freq: number, vol = 0.3, type: BiquadFilterType = 'bandpass', to?: number, at = 0, q = 1): void {
+  private noise(dur: number, freq: number, vol = 0.3, type: BiquadFilterType = 'bandpass', to?: number, at = 0, q = 1, bus?: GainNode): void {
     const c = this.ctx; if (!c) return;
     const t = c.currentTime + at, s = c.createBufferSource(), f = c.createBiquadFilter(), g = c.createGain();
     s.buffer = this.noiseBuf; s.playbackRate.value = 0.8 + Math.random() * 0.4;
     f.type = type; f.Q.value = q; f.frequency.setValueAtTime(freq, t);
     if (to) f.frequency.exponentialRampToValueAtTime(Math.max(40, to), t + dur);
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    s.connect(f).connect(g).connect(this.sfxBus); s.start(t, Math.random()); s.stop(t + dur + 0.05);
+    s.connect(f).connect(g).connect(bus ?? this.sfxBus); s.start(t, Math.random()); s.stop(t + dur + 0.05);
   }
 
   // ------------------------------------------------------------------ effects
@@ -152,30 +171,118 @@ export class Sound {
     this.rain.gain.gain.setTargetAtTime(on ? 0.18 : 0, c.currentTime, 0.6);
   }
 
-  // ------------------------------------------------------------------ music
+  // ------------------------------------------------------------------ music: a theme per region, and one for bosses
   private scheduleMusic(): void {
     const c = this.ctx; if (!c || this.muted) { if (c) this.nextNote = Math.max(this.nextNote, c.currentTime + 0.1); return; }
-    const beat = 60 / 84 / 2;                                        // eighth notes at 84 bpm
-    // a lullaby in C major pentatonic; the storm swaps to a low A minor pulse
-    const calm = [0, 4, 7, 9, 7, 4, 2, 4, 0, 2, 4, 7, 9, 12, 9, 7];
-    const storm = [0, -1, 3, -1, 0, -1, 7, 5, 0, -1, 3, -1, 8, 7, 5, 3];
+    this.stepScene();
+    const th = THEMES[this.theme], beat = 60 / th.bpm / 2;               // eighth notes
     while (this.nextNote < c.currentTime + 0.3) {
-      const i = this.step % 16, bar = Math.floor(this.step / 16) % 4;
-      if (this.stormy) {
-        const n = storm[i]!;
-        if (n >= 0) this.tone(110 * Math.pow(2, n / 12), beat * 1.6, 'triangle', 0.18, undefined, this.nextNote - c.currentTime, this.musicBus);
-        if (i % 8 === 0) this.tone(55, beat * 7, 'sine', 0.3, undefined, this.nextNote - c.currentTime, this.musicBus);
-      } else {
-        const root = [0, 5, 7, 0][bar]!;
-        if (i % 2 === 0) this.tone(523 * Math.pow(2, (calm[i]! + (bar === 2 ? 2 : 0)) / 12), beat * 1.8, 'triangle', 0.14, undefined, this.nextNote - c.currentTime, this.musicBus);
-        if (i % 8 === 0) this.tone(131 * Math.pow(2, root / 12), beat * 7.5, 'sine', 0.22, undefined, this.nextNote - c.currentTime, this.musicBus);
-        if (i % 4 === 2) this.tone(262 * Math.pow(2, (root + 7) / 12), beat * 1.5, 'sine', 0.06, undefined, this.nextNote - c.currentTime, this.musicBus);
+      const i = this.step % 16, bar = Math.floor(this.step / 16) % 4, at = this.nextNote - c.currentTime;
+      if (i === 0 && bar === 0) {                                        // themes change on the downbeat
+        const want: Theme = this.stormy ? 'storm' : this.scene.boss ? 'boss' : this.scene.fishing ? 'cove' : this.scene.biome;
+        if (want !== this.theme) { this.theme = want; break; }
       }
+      const root = th.roots[bar]!, mel = th.mel[i]!;
+      if (mel !== null && (th.every ?? 2) && i % (th.every ?? 2) === 0) this.tone(th.lead * Math.pow(2, (mel + root) / 12), beat * th.len, th.wave, th.vol, undefined, at, this.musicBus);
+      if (i % 8 === 0) this.tone(th.bass * Math.pow(2, root / 12), beat * 7.5, 'sine', 0.22, undefined, at, this.musicBus);
+      if (th.drums) {
+        if (i % 4 === 0) this.tone(70, 0.18, 'sine', 0.3, 35, at, this.musicBus);
+        if (i % 4 === 2) this.noiseOn(0.05, 6000, 0.05, at, this.musicBus);
+        if (i % 8 === 4) this.noiseOn(0.12, 1800, 0.08, at, this.musicBus);
+      }
+      if (th.pad && i % 8 === 4) this.tone(th.bass * 2 * Math.pow(2, (root + 7) / 12), beat * 3.5, 'sine', 0.05, undefined, at, this.musicBus);
+      // danger: a low pulse under everything when something is winding up close by
+      if (this.scene.danger > 0.3 && i % 4 === 0) this.tone(55, 0.25, 'triangle', 0.08 + this.scene.danger * 0.1, 40, at, this.musicBus);
       this.nextNote += beat; this.step++;
     }
   }
 
+  private noiseOn(dur: number, freq: number, vol: number, at: number, bus: GainNode): void { this.noise(dur, freq, vol, 'highpass', undefined, at, 1, bus); }
+
+  // ------------------------------------------------------------------ ambience, heartbeat, echo
+  private loopBed(): { src: AudioBufferSourceNode; filt: BiquadFilterNode; gain: GainNode } {
+    const c = this.ctx!, src = c.createBufferSource(), filt = c.createBiquadFilter(), gain = c.createGain();
+    src.buffer = this.noiseBuf; src.loop = true; filt.type = 'lowpass'; gain.gain.value = 0;
+    src.connect(filt).connect(gain).connect(this.ambBus); src.start();
+    return { src, filt, gain };
+  }
+
+  /** Called every 100 ms: the region's bed (waves, wind, cave rumble), its little sounds, and Bimbo's heartbeat. */
+  private stepScene(): void {
+    const c = this.ctx!, t = c.currentTime, sc = this.scene, b = sc.biome;
+    if (!this.bed) { this.bed = this.loopBed(); this.bed2 = this.loopBed(); }
+    const bed = this.bed, bed2 = this.bed2!;
+    const swell = 0.5 + 0.5 * Math.sin(t * 0.55) * Math.sin(t * 0.21 + 1);
+    const quiet = sc.quiet ? 0 : 1;
+    // the bed: waves on the coast, wind in the woods, a low rumble underground, a soft hush on the water
+    const sea = b === 'wharf' || b === 'cove';
+    bed.filt.type = 'lowpass';
+    bed.filt.frequency.setTargetAtTime(sea ? 300 + swell * 700 : b === 'woods' ? 500 + swell * 500 : b === 'tide' ? 160 : 700, t, 0.4);
+    bed.gain.gain.setTargetAtTime(quiet * (sea ? 0.05 + swell * 0.1 : b === 'woods' ? 0.03 + swell * 0.05 : b === 'tide' ? 0.09 : 0.025), t, 0.5);
+    bed2.filt.type = 'bandpass'; bed2.filt.Q.value = b === 'woods' ? 3 : 1;
+    bed2.filt.frequency.setTargetAtTime(b === 'woods' ? 900 + Math.sin(t * 0.3) * 400 : sea ? 2500 : 4000, t, 0.5);
+    bed2.gain.gain.setTargetAtTime(quiet * (b === 'woods' ? 0.03 * swell : sea ? 0.02 * swell : 0.006), t, 0.5);
+    this.echoSend.gain.setTargetAtTime(b === 'tide' ? 0.35 : 0, t, 0.3);
+    // muffled music when Bimbo is drying out
+    this.musicFilter.frequency.setTargetAtTime(sc.water < 0.25 ? 500 + sc.water * 3000 : 12000, t, 0.4);
+    // little sounds of the place
+    this.ambT -= 0.1;
+    if (this.ambT <= 0 && quiet) {
+      this.ambT = 1 + Math.random() * 3;
+      const A = this.ambBus, r = Math.random();
+      if (b === 'pond' || b === 'marsh') {
+        if (r < 0.6) for (let k = 0; k < 3 + Math.floor(Math.random() * 4); k++) this.tone(4200 + Math.random() * 300, 0.03, 'square', 0.012, undefined, k * 0.07, A);   // crickets
+        else { this.tone(190, 0.07, 'square', 0.025, 150, 0, A); this.tone(220, 0.08, 'square', 0.025, 160, 0.1, A); }                                      // a far frog
+      } else if (b === 'woods') {
+        if (r < 0.35) { this.tone(392, 0.35, 'sine', 0.03, 370, 0, A); this.tone(330, 0.5, 'sine', 0.03, 310, 0.45, A); }   // an owl
+        else if (r < 0.6) this.noise(0.05, 2500, 0.04, 'highpass', undefined, 0, 1, A);                                      // a twig
+        else for (let k = 0; k < 3; k++) this.tone(3000 + Math.random() * 600, 0.04, 'sine', 0.01, undefined, k * 0.12, A);
+      } else if (sea) {
+        if (r < 0.3) { const f = 1300 + Math.random() * 300; this.tone(f, 0.25, 'sawtooth', 0.012, f * 0.7, 0, A); this.tone(f * 1.1, 0.2, 'sawtooth', 0.01, f * 0.8, 0.28, A); }   // a gull, far off
+        else if (r < 0.45) for (const [m, v] of [[1, 0.02], [2.76, 0.008]] as const) this.tone(520 * m, 2, 'sine', v, undefined, 0, A);            // the bell buoy
+        else if (r < 0.65 && b === 'wharf') this.tone(70 + Math.random() * 30, 0.5, 'sawtooth', 0.01, 60, 0, A);                                        // a rope creaks
+      } else if (b === 'tide') {
+        const f = 900 + Math.random() * 1400;                                                                                           // drips, echoing
+        this.tone(f, 0.08, 'sine', 0.05, f * 0.6); if (r < 0.2) this.noise(1.2, 120, 0.05, 'lowpass', 60, 0, 1, A);
+        this.ambT = 0.5 + Math.random() * 1.5;
+      }
+    }
+    // Bimbo's heartbeat when the water's low: faster as it drops
+    if (sc.water < 0.25 && sc.water > 0 && quiet) {
+      this.beatT -= 0.1;
+      if (this.beatT <= 0) {
+        this.beatT = 0.55 + sc.water * 2.2;
+        this.tone(60, 0.12, 'sine', 0.35, 45); this.tone(55, 0.12, 'sine', 0.28, 40, 0.17);
+      }
+    }
+  }
+
+  /** A footstep: planks knock, sand hushes, stone taps. */
+  footstep(surface: 'wood' | 'sand' | 'stone' | 'grass'): void {
+    if (!this.ctx || this.muted) return;
+    if (surface === 'wood') { this.tone(140 + Math.random() * 30, 0.06, 'triangle', 0.05, 90); this.noise(0.03, 900, 0.03, 'bandpass'); }
+    else if (surface === 'sand') this.noise(0.07, 1800, 0.035, 'lowpass', 600);
+    else if (surface === 'stone') { this.noise(0.03, 3000, 0.04, 'bandpass', 2000, 0, 3); }
+    else this.noise(0.05, 1200, 0.025, 'lowpass', 500);
+  }
+
   dispose(): void { window.clearInterval(this.musicTimer); void this.ctx?.close(); }
 }
+
+export type Theme = 'pond' | 'marsh' | 'woods' | 'wharf' | 'tide' | 'cove' | 'boss' | 'storm';
+export interface SoundScene { biome: Theme; boss: boolean; danger: number; water: number; fishing: boolean; quiet: boolean }
+interface ThemeDef { bpm: number; mel: (number | null)[]; roots: number[]; lead: number; bass: number; wave: Wave; vol: number; len: number; every?: number; drums?: boolean; pad?: boolean }
+const _ = null;
+/** The music: an eight-bar loop per region. Melody in semitones over each bar's root. */
+const THEMES: Record<Theme, ThemeDef> = {
+  pond: { bpm: 84, mel: [0, _, 4, _, 7, _, 9, _, 7, _, 4, _, 2, _, 4, _], roots: [0, 5, 7, 0], lead: 523, bass: 131, wave: 'triangle', vol: 0.13, len: 1.8 },
+  marsh: { bpm: 76, mel: [0, _, 3, 5, _, 7, _, 5, 3, _, 0, _, 10, _, 7, _], roots: [0, 0, 5, 3], lead: 294, bass: 73, wave: 'triangle', vol: 0.14, len: 1.4, every: 1, pad: true },
+  woods: { bpm: 70, mel: [0, _, _, 3, _, 7, _, _, 5, _, 3, _, 2, _, _, _], roots: [0, 8, 3, 10], lead: 330, bass: 82, wave: 'sine', vol: 0.16, len: 3, every: 1, pad: true },
+  wharf: { bpm: 104, mel: [0, _, 0, 4, 7, _, 7, _, 5, _, 4, 2, 0, _, 2, _], roots: [0, 5, 0, 7], lead: 392, bass: 98, wave: 'square', vol: 0.06, len: 0.9, every: 1, drums: false, pad: true },
+  tide: { bpm: 58, mel: [12, _, _, _, 7, _, _, _, 10, _, _, _, 3, _, _, _], roots: [0, 3, 8, 7], lead: 440, bass: 55, wave: 'sine', vol: 0.09, len: 5, every: 1, pad: true },
+  cove: { bpm: 72, mel: [0, _, 4, _, 9, _, 7, _, 4, _, 2, _, 0, _, _, _], roots: [0, 5, 2, 7], lead: 349, bass: 87, wave: 'triangle', vol: 0.12, len: 2.2, every: 1, pad: true },
+  boss: { bpm: 132, mel: [0, 0, 3, 0, 7, 0, 6, 5, 0, 0, 3, 0, 10, 8, 7, 3], roots: [0, 0, 8, 7], lead: 220, bass: 55, wave: 'sawtooth', vol: 0.05, len: 0.6, every: 1, drums: true },
+  storm: { bpm: 84, mel: [0, _, 3, _, 0, _, 7, 5, 0, _, 3, _, 8, 7, 5, 3], roots: [0, 0, 0, 0], lead: 110, bass: 55, wave: 'triangle', vol: 0.18, len: 1.6, every: 1, drums: false },
+};
 
 export const sound = new Sound();

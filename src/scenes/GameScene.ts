@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { STEP } from '../core/config';
 import { Sim, type ShopItem } from '../core/sim';
+import type { Difficulty } from '../core/config';
 import { ROOMS, WILLOWMERE, type RoomDef } from '../data/rooms';
 import { Controls } from '../view/controls';
 import { Renderer, snapshot, type Snapshot } from '../view/render';
@@ -10,7 +11,8 @@ import { Prologue } from '../view/prologue';
 import { Movie } from '../view/movie';
 import { ROOM_ART, nearestFilter, preloadArt } from '../view/assets';
 import { applySave, loadStoredSave, snapshotSave, storeSave } from '../core/save';
-import { sound } from '../view/audio';
+import { sound, type Theme } from '../view/audio';
+import { biomeOf } from '../view/atmosphere';
 
 /** Max steps per frame, so a long stall (tab switch) cannot spiral. */
 const MAX_STEPS = 8;
@@ -124,7 +126,7 @@ export class GameScene extends Phaser.Scene {
       while (this.acc >= STEP && steps < MAX_STEPS) {
         this.prev = snapshot(this.sim);
         this.controls.oar = this.sim.kit.oar;
-        this.sim.castMode = this.castMode;
+        this.sim.castMode = this.castMode; this.sim.difficulty = this.difficulty;
         this.sim.step(STEP, this.controls.frame(this.sim.player, first));
         first = false; this.acc -= STEP; steps++;
       }
@@ -149,6 +151,12 @@ export class GameScene extends Phaser.Scene {
   /** Start a cinematic once (the save remembers which were shown). */
   /** The power cast is how Biscuit is thrown (the old click-to-fling 'classic' mode stays in the sim for tests). */
   castMode = true;
+  /** Difficulty (remembered in this browser). Normal is meant to be hard. */
+  difficulty: Difficulty = (() => { try { const d = localStorage.getItem('goose-on-a-leash/difficulty'); return d === 'story' || d === 'brutal' || d === 'normal' ? d : 'normal'; } catch { return 'normal'; } })();
+  setDifficulty(d: Difficulty): void {
+    this.difficulty = d; this.sim.difficulty = d;
+    try { localStorage.setItem('goose-on-a-leash/difficulty', d); } catch { /* per-browser nicety only */ }
+  }
   setCastMode(on: boolean): void {
     this.castMode = on; this.sim.castMode = on;
     try { localStorage.setItem('goose-on-a-leash/leash-mode', on ? 'casting' : 'classic'); } catch { /* per-browser nicety only */ }
@@ -265,7 +273,25 @@ export class GameScene extends Phaser.Scene {
     const g = sim.goose, taut = Math.hypot(g.x - sim.player.x, g.y - sim.player.y) > sim.lineLen() * 0.95 && sim.leashAttached;
     sound.setStrain(this.paused ? 0 : Math.max(g.strain, taut ? 0.3 : 0));
     sound.setRain(sim.storming && !this.paused);
+    // the music and ambience follow the place, the fight and Bimbo's water
+    const def = sim.room.def, p = sim.player;
+    const boss = sim.enemies.some(e => !e.woke && !e.dead && (e.kind === 'heron' || e.kind === 'king' || e.kind === 'gullbeard' || e.kind === 'elder')
+      && e.mode !== 'stalk' && Math.hypot(e.x - p.x, e.y - p.y) < 900);
+    let danger = 0;
+    for (const e of sim.enemies) if (!e.woke && !e.dead && (e.mode === 'wind' || e.mode === 'aim')) danger = Math.max(danger, 1 - Math.hypot(e.x - p.x, e.y - p.y) / 260);
+    const b = biomeOf(def) as Theme;
+    sound.scene = { biome: def.fishing ? 'cove' : b, boss, danger, water: sim.pack.enabled ? sim.pack.water : 1, fishing: !!def.fishing && !boss,
+      quiet: !!this.movie?.active || !!this.prologue?.active };
+    // footsteps
+    const moved = Math.hypot(p.x - this.lastStep.x, p.y - this.lastStep.y);
+    if (moved > 1000) this.lastStep = { x: p.x, y: p.y };
+    else if (moved > 26 && !p.air && p.roll <= 0 && !this.paused) {
+      this.lastStep = { x: p.x, y: p.y };
+      const onPlanks = (def.bridges ?? []).some(r => p.x > r.x && p.x < r.x + r.w && p.y > r.y && p.y < r.y + r.h);
+      sound.footstep(onPlanks ? 'wood' : b === 'wharf' || def.fishing ? 'sand' : b === 'tide' ? 'stone' : 'grass');
+    }
   }
+  private lastStep = { x: 0, y: 0 };
 
   /** R / the Reset button: back to where Rocco entered this room, hearts refilled. */
   resetRoom(): void {

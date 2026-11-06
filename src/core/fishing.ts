@@ -107,6 +107,8 @@ export interface FishingHost {
   record(): Record<string, { n: number; best: number }>;
   /** The Spinning Reel: reels faster, a run pulls a little less. */
   reel(): boolean;
+  /** Difficulty: how hard fish fight. */
+  pull(): number;
   /** How far a cast at this power reaches. */
   castReach(pw: number): number;
   say(t: string): void;
@@ -339,7 +341,7 @@ export class Fishing {
       else { h.runIn -= dt; if (h.runIn <= 0) { h.warn = 0.45; this.host.sound('blip'); } }
     }
     const running = h.runT > 0;
-    const pull = tired ? d.pull * 0.4 : d.pull;
+    const pull = (tired ? d.pull * 0.4 : d.pull) * this.host.pull();
     if (hold) h.tension += ((0.32 + pull * 0.35) * ease + (running ? pull * 1.6 * ease : 0)) * dt;
     else h.tension += ((running ? pull * 0.35 : 0) - 0.85) * dt;
     h.tension = Math.max(0, h.tension);

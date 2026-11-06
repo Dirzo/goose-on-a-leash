@@ -53,6 +53,33 @@ export class Atmosphere {
   enabled = true;
   /** 0..1: the night before the blood moon (the prologue fades it out). */
   calm = 0;
+  private cm!: Phaser.Filters.ColorMatrix;
+  private vig!: Phaser.Filters.Vignette;
+  private gradeKey = '';
+  /** A hit just landed on the pack: the edges flash red and fade. */
+  hurtFlash = 0;
+
+  /**
+   * The world closes in as Bimbo dries out: the colour drains, the edges darken and pull in, and they pulse
+   * with the heartbeat. A hit flashes them red.
+   */
+  grade(water: number, time: number, dt: number, focus?: Vec): void {
+    this.hurtFlash = Math.max(0, this.hurtFlash - dt * 2.2);
+    const dry = water < 0.35 ? (0.35 - water) / 0.35 : 0;
+    const beat = dry > 0 ? Math.pow(Math.max(0, Math.sin(time * (4 + dry * 4))), 8) * dry : 0;
+    // the vignette centres on Rocco (tunnel vision when he's in trouble), not on the screen
+    if (focus) {
+      const v = this.scene.cameras.main.worldView;
+      const tx = Math.min(0.8, Math.max(0.2, (focus.x - v.x) / v.width)), ty = Math.min(0.8, Math.max(0.2, (focus.y - v.y) / v.height));
+      this.vig.x += (tx - this.vig.x) * Math.min(1, dt * 4); this.vig.y += (ty - this.vig.y) * Math.min(1, dt * 4);
+    }
+    this.vig.radius = 0.9 - dry * 0.22 - beat * 0.05 - this.hurtFlash * 0.12;
+    this.vig.strength = 0.36 + dry * 0.4 + this.hurtFlash * 0.35;
+    const r = Math.round(7 + this.hurtFlash * 120 + dry * 10), gcol = 5, b2 = 12;
+    this.vig.color.setTo(r, gcol, b2);
+    const key = `${Math.round(dry * 20)}`;
+    if (key !== this.gradeKey) { this.gradeKey = key; this.cm.colorMatrix.reset().contrast(0.08 + dry * 0.1).saturate(-0.06 - dry * 0.55, true); }
+  }
   /** Dark out-of-focus silhouettes close to the camera (parallax > 1): reeds, branches, leaves. */
   private fg: Phaser.GameObjects.Image[] = [];
   private world: <T extends Phaser.GameObjects.GameObject>(o: T) => T;
@@ -71,9 +98,9 @@ export class Atmosphere {
 
     // grade the world camera: a touch more contrast, a little less saturation, dark edges
     const cam = scene.cameras.main;
-    const cm = cam.filters.external.addColorMatrix();
-    cm.colorMatrix.contrast(0.08).saturate(-0.06, true);
-    cam.filters.external.addVignette(0.5, 0.5, 0.9, 0.36, 0x07050c);
+    this.cm = cam.filters.external.addColorMatrix();
+    this.cm.colorMatrix.contrast(0.08).saturate(-0.06, true);
+    this.vig = cam.filters.external.addVignette(0.5, 0.5, 0.9, 0.36, 0x07050c);
   }
 
   setRoom(def: RoomDef): void {
