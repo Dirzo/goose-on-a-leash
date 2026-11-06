@@ -160,8 +160,8 @@
    "y": 318.0,
    "w": 26,
    "h": 84,
-   "to": "END",
-   "toDoor": "",
+   "to": "driftwood-1",
+   "toDoor": "w",
    "spawn": {
     "x": 1054,
     "y": 360

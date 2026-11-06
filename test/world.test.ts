@@ -134,7 +134,7 @@ describe('travel', () => {
   });
 
   it('the END door finishes the slice', () => {
-    const sim = at(ROOMS['hollowbark-4']!);
+    const sim = at(ROOMS['driftwood-4']!);
     sim.room.gateClosed = false;
     const e = sim.room.def.doors!.find(d => d.id === 'e')!;
     sim.player.x = e.spawn.x; sim.player.y = e.spawn.y;

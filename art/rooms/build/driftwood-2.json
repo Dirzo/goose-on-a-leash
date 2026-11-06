@@ -1,0 +1,229 @@
+{
+ "id": "driftwood-2",
+ "name": "Gull Rookery",
+ "subtitle": "Driftwood Wharf \u00b7 2",
+ "width": 1120,
+ "height": 640,
+ "playerStart": {
+  "x": 66,
+  "y": 320
+ },
+ "walls": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1120,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 620,
+   "w": 1120,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 278.0,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 362.0,
+   "w": 20,
+   "h": 278.0,
+   "kind": "border"
+  },
+  {
+   "x": 1100,
+   "y": 0,
+   "w": 20,
+   "h": 278.0,
+   "kind": "border"
+  },
+  {
+   "x": 1100,
+   "y": 362.0,
+   "w": 20,
+   "h": 278.0,
+   "kind": "border"
+  },
+  {
+   "x": 278,
+   "y": 132,
+   "w": 44,
+   "h": 36,
+   "kind": "rock"
+  },
+  {
+   "x": 358,
+   "y": 452,
+   "w": 44,
+   "h": 36,
+   "kind": "rock"
+  },
+  {
+   "x": 598,
+   "y": 212,
+   "w": 44,
+   "h": 36,
+   "kind": "rock"
+  },
+  {
+   "x": 798,
+   "y": 402,
+   "w": 44,
+   "h": 36,
+   "kind": "rock"
+  },
+  {
+   "x": 958,
+   "y": 182,
+   "w": 44,
+   "h": 36,
+   "kind": "rock"
+  },
+  {
+   "x": 160,
+   "y": 520,
+   "w": 40,
+   "h": 36,
+   "kind": "crate"
+  }
+ ],
+ "gate": {
+  "x": 1074,
+  "y": 274,
+  "w": 12,
+  "h": 92
+ },
+ "pits": [
+  {
+   "x": 560,
+   "y": 500,
+   "w": 540,
+   "h": 120,
+   "kind": "water"
+  }
+ ],
+ "bridges": [],
+ "refills": [],
+ "posts": [],
+ "bell": {
+  "x": 960,
+  "y": 130,
+  "r": 14
+ },
+ "exit": null,
+ "vents": [],
+ "bucket": null,
+ "breadSpots": [],
+ "enemies": [
+  {
+   "kind": "gull",
+   "x": 420,
+   "y": 260
+  },
+  {
+   "kind": "gull",
+   "x": 700,
+   "y": 380
+  },
+  {
+   "kind": "gull",
+   "x": 860,
+   "y": 200
+  },
+  {
+   "kind": "crab",
+   "x": 300,
+   "y": 330
+  }
+ ],
+ "knightSpawn": null,
+ "doors": [
+  {
+   "id": "w",
+   "x": 0,
+   "y": 278.0,
+   "w": 26,
+   "h": 84,
+   "to": "driftwood-1",
+   "toDoor": "e",
+   "spawn": {
+    "x": 66,
+    "y": 320
+   },
+   "label": "Saltgrass Dunes"
+  },
+  {
+   "id": "e",
+   "x": 1094,
+   "y": 278.0,
+   "w": 26,
+   "h": 84,
+   "to": "driftwood-3",
+   "toDoor": "w",
+   "spawn": {
+    "x": 1054,
+    "y": 320
+   },
+   "gated": true,
+   "label": "Driftwood Wharf"
+  }
+ ],
+ "paths": [
+  [
+   [
+    66,
+    320
+   ],
+   [
+    500,
+    340
+   ],
+   [
+    800,
+    300
+   ],
+   [
+    1054,
+    320
+   ]
+  ]
+ ],
+ "biome": "wharf",
+ "lightKind": "crab",
+ "heavyKind": "crab",
+ "barrels": [
+  {
+   "x": 200,
+   "y": 200
+  }
+ ],
+ "kits": [
+  {
+   "x": 760,
+   "y": 140
+  }
+ ],
+ "glass": [
+  {
+   "x": 640,
+   "y": 470
+  },
+  {
+   "x": 480,
+   "y": 560
+  }
+ ],
+ "spools": [
+  {
+   "x": 1000,
+   "y": 470
+  }
+ ]
+}

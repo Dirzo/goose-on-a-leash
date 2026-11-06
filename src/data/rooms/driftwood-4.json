@@ -1,0 +1,234 @@
+{
+ "id": "driftwood-4",
+ "name": "The Rusty Gull",
+ "subtitle": "Driftwood Wharf \u00b7 Captain Gullbeard",
+ "width": 1280,
+ "height": 760,
+ "walls": [
+  {
+   "x": 200,
+   "y": 160,
+   "w": 40,
+   "h": 36,
+   "kind": "crate"
+  },
+  {
+   "x": 1060,
+   "y": 560,
+   "w": 40,
+   "h": 40,
+   "kind": "crate"
+  },
+  {
+   "x": 160,
+   "y": 140,
+   "w": 960,
+   "h": 10,
+   "kind": "rail"
+  },
+  {
+   "x": 160,
+   "y": 610,
+   "w": 960,
+   "h": 10,
+   "kind": "rail"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 740,
+   "w": 1280,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 338.0,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 422.0,
+   "w": 20,
+   "h": 338.0,
+   "kind": "border"
+  },
+  {
+   "x": 1260,
+   "y": 0,
+   "w": 20,
+   "h": 338.0,
+   "kind": "border"
+  },
+  {
+   "x": 1260,
+   "y": 422.0,
+   "w": 20,
+   "h": 338.0,
+   "kind": "border"
+  }
+ ],
+ "pits": [
+  {
+   "x": 20,
+   "y": 20,
+   "w": 1240,
+   "h": 720,
+   "kind": "water"
+  }
+ ],
+ "bridges": [
+  {
+   "x": 160,
+   "y": 140,
+   "w": 960,
+   "h": 480,
+   "kind": "deck"
+  },
+  {
+   "x": 20,
+   "y": 345,
+   "w": 150,
+   "h": 70,
+   "kind": "dock"
+  },
+  {
+   "x": 1110,
+   "y": 345,
+   "w": 150,
+   "h": 70,
+   "kind": "dock"
+  }
+ ],
+ "refills": [],
+ "posts": [
+  {
+   "x": 420,
+   "y": 250,
+   "r": 9
+  },
+  {
+   "x": 640,
+   "y": 520,
+   "r": 9
+  },
+  {
+   "x": 860,
+   "y": 250,
+   "r": 9
+  }
+ ],
+ "vents": [],
+ "breadSpots": [
+  {
+   "x": 1000,
+   "y": 560
+  }
+ ],
+ "enemies": [
+  {
+   "kind": "gullbeard",
+   "x": 640,
+   "y": 360
+  }
+ ],
+ "doors": [
+  {
+   "id": "w",
+   "x": 0,
+   "y": 338.0,
+   "w": 26,
+   "h": 84,
+   "to": "driftwood-3",
+   "toDoor": "e",
+   "spawn": {
+    "x": 66,
+    "y": 380
+   },
+   "label": "Bilge Docks",
+   "side": "W"
+  },
+  {
+   "id": "e",
+   "x": 1254,
+   "y": 338.0,
+   "w": 26,
+   "h": 84,
+   "to": "END",
+   "toDoor": "",
+   "spawn": {
+    "x": 1214,
+    "y": 380
+   },
+   "gated": true,
+   "label": "The Tide Caves",
+   "side": "E"
+  }
+ ],
+ "paths": [],
+ "zones": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 760,
+   "name": "The Rusty Gull"
+  }
+ ],
+ "lanterns": [
+  {
+   "x": 300,
+   "y": 380
+  },
+  {
+   "x": 980,
+   "y": 380
+  }
+ ],
+ "gate": {
+  "x": 1234,
+  "y": 334,
+  "w": 12,
+  "h": 92
+ },
+ "bell": null,
+ "exit": null,
+ "bucket": null,
+ "knightSpawn": null,
+ "barrels": [
+  {
+   "x": 230,
+   "y": 560
+  },
+  {
+   "x": 1060,
+   "y": 200
+  }
+ ],
+ "biome": "wharf",
+ "lightKind": "crab",
+ "heavyKind": "crab",
+ "ventSpawns": false,
+ "boss": "gullbeard",
+ "winText": "Captain Gullbeard is himself again. He points his wing out to sea: the Tide Caves.",
+ "rooms": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 760
+  }
+ ],
+ "playerStart": {
+  "x": 66,
+  "y": 380
+ }
+}

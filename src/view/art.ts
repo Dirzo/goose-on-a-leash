@@ -9,6 +9,7 @@ import { C } from '../core/config';
 import type { Enemy, Sim, SimEvent } from '../core/sim';
 import type { Vec } from '../core/math';
 import { SPRITES } from './assets';
+import { INGREDIENTS } from '../data/elixir';
 import { Atmosphere } from './atmosphere';
 import { CinemaView, type CinemaState } from './cinema';
 import { TextPool, fillP, smoothRope, dashed, type Face, type Snapshot } from './render';
@@ -131,6 +132,8 @@ export class ArtRenderer {
     }
     this.cam = null; this.banner = 3.5; this.drips = []; this.puddles = []; this.zone = ''; this.zoneBanner = 0;
     this.atmo.setRoom(def);
+    this.pickett?.destroy(); this.pickett = null;
+    if (def.shop) { this.pickett = this.worldIgnore(this.scene.add.sprite(def.shop.x, def.shop.y + 8, 'pickett', 0)); this.setOrigin(this.pickett, 'pickett'); this.pickett.setDepth(def.shop.y + 8); }
     for (const t of this.trees) t.destroy();
     this.trees = def.walls.filter(w => (w as { kind?: string }).kind === 'tree').map((w, i) => {
       const t = this.worldIgnore(this.scene.add.sprite(w.x + w.w / 2, w.y + w.h - 4, 'tree', i % 3));
@@ -139,6 +142,7 @@ export class ArtRenderer {
     });
   }
 
+  private pickett: Phaser.GameObjects.Sprite | null = null;
   private worldIgnore: <T extends Phaser.GameObjects.GameObject>(o: T) => T;
   private screenOnly!: <T extends Phaser.GameObjects.GameObject>(o: T) => T;
   /** For overlays (the prologue): put a game object on the world layer or the HUD layer. */
@@ -405,6 +409,19 @@ export class ArtRenderer {
       g.fillStyle(0x4ab0e0, 1); g.fillRect(b.x + 12, b.y + 10 - 24 * (left / 0.6), 3, 24 * (left / 0.6));
       if (left > 0 && sim.pack.water < 0.9 && Math.hypot(sim.player.x - b.x, sim.player.y - b.y) < 140) this.wt('Rain barrel', b.x, b.y - 26, 7, '#9ae0ff', 0.8, 'mono');
     });
+    (def.glass ?? []).forEach((k2, i) => {             // sea glass glinting on the sand
+      if (sim.glassGot[i]) return;
+      const tw = Math.floor(time * 3 + k2.x * 0.1) % 5 === 0;
+      g.fillStyle(0x8fe0d0, 0.15 + 0.1 * Math.sin(time * 4 + k2.x)); g.fillCircle(k2.x, k2.y, 9);
+      g.fillStyle(0x1a1522, 1); fillP(g, [{ x: k2.x - 4, y: k2.y }, { x: k2.x - 1, y: k2.y - 4 }, { x: k2.x + 4, y: k2.y - 1 }, { x: k2.x + 2, y: k2.y + 3 }], true);
+      g.fillStyle(0x8fe0d0, 1); fillP(g, [{ x: k2.x - 3, y: k2.y }, { x: k2.x - 1, y: k2.y - 3 }, { x: k2.x + 3, y: k2.y - 1 }, { x: k2.x + 1, y: k2.y + 2 }], true);
+      if (tw) { g.fillStyle(0xffffff, 1); g.fillRect(k2.x + 3, k2.y - 6, 1, 3); g.fillRect(k2.x + 2, k2.y - 5, 3, 1); }
+    });
+    if (def.shop) {
+      const sp = def.shop;
+      if (this.pickett) this.pickett.setFrame(sim.atShop ? (Math.floor(time * 3) % 2 ? 2 : 0) : ((time * 1.1) % 3.2 < 0.14 ? 1 : 0)).setFlipX(sim.player.x < sp.x);
+      if (Math.hypot(sim.player.x - sp.x, sim.player.y - sp.y) < 200) this.wt(sim.atShop ? 'Honk to trade' : sp.name, sp.x, sp.y - 66, 7, '#8fe0d0', 0.85, 'mono');
+    }
     (def.shrooms ?? []).forEach((m, i) => {
       const ready = sim.shroomCd[i] ? 0.35 : 1;
       const pulse = 0.5 + 0.5 * Math.sin(time * 2.2 + i);
@@ -554,7 +571,7 @@ export class ArtRenderer {
       if (e.dead) continue;
       alive.add(e.id);
       let s = this.foes.get(e.id);
-      if (!s) { s = this.worldIgnore(this.scene.add.sprite(0, 0, ({ snapper: 'snapper', elder: 'snapper', heron: 'heron', squirrel: 'squirrel', badger: 'badger', king: 'king' } as Record<string, string>)[e.kind] ?? 'frog')); this.foes.set(e.id, s); }
+      if (!s) { s = this.worldIgnore(this.scene.add.sprite(0, 0, ({ snapper: 'snapper', elder: 'snapper', heron: 'heron', squirrel: 'squirrel', badger: 'badger', king: 'king', crab: 'crab', gull: 'gull', gullbeard: 'gullbeard' } as Record<string, string>)[e.kind] ?? 'frog')); this.foes.set(e.id, s); }
       const { x, y } = EP(e);
       const awake = e.woke > 0 || (e.stun > 0 && e.kind !== 'snapper');
       const kind = e.kind === 'heron' ? (e.woke > 0 ? 'heron_awake' : 'heron')
@@ -563,6 +580,10 @@ export class ArtRenderer {
       if (e.kind === 'elder') { this.drawElder(sim, e, s, x, y, time); continue; }
       if (e.kind === 'squirrel' || e.kind === 'badger' || e.kind === 'king') {
         this.drawWoodsCritter(sim, e, s, x, y, time);
+        continue;
+      }
+      if (e.kind === 'crab' || e.kind === 'gull' || e.kind === 'gullbeard') {
+        this.drawWharfCritter(sim, e, s, x, y, time);
         continue;
       }
       if (e.kind === 'heron') {
@@ -696,6 +717,13 @@ export class ArtRenderer {
       this.floor.fillStyle(0xff4a4a, 0.15 * u); this.floor.fillEllipse(d.tx, d.ty, r * 2.2, r * 1.1);
       const fx2 = d.x0 + (d.tx - d.x0) * u, fy2 = d.y0 + (d.ty - d.y0) * u - Math.sin(u * Math.PI) * (kind === 'acorn' ? 50 : 90);
       if (kind === 'feather') { f2.lineStyle(2, 0xe8eef2, 1); f2.lineBetween(fx2 - 3, fy2 - 6, fx2 + 3, fy2 + 6); f2.fillStyle(0x7890aa, 1); f2.fillRect(fx2 - 2, fy2 - 6, 3, 6); }
+      else if (kind === 'bottle') {
+        const a = d.t * 14;
+        f2.fillStyle(0x1a1522, 1); f2.fillCircle(fx2, fy2, 5);
+        f2.lineStyle(4, 0x1a1522, 1); f2.lineBetween(fx2 - Math.cos(a) * 6, fy2 - Math.sin(a) * 6, fx2 + Math.cos(a) * 6, fy2 + Math.sin(a) * 6);
+        f2.lineStyle(2, 0x3a8a5a, 1); f2.lineBetween(fx2 - Math.cos(a) * 5, fy2 - Math.sin(a) * 5, fx2 + Math.cos(a) * 5, fy2 + Math.sin(a) * 5);
+        f2.fillStyle(0x9ae0b0, 1); f2.fillRect(fx2 - 1, fy2 - 1, 2, 2);
+      }
       else if (kind === 'acorn') { f2.fillStyle(0x1a1522, 1); f2.fillEllipse(fx2, fy2, 7, 8); f2.fillStyle(0x8a5a2a, 1); f2.fillEllipse(fx2, fy2 + 1, 5, 5); f2.fillStyle(0x5e3e20, 1); f2.fillRect(fx2 - 3, fy2 - 3, 6, 2); }
       else { f2.fillStyle(0x1a1522, 1); f2.fillCircle(fx2, fy2, 6); f2.fillStyle(0x6a6458, 1); f2.fillCircle(fx2, fy2, 5); f2.fillStyle(0x8a8474, 1); f2.fillCircle(fx2 - 1.5, fy2 - 1.5, 2); }
     }
@@ -840,11 +868,11 @@ export class ArtRenderer {
     });
 
     // boss health
-    const boss = sim.enemies.find(e => (e.kind === 'heron' || e.kind === 'king' || (e.kind === 'elder' && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < 620)) && !e.woke);
+    const boss = sim.enemies.find(e => (e.kind === 'heron' || e.kind === 'king' || (e.kind === 'gullbeard' && e.mode !== 'stalk') || (e.kind === 'elder' && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < 620)) && !e.woke);
     if (boss) {
       const bw2 = 520, bx2 = W / 2 - bw2 / 2, by2 = 150, angry = boss.hp < boss.max / 2;
       g.fillStyle(0x0b0a10, 0.8); g.fillRect(bx2 - 12, by2 - 30, bw2 + 24, 52);
-      this.ht('display', boss.kind === 'king' ? 'THE BURROW KING' : boss.kind === 'elder' ? 'OLD SNAPPER' : 'THE HERON FERRYMAN', W / 2, by2 - 8, 16, angry ? '#ff8a8a' : '#e9e4d6');
+      this.ht('display', boss.kind === 'king' ? 'THE BURROW KING' : boss.kind === 'gullbeard' ? 'CAPTAIN GULLBEARD' : boss.kind === 'elder' ? 'OLD SNAPPER' : 'THE HERON FERRYMAN', W / 2, by2 - 8, 16, angry ? '#ff8a8a' : '#e9e4d6');
       g.fillStyle(0x1a1522, 1); g.fillRect(bx2, by2, bw2, 12);
       g.fillStyle(angry ? 0xe05a47 : 0xc94b3a, 1); g.fillRect(bx2 + 2, by2 + 2, (bw2 - 4) * Math.max(0, boss.hp / boss.max), 8);
       g.fillStyle(0xe9e4d6, 0.5); g.fillRect(bx2 + bw2 / 2, by2, 1, 12);
@@ -993,7 +1021,9 @@ export class ArtRenderer {
     this.ut('mono', 'SUPPLIES', X, 430, 13, '#9aa3a6', 1, 'left', true);
     this.ut('body', sup, X, 458, 15, '#e9e4d6', 1, 'left');
     this.ut('body', breads, X, 482, 15, '#e9c9a0', 1, 'left');
-    this.ut('body', `Leash: ${k.leashDef.name}`, X, 506, 15, '#c9a46a', 1, 'left');
+    this.ut('body', `Leash: ${k.leashDef.name}${k.reel ? ' · Spinning Reel' : ''}`, X, 506, 15, '#c9a46a', 1, 'left');
+    const have = INGREDIENTS.filter(i => k.ingredients.has(i.id));
+    this.ut('body', `Elixir: ${have.length} of ${INGREDIENTS.length}${have.length ? ' · ' + have.map(i => i.name).join(' · ') : ' · nothing yet'}`, X, 530, 15, have.length ? '#8fe0d0' : '#9aa3a6', 1, 'left');
     const canPatch = pk.holes > 0 && pk.needles > 0 && k.mats.fluff > 0;
     this.ut('mono', canPatch ? '[P] PATCH A TEAR' : pk.holes ? (pk.needles ? 'NEED TWINE TO PATCH' : 'NEED A SEWING KIT TO PATCH') : 'NO TEARS TO PATCH', X, 570, 15,
       canPatch ? '#f2c230' : pk.holes ? '#ff8a8a' : '#7cc48a', 1, 'left', true);
@@ -1115,6 +1145,61 @@ export class ArtRenderer {
       g.fillStyle(dark, 1); g.fillEllipse(P.x - 12 * s, P.y - 48, 7, 10);
       g.fillStyle(wood, 1); g.fillEllipse(P.x - 12 * s, P.y - 48, 5, 8);
     }
+  }
+
+  /** Crabs, gulls and Captain Gullbeard: fliers drawn above their shadows, dive marks, the swoop line, stolen loot. */
+  private drawWharfCritter(sim: Sim, e: Enemy, s: Phaser.GameObjects.Sprite, x: number, y: number, time: number): void {
+    const g = this.floor, f = this.fxg, awake = e.woke > 0, cap = e.kind === 'gullbeard';
+    const blink = ((time * 1.1 + e.id * 0.37) % 3.2) < 0.14;
+    const flap = Math.floor(time * (cap ? 7 : 11) + e.id) % 2;
+    let frame = blink ? 1 : 0;
+    if (e.kind === 'crab' && !awake) frame = e.mode === 'guard' ? 2 : e.mode === 'snap' || e.mode === 'wind' ? 3 : frame;
+    if (e.kind === 'gull') frame = e.air > 2 ? (e.mode === 'dive' ? (awake ? 2 : 4) : flap ? 2 : 3) : frame;
+    if (cap && !awake) frame = e.mode === 'swoop' ? 4 : e.mode === 'dazed' || e.mode === 'tangled' || e.mode === 'fall' ? 5 : e.air > 2 ? (flap ? 2 : 3) : frame;
+    if (awake && e.kind !== 'gull') frame = Math.min(frame, 1);
+    this.show(s, `${e.kind}${awake ? '_awake' : ''}`, frame);
+    const lift = e.air, wob = e.air > 2 ? Math.sin(time * 6 + e.id) * 2 : 0;
+    const flip = e.mode === 'swoop' || e.mode === 'dive' ? e.tx < x : e.mode === 'escape' ? sim.player.x > x : sim.player.x < x;
+    s.setPosition(Math.round(x), Math.round(y - lift + wob)).setDepth(lift > 30 ? y + 3000 : y).setFlipX(flip)
+      .setAlpha(awake && !cap ? Math.min(1, Math.max(0, (2.2 - e.woke) / 0.6)) : 1).setScale(1 + (cap ? e.air / 900 : 0));
+    const tell = (e.mode === 'wind' || e.mode === 'aim') && Math.floor(e.modeT * 16) % 2 === 0;
+    if (e.hitT > 0 || tell) s.setTint(e.hitT > 0 ? 0xffffff : 0xffd0d0).setTintMode(Phaser.TintModes.FILL); else s.clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
+    const sw = cap ? 70 : e.kind === 'gull' ? 22 : 30;
+    g.fillStyle(0x000000, 0.35 * (1 - Math.min(0.6, lift / 200))); g.fillEllipse(x, y + 2, sw - lift * 0.08, (cap ? 14 : 7) - lift * 0.02);
+    if (awake) {
+      if (cap && e.woke < 6) this.wt('Captain Gullbeard', x, y - 100, 9, '#8fe0d0', Math.min(1, 6 - e.woke));
+      return;
+    }
+    if (e.loot) {                                   // what he took, dangling from his beak
+      const c = e.loot.mat ? hex(ITEMS[e.loot.mat].color) : 0xc98a3c, bx = x + (flip ? -16 : 16), by = y - lift - 12;
+      f.fillStyle(0x1a1522, 1); f.fillCircle(bx, by, 4); f.fillStyle(c, 1); f.fillCircle(bx, by, 3);
+      this.wt('THIEF!', x, y - lift - 36, 7, '#ff8a6a', 0.7 + 0.3 * Math.sin(time * 10), 'mono');
+    }
+    if (e.kind === 'gull' && (e.mode === 'wind' || e.mode === 'dive')) {
+      const r = e.mode === 'wind' ? 16 : 10;
+      g.lineStyle(2, 0xff4a4a, 0.5 + 0.4 * Math.sin(time * 18)); g.strokeEllipse(e.tx, e.ty, r * 2.2, r * 1.1);
+      if (e.mode === 'wind') this.wt('!', x, y - lift - 30, 11, '#ff4a4a', 1);
+    }
+    if (cap) {
+      if (e.mode === 'aim' || e.mode === 'swoop') {   // the line he'll swoop along
+        const dx = e.tx - x, dy = e.ty - y, l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l, L = e.mode === 'aim' ? l + 240 : l;
+        g.lineStyle(e.mode === 'aim' ? 3 : 5, 0xff4a4a, e.mode === 'aim' ? 0.35 + 0.3 * Math.sin(time * 16) : 0.25);
+        g.lineBetween(x, y, x + ux * L, y + uy * L);
+        if (e.mode === 'aim') { this.wt('!', x, y - lift - 104, 16, '#ff4a4a', 1); g.lineStyle(2, 0xff4a4a, 0.7); g.strokeEllipse(e.tx, e.ty, 40, 20); }
+      }
+      if (e.mode === 'wind') this.wt('!', x, y - lift - 104, 16, '#ff4a4a', 1);
+      if (e.mode === 'tangled') {                     // wrapped in fishing line
+        f.lineStyle(1, 0xd8ecf4, 0.9);
+        for (let i = 0; i < 4; i++) { const a = time * 2 + i; f.strokeEllipse(x, y - 40 + i * 8, 70 + Math.sin(a) * 6, 14); }
+      }
+      if (e.mode === 'dazed' || e.mode === 'tangled' || e.mode === 'grounded') for (let i = 0; i < 3; i++) {
+        if (e.mode === 'grounded') break;
+        const a = time * 5 + i * 2.1; f.fillStyle(0xf2c230, 1); this.star(f, x + Math.cos(a) * 26, y - 96 + Math.sin(a) * 3, 4);
+      }
+      return;
+    }
+    if (e.stun > 0 && e.air <= 2) for (let i = 0; i < 2; i++) { const a = time * 5 + i * 3; f.fillStyle(0xf2c230, 1); this.star(f, x + Math.cos(a) * 10, y - 26 + Math.sin(a) * 3, 2.5); }
+    if (e.kind === 'crab' && e.mode === 'wind') this.wt('!', x, y - 30, 11, '#ff4a4a', 1);
   }
 
   /** Squirrels, badgers and the Burrow King: poses, tunnelling mounds, telegraphs, dazed stars. */

@@ -53,11 +53,27 @@ WOODS_P = {k: hx(v) for k, v in {
 }.items()}
 
 
+# Driftwood Wharf: moonlit sand and salt grass, a dark teal sea with foam on the shore, weathered planks,
+# and black rock and pines round the edge instead of the forest
+WHARF_P = {k: hx(v) for k, v in {
+    'Q0': '2e2a26', 'Q1': '3a352e', 'Q2': '48423a', 'Q3': '4e5a44', 'Q4': '6a7a52', 'Q5': '8a8a62',
+    'D0': '262420', 'D1': '403a32', 'D2': '585044', 'MUD': '2e2a26',
+    'W0': '071a22', 'W1': '0c2630', 'W2': '14384a', 'W3': 'b8d8e0',
+    'TREE': '0a0e12', 'TREE2': '10161c', 'TREE3': '1c2630',
+    'B0': '2e2620', 'B1': '4e4236', 'B2': '6e604e', 'B3': '9a8a70',
+    'CR0': '3a2a1a', 'CR1': '6a4a2a', 'CR2': '8e6a3e', 'CR3': 'b48a52',
+    'RF0': '1a1e26', 'RF1': '2a303c', 'RF2': '3e4656', 'NET': '6a7a7a',
+    'AW1': '3e8a8a', 'AW2': 'd8e0d8', 'IRON0': '1e2228', 'IRON1': '3e4652', 'IRON2': '6a7686', 'SHELL': 'e8dcd0',
+}.items()}
+
+
 def render(R):
     W, H = R['width'], R['height']
     woods = R.get('biome') == 'woods'
+    wharf = R.get('biome') == 'wharf'
     P = dict(BASE_P)
     if woods: P.update(WOODS_P)
+    if wharf: P.update(WHARF_P)
     rng = random.Random(sum(ord(c) * (i + 1) for i, c in enumerate(R['id'])))
     yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
     img = np.zeros((H, W, 3), np.float32)
@@ -86,6 +102,7 @@ def render(R):
     pillars = [b for b in R.get('bridges', []) if b.get('kind') == 'pillar']
     islands = [b for b in R.get('bridges', []) if b.get('kind') == 'island']
     docks = [b for b in R.get('bridges', []) if b.get('kind', 'dock') == 'dock']
+    decks = [b for b in R.get('bridges', []) if b.get('kind') == 'deck']
     noise = 4.0 * np.sin(xx * 0.05 + yy * 0.033 + seed) + 2.5 * np.sin(yy * 0.071 - xx * 0.043) + 1.2 * np.sin(yy * 0.19 - xx * 0.13)
     if pits:
         ds = np.stack([sdf_rect(p, 24) for p in pits])
@@ -175,13 +192,19 @@ def render(R):
         return any(d['x'] - m < x < d['x'] + d['w'] + m and d['y'] - m < y < d['y'] + d['h'] + m for d in docks)
     def near_post(x, y, m=30):
         return any(math.hypot(p['x'] - x, p['y'] - y) < m for p in R.get('posts', []))
-    nb = int(bank.sum() / 260)
+    nb = 0 if wharf else int(bank.sum() / 260)
+    if wharf:                                              # shells and pebbles on the tide line, foam lace in the shallows
+        for _ in range(int(bank.sum() / 90)):
+            x, y = rng.randrange(4, W - 4), rng.randrange(4, H - 4)
+            if bank[y, x]: px(x, y, rng.choice(['SHELL', 'D2', 'D0'])); px(x + 1, y, 'D0')
+        lace = water & (sd > -9) & (sd < -5) & (np.sin(xx * 0.35 + yy * 0.2 + seed) > 0.55)
+        img[lace] = img[lace] * 0.5 + P['W3'] * 0.5
     for _ in range(nb):
         for _try in range(40):
             x, y = rng.randrange(24, W - 24), rng.randrange(34, H - 10)
             if bank[y, x] and not near_dock(x, y) and not near_post(x, y):
                 reeds(x - 6, y + 4, rng.randrange(3, 7)); break
-    for _ in range(int(water.sum() / 9000)):
+    for _ in range(0 if wharf else int(water.sum() / 9000)):
         for _try in range(60):
             lx, ly = rng.randrange(20, W - 20), rng.randrange(20, H - 20)
             if water[ly, lx] and sd[ly, lx] < -14 and not near_dock(lx, ly, 20) and not near_post(lx, ly, 26):
@@ -220,6 +243,34 @@ def render(R):
             for x in range(x0 + 4, x1, 9): px(x, y0 + 4, 'NAIL'); px(x, y1 - 5, 'NAIL')
             for x_ in range(x0 + 20, x1, 44):
                 for y_ in (y0 - 3, y1 - 1): img[y_:y_ + 5, x_:x_ + 6] = P['B0']
+
+    # ---- a ship's deck: planks running bow to stern, a hull rim, hatches, coiled rope, and the masts' rigging
+    for dk in decks:
+        x0, y0, x1, y1 = int(dk['x']), int(dk['y']), int(dk['x'] + dk['w']), int(dk['y'] + dk['h'])
+        hull = (xx >= x0 - 10) & (xx < x1 + 10) & (yy >= y0 - 10) & (yy < y1 + 14)
+        img[hull & water] = P['CR0'] * 0.8                                          # the hull below the rail
+        img[(xx >= x0 - 6) & (xx < x1 + 6) & (yy >= y1 + 6) & (yy < y1 + 14)] = P['CR0'] * 0.6
+        for y in range(y0, y1):
+            row = (y - y0) // 7
+            img[y, x0:x1] = P['B2'] if row % 2 else P['B1']
+            if (y - y0) % 7 == 0: img[y, x0:x1] = P['B0']
+            off = (row * 53) % 140
+            for x in range(x0 + off, x1, 140): img[y, x] = P['B0']               # butt joints, staggered
+        img[y0:y0 + 4, x0 - 8:x1 + 8] = P['CR1']; img[y0, x0 - 8:x1 + 8] = P['CR3']   # gunwales
+        img[y1 - 4:y1, x0 - 8:x1 + 8] = P['CR1']; img[y1 - 1, x0 - 8:x1 + 8] = P['OUT']
+        img[y0:y1, x0 - 8:x0] = P['CR1']; img[y0:y1, x1:x1 + 8] = P['CR1']
+        for hx_, hy_ in [(x0 + dk['w'] * 0.5, y0 + dk['h'] * 0.3), (x0 + dk['w'] * 0.22, y0 + dk['h'] * 0.62)]:   # hatches
+            hx_, hy_ = int(hx_), int(hy_)
+            img[hy_ - 16:hy_ + 16, hx_ - 26:hx_ + 26] = P['CR0']
+            for x in range(hx_ - 24, hx_ + 24, 6): img[hy_ - 14:hy_ + 14, x:x + 4] = P['B0']
+            img[hy_ - 16, hx_ - 26:hx_ + 26] = P['CR2']
+        for (cx_, cy_) in [(x0 + 70, y1 - 60), (x1 - 160, y0 + 60)]:              # coils of rope
+            for r_ in (12, 8, 4): img[np.abs(np.hypot(xx - cx_, (yy - cy_) * 1.2) - r_) < 1.3] = P['NET']
+        for p in R.get('posts', []):                                              # rigging: lines from each mast to the rails
+            for (tx_, ty_) in [(p['x'] - 90, y0), (p['x'] + 90, y0), (p['x'] - 90, y1 - 2), (p['x'] + 90, y1 - 2)]:
+                n = int(math.dist((p['x'], p['y']), (tx_, ty_)))
+                for k in range(0, n, 2): px(p['x'] + (tx_ - p['x']) * k / n, p['y'] + (ty_ - p['y']) * k / n, 'B0')
+            shadow(p['x'] + 40, p['y'] + 30, 70, 6, 0.75)                         # the yard's shadow
 
     # ---- posts
     for p in R.get('posts', []):
@@ -270,6 +321,45 @@ def render(R):
                 img[m2] = P['HD2']
             img[y0, x0:x1] = P['HD2']; img[y1 - 1, x0:x1] = P['OUT']
             continue
+        if kind == 'crate':
+            x0, y0, x1, y1 = int(w['x']), int(w['y']), int(w['x'] + w['w']), int(w['y'] + w['h'])
+            shadow((x0 + x1) / 2 + 5, y1 + 3, w['w'] / 2 + 6, 6, 0.55)
+            img[y0:y1, x0:x1] = P['CR1']
+            img[y0:y0 + 6, x0:x1] = P['CR2']; img[y0, x0:x1] = P['CR3']            # the lid catching the moon
+            for y in range(y0 + 10, y1 - 2, 8): img[y, x0:x1] = P['CR0']
+            img[y0:y1, x0 + 2:x0 + 4] = P['CR0']; img[y0:y1, x1 - 4:x1 - 2] = P['CR0']
+            for k in range(min(x1 - x0, y1 - y0) - 8):                               # diagonal brace
+                px(x0 + 4 + k, y0 + 6 + k * (y1 - y0 - 8) / max(1, x1 - x0 - 8), 'CR0')
+            img[y0:y1, x0] = P['OUT']; img[y0:y1, x1 - 1] = P['OUT']; img[y1 - 1, x0:x1] = P['OUT']
+            continue
+        if kind == 'rail':
+            x0, y0, x1, y1 = int(w['x']), int(w['y']), int(w['x'] + w['w']), int(w['y'] + w['h'])
+            horiz = (x1 - x0) >= (y1 - y0)
+            if horiz:
+                for x in range(x0 + 4, x1, 26):
+                    img[y0 - 8:y1, x:x + 4] = P['B1']; img[y0 - 8, x:x + 4] = P['B3']; img[y0 - 8:y1, x + 4] = P['OUT']
+                img[y0 - 6:y0 - 4, x0:x1] = P['B2']; img[y0 - 4, x0:x1] = P['OUT']
+                img[y0 + 2, x0:x1] = P['NET']
+            else:
+                for y in range(y0 + 4, y1, 26):
+                    img[y:y + 4, x0:x1] = P['B1']; img[y, x0:x1] = P['B3']
+                img[y0:y1, x0 + 2:x0 + 4] = P['B2']
+            continue
+        if kind == 'shed':
+            x0, y0, x1, y1 = int(w['x']), int(w['y']), int(w['x'] + w['w']), int(w['y'] + w['h'])
+            shadow((x0 + x1) / 2 + 10, y1 + 6, w['w'] / 2 + 10, 14, 0.5)
+            img[y0:y1, x0:x1] = P['RF1']
+            for y in range(y0, y1, 6): img[y, x0:x1] = P['RF0']                        # roof planks
+            mid = (y0 + y1) // 2
+            img[mid - 2:mid + 2, x0:x1] = P['RF2']                                     # ridge
+            img[y0:mid, x0:x1] = img[y0:mid, x0:x1] * 1.12
+            for _ in range(int(w['w'] * w['h'] / 14000)):                              # nets drying on the roof
+                cx_, cy_ = rng.uniform(x0 + 20, x1 - 20), rng.uniform(y0 + 14, y1 - 14)
+                m = (np.abs(xx - cx_) < 30) & (np.abs(yy - cy_) < 16) & ((((xx + yy).astype(int)) % 5 == 0) | (((xx - yy).astype(int)) % 5 == 0))
+                img[m] = P['NET']
+            img[y0, x0:x1] = P['OUT']; img[y1 - 1, x0:x1] = P['OUT']; img[y0:y1, x0] = P['OUT']; img[y0:y1, x1 - 1] = P['OUT']
+            img[y1 - 10:y1, x0:x1] = P['RF0']                                          # the eave's shadow
+            continue
         if kind == 'stump':
             cx, cy = w['x'] + w['w'] / 2, w['y'] + w['h'] / 2
             shadow(cx + 4, cy + 10, 24, 8)
@@ -302,6 +392,33 @@ def render(R):
             disk(rcx, rcy, 23, 'OUT', 0.75); disk(rcx, rcy, 22, 'ST0', 0.75); disk(rcx - 3, rcy - 3, 16, 'ST1', 0.75)
             disk(rcx - 7, rcy - 7, 6, 'ST2', 0.75)
             for k in range(6): px(rcx - 10 + k * 4, rcy + 12, 'Q3')
+
+    # ---- Pickett's stall: a counter under a striped awning (Pickett himself is a sprite)
+    sp = R.get('shop')
+    if sp:
+        sx, sy = int(sp['x']), int(sp['y'])
+        shadow(sx + 4, sy + 14, 60, 12, 0.55)
+        img[sy - 30:sy - 2, sx - 52:sx + 52] = P['B1']                       # the back wall of the stall
+        for x in range(sx - 52, sx + 52, 9): img[sy - 30:sy - 2, x] = P['B0']
+        for i, x in enumerate(range(sx - 60, sx + 60, 10)):                  # awning
+            img[sy - 52:sy - 34, x:x + 10] = P['AW1'] if i % 2 else P['AW2']
+            for k in range(4): px(x + 5, sy - 34 + k, 'AW1' if i % 2 else 'AW2')
+        img[sy - 53, sx - 60:sx + 60] = P['OUT']; img[sy - 34, sx - 60:sx + 60] = P['OUT']
+        for x in (sx - 58, sx + 55): img[sy - 34:sy + 14, x:x + 3] = P['B0']
+        img[sy + 14:sy + 26, sx - 56:sx + 56] = P['B2']; img[sy + 14, sx - 56:sx + 56] = P['B3']   # the counter in front
+        img[sy + 25, sx - 56:sx + 56] = P['OUT']
+        for k, (dx, c) in enumerate([(-40, 'AW1'), (-28, 'SHELL'), (30, 'IRON2'), (42, 'AW2')]): img[sy + 8:sy + 14, sx + dx:sx + dx + 6] = P[c]   # wares
+        for x in range(sx - 50, sx + 50, 7):                                   # sea glass in a jar
+            if rng.random() < 0.3: px(x, sy + 12, 'AW1')
+    pm = R.get('pump')
+    if pm:
+        x, y = int(pm['x']), int(pm['y'])
+        shadow(x + 4, y + 14, 26, 8, 0.55)
+        img[y + 2:y + 14, x - 20:x + 20] = P['B1']; img[y + 2, x - 20:x + 20] = P['B3']; img[y + 4:y + 12, x - 18:x + 18] = P['W2']   # trough
+        img[y - 30:y + 4, x - 4:x + 4] = P['IRON1']; img[y - 30:y + 4, x - 4] = P['IRON2']; img[y - 32:y - 28, x - 6:x + 6] = P['IRON0']
+        img[y - 22:y - 18, x + 4:x + 12] = P['IRON1']                         # spout
+        for k in range(14): px(x - 4 - k, y - 28 - k * 0.5, 'IRON2')          # handle
+        img[y - 18:y + 4, x + 10] = P['W3']
 
     # ---- gate posts (the gate itself is drawn by the game)
     gt = R.get('gate')
@@ -380,7 +497,7 @@ def render(R):
     img[lit] = img[lit] * 0.6 + (P['TREE3'] * 1.6) * 0.4
     far = canopy & (deep > 30)
     img[far] = img[far] * np.clip(1 - (deep[far] - 30) / 140, 0.45, 1)[..., None]
-    for x in range(24, W - 24, 5):                               # hanging strands along the top
+    for x in range(24, W - 24, 5 if not wharf else 10**6):        # hanging strands along the top
         if gap[30, x] or not canopy[18, x]: continue
         for y in range(20, 20 + rng.randrange(6, 22)):
             if y + 6 < H and not water[y, x]: px(x + (y // 7) % 2, y + 6, 'RD0')
@@ -412,7 +529,8 @@ def render(R):
 def main(ids):
     os.makedirs(OUT, exist_ok=True)
     files = [os.path.join(ROOT, 'src', 'data', 'rooms', f'{i}.json') for i in ids] if ids else \
-        sorted(glob.glob(os.path.join(ROOT, 'src', 'data', 'rooms', 'reedmarsh-*.json')) + glob.glob(os.path.join(ROOT, 'src', 'data', 'rooms', 'hollowbark-*.json')))
+        sorted(glob.glob(os.path.join(ROOT, 'src', 'data', 'rooms', 'reedmarsh-*.json')) + glob.glob(os.path.join(ROOT, 'src', 'data', 'rooms', 'hollowbark-*.json'))
+               + glob.glob(os.path.join(ROOT, 'src', 'data', 'rooms', 'driftwood-*.json')))
     for f in files:
         R = json.load(open(f))
         render(R).save(os.path.join(OUT, f"{R['id']}.png"))

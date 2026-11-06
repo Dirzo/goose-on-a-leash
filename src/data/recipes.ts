@@ -3,7 +3,7 @@
  * Leash stat keys are read through `leashStat()` in core/crafting.ts.
  */
 
-export type MaterialId = 'mop' | 'fluff' | 'crust' | 'chain' | 'goo' | 'down';
+export type MaterialId = 'mop' | 'fluff' | 'crust' | 'chain' | 'goo' | 'down' | 'glass';
 export type CatalystId = 'clapper' | 'crest' | 'egg' | 'tooth' | 'feather';
 export type ItemId = MaterialId | CatalystId;
 export type BuildId = 'any' | 'brawler' | 'honker' | 'flinger' | 'berserker' | 'chaos';
@@ -20,6 +20,7 @@ export const MATERIALS: Record<MaterialId, ItemDef> = {
   chain: { name: 'Shell Scute', color: '#7c8794', source: 'Old Snapper and other shelled brutes.' },
   goo: { name: 'Pond Muck', color: '#5fbf6a', source: 'Splashes up when something falls in the water.' },
   down: { name: 'Goose Down', color: '#f4f1e8', source: 'The goose molts when a Fury ends without the leash snapping.' },
+  glass: { name: 'Sea Glass', color: '#8fe0d0', source: 'Washes up on the Driftwood beaches; crabs and gulls hoard it. Pickett trades it at his tackle shop.' },
 };
 
 export const CATALYSTS: Record<CatalystId, ItemDef> = {

@@ -94,6 +94,11 @@ const PATH: [string, string | null, string, boolean][] = [
   ['hollowbark-3', 'w', 'e', true],
   ['hollowbark-4', 'w', 'e', true],
 ];
+/** Driftwood Wharf is crossed with the power cast: posts within a full cast of the starting line. */
+const WHARF: [string, string, string][] = [
+  ['driftwood-1', 'w', 'e'], ['driftwood-2', 'w', 'e'], ['driftwood-3', 'w', 'e'], ['driftwood-4', 'w', 'e'],
+];
+const CAST = 230 * C.castReachMul;
 
 describe('every room can be finished', () => {
   for (const [id, from, exit, braided] of PATH) {
@@ -103,6 +108,20 @@ describe('every room can be finished', () => {
       expect([...r.doors], `${id} exits reached`).toContain(exit);
     });
   }
+
+  for (const [id, from, exit] of WHARF) {
+    it(`${id}: from ${from} to ${exit} and back, casting`, () => {
+      const def = ROOMS[id]!;
+      expect([...reachable(def, CAST, from).doors], `${id} exits`).toContain(exit);
+      expect([...reachable(def, CAST, exit).doors], `${id} back`).toContain(from);
+    });
+  }
+
+  it('the sandbar feather in the harbour needs the Spinning Reel', () => {
+    const def = ROOMS['driftwood-2']!, f = def.feathers![0]!;
+    expect(reachableCells(def, (230 + 50) * C.castReachMul, 'w')(f.x, f.y)).toBe(false);
+    expect(reachableCells(def, 230 * (C.castReachMul + C.reelReach), 'w')(f.x, f.y)).toBe(true);
+  });
 
   it('the Braided Line chest can be reached with the starting line', () => {
     const def = ROOMS['reedmarsh-2']!;

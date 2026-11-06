@@ -39,10 +39,10 @@ export function mountUi(scene: GameScene): void {
 
   // ---- room selection and reset
   const order = Object.values(ROOMS).sort((a, b) => rank(a.id) - rank(b.id));
-  function rank(id: string): number { return id === 'willowmere' ? 0 : id.startsWith('reedmarsh-') ? +id.slice(10) : id.startsWith('hollowbark-') ? 10 + +id.slice(11) : 99; }
+  function rank(id: string): number { return id === 'willowmere' ? 0 : id.startsWith('reedmarsh-') ? +id.slice(10) : id.startsWith('hollowbark-') ? 10 + +id.slice(11) : id.startsWith('driftwood-') ? 20 + +id.slice(10) : 99; }
   const pick = $<HTMLSelectElement>('room-pick');
   pick.innerHTML = order.map(r => {
-    const tag = r.id === 'willowmere' ? 'Hub' : r.id.startsWith('reedmarsh-') ? `Reedmarsh ${r.id.slice(10)}` : r.id.startsWith('hollowbark-') ? `Hollowbark ${r.id.slice(11)}` : 'Test';
+    const tag = r.id === 'willowmere' ? 'Hub' : r.id.startsWith('reedmarsh-') ? `Reedmarsh ${r.id.slice(10)}` : r.id.startsWith('hollowbark-') ? `Hollowbark ${r.id.slice(11)}` : r.id.startsWith('driftwood-') ? `Driftwood ${r.id.slice(10)}` : 'Test';
     return `<option value="${r.id}">${tag} · ${esc(r.name)}${r.boss ? ' (boss)' : ''}${r.id === 'room-01' ? ' (gray-box prototype)' : ''}</option>`;
   }).join('');
   const syncPick = () => { pick.value = scene.sim.room.def.id; };
@@ -59,6 +59,7 @@ export function mountUi(scene: GameScene): void {
     scene.setPackOpen(false);
     if (rank(def.id) >= 3 && rank(def.id) < 99) scene.sim.kit.findLeash('braided');
     if (rank(def.id) >= 11 && rank(def.id) < 99) scene.sim.kit.oar = true;
+    if (rank(def.id) >= 14 && rank(def.id) < 99) scene.sim.kit.findLeash('vine');
     const entry = def.doors?.find(d => d.to !== 'END' && rank(d.to) < rank(def.id))?.id ?? null;
     scene.sim.enterRoom(def, entry, true);
     scene.saveNow();
@@ -69,9 +70,6 @@ export function mountUi(scene: GameScene): void {
   const soundBtn = $('b-sound'), soundLabel = () => { soundBtn.textContent = `Sound: ${sound.muted ? 'off' : 'on'} [M]`; };
   soundLabel(); sound.onChange = soundLabel;
   soundBtn.onclick = () => { sound.toggle(); scene.game.canvas.focus(); };
-  const castBtn = $('b-cast'), castLabel = () => { castBtn.textContent = `Leash: ${scene.castMode ? 'power cast' : 'classic'}`; };
-  castLabel();
-  castBtn.onclick = () => { scene.setCastMode(!scene.castMode); castLabel(); scene.game.canvas.focus(); };
   const cineBtn = $('b-cine'), cineLabel = () => { cineBtn.textContent = `Cinematics: ${scene.cinemaOn ? 'on' : 'off'}`; };
   cineLabel();
   cineBtn.onclick = () => { scene.setCinemaOn(!scene.cinemaOn); cineLabel(); scene.game.canvas.focus(); };
@@ -199,6 +197,32 @@ export function mountUi(scene: GameScene): void {
   ferry.addEventListener('click', e => { if (e.target === ferry) closeFerry(); });
   scene.onFerry = () => { if (!open && !ferryOpen) { scene.setPackOpen(false); openFerry(); } };
 
+  // Pickett's Tackle: trade sea glass
+  const shop = $('shop'), wares = $('shop-items'), purse = $('shop-purse');
+  let shopOpen = false;
+  function closeShop(): void { shopOpen = false; shop.hidden = true; scene.paused = false; scene.game.canvas.focus(); }
+  function renderShop(): void {
+    const k = scene.sim.kit;
+    purse.textContent = `You have ${k.mats.glass} Sea Glass and ${k.mats.chain} Shell Scute.`;
+    const price = (c: Partial<Record<string, number>>) => Object.entries(c).map(([id, n]) => `${n} ${ITEMS[id as keyof typeof ITEMS].name}`).join(' + ');
+    wares.innerHTML = scene.sim.shopStock().map(it => {
+      const ok = !it.sold && scene.sim.canAfford(it.cost);
+      return `<button type="button" data-buy="${it.id}" ${ok ? '' : 'disabled'}><b>${esc(it.name)}</b> · ${it.sold ? 'Sold' : esc(price(it.cost))}<small>${esc(it.desc)}</small></button>`;
+    }).join('');
+  }
+  function openShop(): void {
+    renderShop(); shopOpen = true; shop.hidden = false; scene.paused = true;
+    (wares.querySelector('button:not([disabled])') as HTMLButtonElement | null ?? $('shop-close')).focus();
+  }
+  wares.addEventListener('click', e => {
+    const b = (e.target as HTMLElement).closest('button[data-buy]') as HTMLButtonElement | null;
+    if (!b || b.disabled) return;
+    if (scene.buy(b.dataset.buy as 'reel')) renderShop();
+  });
+  $('shop-close').onclick = closeShop;
+  shop.addEventListener('click', e => { if (e.target === shop) closeShop(); });
+  scene.onShop = () => { if (!open && !ferryOpen && !shopOpen) { scene.setPackOpen(false); openShop(); } };
+
   // the shrine opens the book on Biscuit's page
   scene.onShrine = () => { if (!open) { scene.setPackOpen(false); tab = 'biscuit'; openBook(); } };
 
@@ -208,7 +232,7 @@ export function mountUi(scene: GameScene): void {
     if (scene.prologue?.active) { if (a === 'close') scene.skipPrologue(); return; }
     if (a === 'book') { if (open) closeBook(); else { scene.setPackOpen(false); openBook(); } }
     else if (a === 'pack') { if (open) closeBook(); scene.setPackOpen(!scene.packOpen); }
-    else if (a === 'closeBook' || a === 'close') { if (open) closeBook(); if (ferryOpen) closeFerry(); scene.setPackOpen(false); }
+    else if (a === 'closeBook' || a === 'close') { if (open) closeBook(); if (ferryOpen) closeFerry(); if (shopOpen) closeShop(); scene.setPackOpen(false); }
     else if (a === 'patch') { if (scene.packOpen) scene.patchFromPack(); }
     else if (a === 'reset') { if (open) closeBook(); scene.setPackOpen(false); scene.resetRoom(); }
   };

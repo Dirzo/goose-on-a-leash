@@ -344,6 +344,76 @@
   ],
   "points": {}
  },
+ "crab": {
+  "w": 40,
+  "h": 28,
+  "frames": 4,
+  "anchor": [
+   20,
+   26
+  ],
+  "points": {}
+ },
+ "crab_awake": {
+  "w": 40,
+  "h": 28,
+  "frames": 2,
+  "anchor": [
+   20,
+   26
+  ],
+  "points": {}
+ },
+ "gull": {
+  "w": 44,
+  "h": 34,
+  "frames": 5,
+  "anchor": [
+   21,
+   32
+  ],
+  "points": {}
+ },
+ "gull_awake": {
+  "w": 44,
+  "h": 34,
+  "frames": 4,
+  "anchor": [
+   21,
+   32
+  ],
+  "points": {}
+ },
+ "gullbeard": {
+  "w": 112,
+  "h": 92,
+  "frames": 6,
+  "anchor": [
+   52,
+   90
+  ],
+  "points": {}
+ },
+ "gullbeard_awake": {
+  "w": 112,
+  "h": 92,
+  "frames": 2,
+  "anchor": [
+   52,
+   90
+  ],
+  "points": {}
+ },
+ "pickett": {
+  "w": 34,
+  "h": 40,
+  "frames": 3,
+  "anchor": [
+   17,
+   39
+  ],
+  "points": {}
+ },
  "tree": {
   "w": 96,
   "h": 140,

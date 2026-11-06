@@ -207,3 +207,168 @@ def burrow_king(blink=False, awake=False, pose='idle'):
     else: eye.rect(ex - 1, ey - 1, ex + 1, ey + 1, 'B2' if awake else 'FR'); eye.px(ex - 1, ey - 1, 'BW' if awake else 'FR2')
     L.append(eye)
     return composite(L)
+
+
+# ---------------------------------------------------------------- Driftwood Wharf
+SPAL = {k: hx(v) for k, v in {
+    'C0': '5a1a14', 'C1': '9a3424', 'C2': 'd0583a', 'C3': 'f09068', 'CB': 'f4d0a8',
+    'G0': '6a7280', 'G1': '9aa2ae', 'G2': 'd8dee6', 'GW': 'f6f8fa', 'GK': '2a2e36', 'BK': '15111c',
+    'BEAK': 'f2b830', 'BEAK2': 'c07a18', 'LEG': 'e0a040',
+    'HAT0': '141a2e', 'HAT1': '242e4a', 'GOLD': 'e8b840', 'GOLD2': 'fff0a0', 'BEARD0': '7a7f88', 'BEARD1': 'aeb4bc', 'BEARD2': 'd8dde2',
+    'COAT0': '3a1a20', 'COAT1': '6a2a30', 'COAT2': '9a3a3a',
+    'OT0': '3a2416', 'OT1': '5e3c24', 'OT2': '8a5e38', 'OT3': 'c49a6a', 'APR': '3e6a7a', 'APR2': '5e94a4',
+    'FR': 'ff3a3a', 'FR2': 'ffb0a0', 'BW': 'f8f4ec', 'GEM': 'ff3a3a', 'SEA': '8fe0d0',
+}.items()}
+
+
+def crab(blink=False, awake=False, pose='idle'):
+    """A shore crab: wide red shell, eyes on stalks, two big claws. guard: claws up in front of the face;
+    snap: claws thrust forward and open."""
+    w, h = 40, 28
+    L = []
+    legs = Layer('legs', w, h, SPAL)
+    for i, x in enumerate((9, 13, 17)):
+        legs.line([(x, 18), (x - 5, 22 + i % 2), (x - 6, 26)], 'C1')
+        legs.line([(w - x, 18), (w - x + 5, 22 + i % 2), (w - x + 6, 26)], 'C1')
+    L.append(legs)
+    body = Layer('body', w, h, SPAL)
+    body.ell(20, 17, 12, 7, 'C2'); body.ell(19, 15, 9, 4, 'C3'); body.ell(20, 20, 8, 2.5, 'C1')
+    for x in (13, 20, 27): body.px(x, 14, 'CB')
+    L.append(body)
+    eyes = Layer('eyes', w, h, SPAL)
+    for ex in (16, 24):
+        eyes.line([(ex, 11), (ex, 7)], 'C1')
+        if blink: eyes.line([(ex - 1, 6), (ex + 1, 6)], 'C1')
+        else: eyes.ell(ex, 6, 1.8, 1.8, 'BK' if awake else 'FR'); eyes.px(ex - 1, 5, 'BW' if awake else 'FR2')
+    L.append(eyes)
+    claws = Layer('claws', w, h, SPAL)
+    if pose == 'guard':
+        for cx in (12, 28):
+            claws.ell(cx, 8, 5, 6, 'C2'); claws.ell(cx, 6, 3, 3, 'C3'); claws.line([(cx, 13), (cx + (4 if cx < 20 else -4), 17)], 'C1', 2)
+    elif pose == 'snap':
+        for cx, s in ((4, -1), (36, 1)):
+            claws.poly([(cx - 4 * s, 14), (cx + 3 * s, 9), (cx + 4 * s, 13), (cx, 15), (cx + 4 * s, 18), (cx + 2 * s, 20)], 'C2')
+            claws.line([(cx - 3 * s, 16), (12 if s < 0 else 28, 17)], 'C1', 2)
+    else:
+        for cx in (6, 34):
+            claws.ell(cx, 15, 5, 4, 'C2'); claws.ell(cx - (1 if cx < 20 else -1), 13, 2.5, 2, 'C3')
+            claws.line([(cx + (3 if cx < 20 else -3), 16), (12 if cx < 20 else 28, 18)], 'C1', 2)
+    L.append(claws)
+    return composite(L)
+
+
+def gull(blink=False, awake=False, pose='idle'):
+    """A herring gull: white head and chest, grey wings, yellow beak with a red spot. Poses: idle, fly
+    (wings up), flap (wings down), dive (wings swept back)."""
+    w, h = 44, 34
+    L = []
+    if pose in ('fly', 'flap', 'dive'):
+        wing = Layer('wing', w, h, SPAL)
+        if pose == 'fly': wing.poly([(18, 18), (4, 4), (10, 4), (24, 16)], 'G1'); wing.poly([(24, 18), (38, 2), (42, 6), (28, 18)], 'G1'); wing.poly([(4, 4), (8, 2), (10, 4)], 'GK'); wing.poly([(38, 2), (42, 2), (42, 6)], 'GK')
+        elif pose == 'flap': wing.poly([(16, 18), (2, 26), (8, 28), (24, 20)], 'G1'); wing.poly([(26, 18), (40, 28), (44, 24), (30, 18)], 'G1'); wing.px(3, 27, 'GK'); wing.px(43, 25, 'GK')
+        else: wing.poly([(14, 16), (2, 12), (4, 16), (20, 20)], 'G1'); wing.poly([(2, 12), (5, 11), (4, 16)], 'GK')
+        L.append(wing)
+    body = Layer('body', w, h, SPAL)
+    by = 18 if pose != 'idle' else 21
+    body.ell(20, by, 10, 6, 'GW'); body.ell(17, by - 2, 7, 3, 'G2')
+    if pose == 'idle':
+        body.poly([(10, by - 2), (26, by - 4), (28, by + 2), (12, by + 4)], 'G1')     # folded wing
+        body.poly([(8, by), (2, by - 2), (4, by + 3)], 'GK')                            # tail
+        body.line([(18, by + 5), (17, by + 11)], 'LEG'); body.line([(23, by + 5), (24, by + 11)], 'LEG')
+    body.ell(30, by - 6, 6, 5, 'GW')
+    body.poly([(35, by - 7), (42, by - 5), (35, by - 4)], 'BEAK'); body.px(39, by - 5, 'FR')
+    L.append(body)
+    eye = Layer('eye', w, h, SPAL)
+    if blink: eye.line([(30, by - 7), (32, by - 7)], 'G1')
+    else: eye.rect(31, by - 8, 32, by - 7, 'BK' if awake else 'FR'); eye.px(31, by - 8, 'BW' if awake else 'FR2')
+    L.append(eye)
+    return composite(L)
+
+
+def gullbeard(blink=False, awake=False, pose='idle'):
+    """Captain Gullbeard: a gull the size of a rowing boat in a tricorn hat (gold trim, the trance's red stone
+    on it) and a red coat, with a great grey feather beard. Poses: idle, fly, flap, swoop, dazed (hat askew)."""
+    w, h = 112, 92
+    L = []
+    flying = pose in ('fly', 'flap', 'swoop')
+    if flying:
+        wing = Layer('wing', w, h, SPAL)
+        if pose == 'fly':
+            wing.poly([(40, 46), (6, 8), (22, 10), (56, 42)], 'G1'); wing.poly([(60, 44), (100, 4), (108, 14), (70, 48)], 'G1')
+            wing.poly([(6, 8), (14, 4), (22, 10)], 'GK'); wing.poly([(100, 4), (110, 4), (108, 14)], 'GK')
+        elif pose == 'flap':
+            wing.poly([(38, 48), (4, 70), (18, 74), (56, 54)], 'G1'); wing.poly([(64, 48), (104, 72), (110, 62), (72, 46)], 'G1')
+        else:
+            wing.poly([(32, 44), (2, 34), (6, 44), (46, 54)], 'G1'); wing.poly([(2, 34), (10, 32), (6, 44)], 'GK')
+        L.append(wing)
+    body = Layer('body', w, h, SPAL)
+    by = 52 if flying else 58
+    body.ell(52, by, 26, 17, 'GW'); body.ell(46, by - 6, 18, 8, 'G2')
+    coat = Layer('coat', w, h, SPAL)
+    coat.poly([(30, by - 6), (70, by - 10), (76, by + 8), (60, by + 18), (34, by + 14)], 'COAT1')
+    coat.poly([(30, by - 6), (44, by - 8), (40, by + 14), (34, by + 14)], 'COAT2')
+    for yy in (by - 2, by + 6): coat.px(56, yy, 'GOLD')
+    if not flying:
+        body.poly([(26, by), (10, by - 4), (14, by + 6)], 'GK')
+        body.line([(46, by + 16), (44, by + 30)], 'LEG', 2); body.line([(60, by + 16), (62, by + 30)], 'LEG', 2)
+        body.line([(40, by + 30), (48, by + 30)], 'LEG', 2); body.line([(58, by + 30), (66, by + 30)], 'LEG', 2)
+    L.append(body); L.append(coat)
+    head = Layer('head', w, h, SPAL)
+    hx_, hy = (82, by - 22) if pose != 'swoop' else (90, by - 10)
+    head.ell(hx_, hy, 14, 12, 'GW')
+    head.poly([(hx_ + 11, hy - 2), (hx_ + 28, hy + 2), (hx_ + 24, hy + 6), (hx_ + 11, hy + 5)], 'BEAK')
+    head.poly([(hx_ + 22, hy + 3), (hx_ + 28, hy + 2), (hx_ + 26, hy + 6)], 'BEAK2'); head.px(hx_ + 22, hy + 4, 'FR')
+    L.append(head)
+    beard = Layer('beard', w, h, SPAL)
+    for i, (dx, dy, r) in enumerate([(-2, 10, 8), (4, 14, 7), (-8, 14, 6), (2, 20, 5), (-4, 22, 4), (8, 9, 5)]):
+        beard.ell(hx_ + dx, hy + dy, r, r * 0.9, 'BEARD1' if i % 2 else 'BEARD0')
+        beard.px(hx_ + dx - 1, hy + dy - 2, 'BEARD2')
+    L.append(beard)
+    hat = Layer('hat', w, h, SPAL)
+    tilt = 6 if pose == 'dazed' else 0
+    tx, ty = hx_ - 2, hy - 12 + tilt // 2
+    hat.poly([(tx - 18, ty + 2 + tilt), (tx, ty - 12), (tx + 18, ty + 2 - tilt), (tx + 8, ty + 4), (tx - 8, ty + 4)], 'HAT1')
+    hat.line([(tx - 18, ty + 2 + tilt), (tx - 8, ty + 4), (tx + 8, ty + 4), (tx + 18, ty + 2 - tilt)], 'GOLD')
+    hat.ell(tx, ty - 3, 3, 3, 'SEA' if awake else 'GEM'); hat.px(tx - 1, ty - 4, 'GOLD2')
+    L.append(hat)
+    eye = Layer('eye', w, h, SPAL)
+    ex, ey = hx_ + 4, hy - 3
+    if blink or pose == 'dazed': eye.line([(ex - 2, ey), (ex + 2, ey)], 'G1')
+    else:
+        eye.rect(ex - 1, ey - 1, ex + 1, ey + 1, 'BK' if awake else 'FR'); eye.px(ex - 1, ey - 1, 'BW' if awake else 'FR2')
+        eye.line([(ex - 4, ey - 3), (ex + 3, ey - 2)], 'G0')       # a stern brow
+    L.append(eye)
+    return composite(L)
+
+
+GULLBEARD_ANCHOR = (52, 90)
+
+
+def pickett(blink=False, pose='idle'):
+    """Pickett the otter, who keeps the tackle shop: sleek brown, pale muzzle, a blue apron, a bit of sea glass
+    on a cord. Pose 'wave': one paw up."""
+    w, h = 34, 40
+    L = []
+    tail = Layer('tail', w, h, SPAL); tail.poly([(8, 30), (1, 37), (4, 38), (12, 33)], 'OT1'); L.append(tail)
+    body = Layer('body', w, h, SPAL)
+    body.ell(17, 27, 9, 10, 'OT2'); body.ell(17, 30, 6, 7, 'OT3')
+    body.rect(11, 24, 23, 36, 'APR'); body.rect(12, 25, 22, 26, 'APR2')
+    body.line([(13, 36), (12, 39)], 'OT0', 2); body.line([(21, 36), (22, 39)], 'OT0', 2)
+    L.append(body)
+    head = Layer('head', w, h, SPAL)
+    head.ell(17, 12, 8, 7, 'OT2'); head.ell(17, 15, 5, 3.5, 'OT3')
+    head.ell(10, 7, 2, 2, 'OT1'); head.ell(24, 7, 2, 2, 'OT1')
+    head.ell(17, 13, 1.5, 1, 'BK')
+    for s in (-1, 1): head.line([(17 + s * 3, 15), (17 + s * 8, 14)], 'OT3')
+    L.append(head)
+    arm = Layer('arm', w, h, SPAL)
+    if pose == 'wave': arm.line([(25, 24), (29, 15)], 'OT1', 3); arm.ell(29, 14, 2, 2, 'OT2')
+    else: arm.line([(25, 25), (24, 31)], 'OT1', 3)
+    arm.line([(14, 20), (17, 23), (20, 20)], 'OT0'); arm.ell(17, 24, 1.5, 1.5, 'SEA')
+    L.append(arm)
+    eye = Layer('eye', w, h, SPAL)
+    for ex in (14, 20):
+        if blink: eye.line([(ex - 1, 10), (ex + 1, 10)], 'OT0')
+        else: eye.rect(ex, 9, ex + 1, 10, 'BK'); eye.px(ex, 9, 'BW')
+    L.append(eye)
+    return composite(L)

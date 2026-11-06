@@ -1,0 +1,217 @@
+{
+ "id": "driftwood-1",
+ "name": "Saltgrass Dunes",
+ "subtitle": "Driftwood Wharf \u00b7 1",
+ "width": 1200,
+ "height": 640,
+ "playerStart": {
+  "x": 66,
+  "y": 320
+ },
+ "walls": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1200,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 620,
+   "w": 1200,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 278.0,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 362.0,
+   "w": 20,
+   "h": 278.0,
+   "kind": "border"
+  },
+  {
+   "x": 1180,
+   "y": 0,
+   "w": 20,
+   "h": 278.0,
+   "kind": "border"
+  },
+  {
+   "x": 1180,
+   "y": 362.0,
+   "w": 20,
+   "h": 278.0,
+   "kind": "border"
+  },
+  {
+   "x": 300,
+   "y": 180,
+   "w": 90,
+   "h": 16,
+   "kind": "log"
+  },
+  {
+   "x": 760,
+   "y": 470,
+   "w": 110,
+   "h": 16,
+   "kind": "log"
+  },
+  {
+   "x": 980,
+   "y": 120,
+   "w": 40,
+   "h": 36,
+   "kind": "crate"
+  },
+  {
+   "x": 1022,
+   "y": 128,
+   "w": 34,
+   "h": 30,
+   "kind": "crate"
+  },
+  {
+   "x": 538,
+   "y": 122,
+   "w": 44,
+   "h": 36,
+   "kind": "rock"
+  }
+ ],
+ "gate": null,
+ "pits": [
+  {
+   "x": 20,
+   "y": 520,
+   "w": 1160,
+   "h": 100,
+   "kind": "water"
+  }
+ ],
+ "bridges": [],
+ "refills": [],
+ "posts": [],
+ "bell": null,
+ "exit": null,
+ "vents": [
+  {
+   "x": 640,
+   "y": 500
+  }
+ ],
+ "bucket": null,
+ "breadSpots": [
+  {
+   "x": 640,
+   "y": 230
+  }
+ ],
+ "enemies": [
+  {
+   "kind": "crab",
+   "x": 420,
+   "y": 260
+  },
+  {
+   "kind": "crab",
+   "x": 720,
+   "y": 400
+  },
+  {
+   "kind": "crab",
+   "x": 960,
+   "y": 240
+  }
+ ],
+ "knightSpawn": null,
+ "doors": [
+  {
+   "id": "w",
+   "x": 0,
+   "y": 278.0,
+   "w": 26,
+   "h": 84,
+   "to": "hollowbark-8",
+   "toDoor": "e",
+   "spawn": {
+    "x": 66,
+    "y": 320
+   },
+   "label": "The Hollow"
+  },
+  {
+   "id": "e",
+   "x": 1174,
+   "y": 278.0,
+   "w": 26,
+   "h": 84,
+   "to": "driftwood-2",
+   "toDoor": "w",
+   "spawn": {
+    "x": 1134,
+    "y": 320
+   },
+   "label": "Gull Rookery"
+  }
+ ],
+ "paths": [
+  [
+   [
+    66,
+    320
+   ],
+   [
+    400,
+    330
+   ],
+   [
+    800,
+    300
+   ],
+   [
+    1134,
+    320
+   ]
+  ]
+ ],
+ "biome": "wharf",
+ "lightKind": "crab",
+ "heavyKind": "crab",
+ "barrels": [
+  {
+   "x": 220,
+   "y": 450
+  },
+  {
+   "x": 860,
+   "y": 160
+  }
+ ],
+ "glass": [
+  {
+   "x": 540,
+   "y": 490
+  },
+  {
+   "x": 900,
+   "y": 500
+  },
+  {
+   "x": 1120,
+   "y": 470
+  }
+ ],
+ "lantern": {
+  "x": 610,
+  "y": 300
+ }
+}

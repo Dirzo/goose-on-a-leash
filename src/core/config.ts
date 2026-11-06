@@ -58,6 +58,8 @@ export const C = {
   // Power sets how much line goes out; release in the sweet spot at the top for a perfect cast.
   castChargeTime: 0.7,     // seconds for the meter to swing from empty to full (then it swings back down)
   castReachMul: 1.7,      // a full cast runs this many times the leash's length of line
+  reelReach: 0.5,         // the Spinning Reel: + this many leash lengths of line on a full cast
+  reelSweet: 0.8,         // ...and a wider sweet spot
   castMinPower: 0.12,      // a tap still tosses him a little way
   castSweet: 0.86,         // release at or above this for a PERFECT cast
   castPerfectHit: 1.7,     // first-bite damage multiplier for a perfect cast (a weak cast bites at castWeakHit, scaling up with power)

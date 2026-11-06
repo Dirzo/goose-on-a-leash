@@ -23,6 +23,10 @@ export class Kit {
   oar = false;
   /** Ferry stops Rocco has stood at (room ids). */
   ferries = new Set<string>();
+  /** The Spinning Reel (Pickett's Tackle): longer casts and a wider sweet spot. */
+  reel = false;
+  /** Legendary elixir ingredients gathered (see data/elixir.ts). */
+  ingredients = new Set<string>();
 
   constructor() {
     this.mats = Object.fromEntries(Object.keys(ITEMS).map(k => [k, 0])) as Record<ItemId, number>;

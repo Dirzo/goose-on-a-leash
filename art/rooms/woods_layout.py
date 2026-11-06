@@ -168,7 +168,7 @@ ROOMS.append(room(
 ROOMS.append(room(
     'hollowbark-8', 'The Hollow', 1120, 720,
     [dict(id='w', side='W', at=360, to='hollowbark-7', toDoor='e', label='Badger Sett'),
-     dict(id='e', side='E', at=360, to='END', toDoor='', gated=True, label='Driftwood Wharf')],
+     dict(id='e', side='E', at=360, to='driftwood-1', toDoor='w', gated=True, label='Driftwood Wharf')],
     'w', subtitle='Hollowbark Woods · the Burrow King', **W(),
     gate=rect(1074, 314, 12, 92),
     props=[tree(380, 200), tree(380, 520), tree(620, 150), tree(620, 580), tree(860, 200), tree(860, 520)],

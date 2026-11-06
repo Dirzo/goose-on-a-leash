@@ -13,7 +13,7 @@
 <div class="wrap">
   <header>
     <h1>Goose <span>on a</span> Leash</h1>
-    <span class="tag">Act 1 · Willowmere · Reedmarsh · Hollowbark Woods</span>
+    <span class="tag">Act 1 · Willowmere · Reedmarsh · Hollowbark Woods · Driftwood Wharf</span>
   </header>
 
   <div class="stage"><div id="stage"></div></div>
@@ -28,7 +28,6 @@
         <button id="b-room-restart" type="button">Restart room [R]</button>
         <button id="b-game-reset" type="button">Reset game</button>
         <button id="b-sound" type="button">Sound: on [M]</button>
-        <button id="b-cast" type="button">Leash: classic</button>
         <button id="b-cine" type="button">Cinematics: on</button>
         <button id="b-cine-replay" type="button">Replay chapter cinematics</button>
       </div>
@@ -95,6 +94,16 @@
       <button id="ferry-close" type="button">Stay [Esc]</button>
     </div>
     <div id="ferry-stops" class="ferry-stops"></div>
+  </div>
+</div>
+<div id="shop" class="book" hidden role="dialog" aria-modal="true" aria-labelledby="shop-title">
+  <div class="book-inner ferry-inner">
+    <div class="book-head">
+      <div><h2 id="shop-title">Pickett's Tackle</h2><p class="ferry-sub">"Sea glass only. Shiny things are the only honest money."</p></div>
+      <button id="shop-close" type="button">Leave [Esc]</button>
+    </div>
+    <p id="shop-purse" class="ferry-sub"></p>
+    <div id="shop-items" class="ferry-stops"></div>
   </div>
 </div>
 <div id="book" class="book" hidden role="dialog" aria-modal="true" aria-labelledby="book-title">

@@ -4,7 +4,7 @@
  * View-only scripts: the game is paused while one plays. Seen ones are saved.
  */
 
-export type Speaker = 'rocco0' | 'rocco' | 'bimbo' | 'biscuit' | 'elder' | 'heron' | 'king';
+export type Speaker = 'rocco0' | 'rocco' | 'bimbo' | 'biscuit' | 'elder' | 'heron' | 'king' | 'gullbeard' | 'pickett';
 /** Where to point the camera: Rocco, the boss in the room, or a world point. */
 export type CamTarget = 'player' | 'boss' | { x: number; y: number };
 
@@ -28,6 +28,8 @@ export const SPEAKERS: Record<Speaker, { name: string; color: string; strip: str
   elder: { name: 'Old Snapper', color: '#b8d890', strip: 'snapper', frame: 0, scale: 3.2, ax: 1, ay: 0.5 },
   heron: { name: 'The Heron', color: '#a8c8e8', strip: 'heron', frame: 0, scale: 1.8, ax: 0.6, ay: 0 },
   king: { name: 'The Burrow King', color: '#d8b890', strip: 'king', frame: 0, scale: 1.5, ax: 0.5, ay: 0.1 },
+  gullbeard: { name: 'Captain Gullbeard', color: '#8fe0d0', strip: 'gullbeard', frame: 0, scale: 1.5, ax: 0.72, ay: 0.12 },
+  pickett: { name: 'Pickett', color: '#c49a6a', strip: 'pickett', frame: 2, scale: 2.4, ax: 0.5, ay: 0.05 },
 };
 
 export const CINEMATICS: Record<string, Step[]> = {
@@ -135,6 +137,41 @@ export const CINEMATICS: Record<string, Step[]> = {
     { say: 'The sea is east, little raccoon. Mind the fish.', who: 'king' },
     { say: 'Finally. Someone who gets it.', who: 'bimbo' },
     { pan: 'player', dur: 0.7 },
-    { title: 'End of Act One', sub: 'Next: Driftwood Wharf', hold: 3.2 },
+  ],
+  ch4: [
+    { fadeIn: 0.8 },
+    { title: 'Chapter Four · Driftwood Wharf', sub: 'Salt in the air. Thieves in the sky.', hold: 2.6 },
+    { say: 'SALT water. All of it. Do you know what salt does to a koi?', who: 'bimbo' },
+    { say: "Rain barrels, then. And keep a grip on the bread. Gulls'll have it out of your paws.", who: 'rocco' },
+    { say: 'HONK.', who: 'biscuit' },
+  ],
+  'wharf-hub': [
+    { pan: { x: 300, y: 200 }, dur: 1 },
+    { say: "Customers! At this hour! Pickett's Tackle: rods, reels, rope, and the only freshwater pump on the wharf.", who: 'pickett' },
+    { say: 'Fresh water? Where. WHERE.', who: 'bimbo' },
+    { say: 'Pump by the stall, help yourself. Shopping takes sea glass, mind. Shiny bits off the beach. The gulls hoard it too.', who: 'pickett' },
+    { say: "And if you've the glass for it, there's a Spinning Reel in the back. Casts a goose clean across the harbour.", who: 'pickett' },
+    { pan: 'player', dur: 0.8 },
+  ],
+  'gullbeard-in': [
+    { pan: 'boss', dur: 1.2 },
+    { sound: 'kraa' }, { shake: 0.4 },
+    { say: 'ARRR. A FISH! Aboard MY ship! Belay that raccoon!', who: 'gullbeard' },
+    { say: "I'm a KOI. I'm not even a SEA fish!", who: 'bimbo' },
+    { say: "Biscuit. When he dives, have the line ready. Hook a mast, and he'll fly right into it.", who: 'rocco' },
+    { say: 'HONK!', who: 'biscuit' },
+    { pan: 'player', dur: 0.8 },
+  ],
+  'gullbeard-out': [
+    { wait: 0.8 },
+    { pan: 'boss', dur: 1 },
+    { say: "...Arr. Me head's like a barnacle. That red moon got right into it, it did.", who: 'gullbeard' },
+    { say: 'Ye be wantin\' the elixir, then. Here: Sea-Glass Salt, from me own galley. Ground from the shiniest glass on the coast.', who: 'gullbeard' },
+    { sound: 'chest' },
+    { title: 'Sea-Glass Salt', sub: 'A legendary ingredient. Bimbo glows a little brighter.', hold: 3 },
+    { say: 'The Tide Caves be east. Mind the deep there. Something BIG swims under the blood moon.', who: 'gullbeard' },
+    { say: "...He means the shark. Doesn't he.", who: 'bimbo' },
+    { pan: 'player', dur: 0.7 },
+    { title: 'End of Act One', sub: 'Next: The Tide Caves', hold: 3.2 },
   ],
 };

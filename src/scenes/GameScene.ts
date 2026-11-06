@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { STEP } from '../core/config';
-import { Sim } from '../core/sim';
+import { Sim, type ShopItem } from '../core/sim';
 import { ROOMS, WILLOWMERE, type RoomDef } from '../data/rooms';
 import { Controls } from '../view/controls';
 import { Renderer, snapshot, type Snapshot } from '../view/render';
@@ -51,6 +51,8 @@ export class GameScene extends Phaser.Scene {
   private stash: Sim['enemies'] | null = null;
   /** Set by the UI: Rocco called the ferry. */
   onFerry: () => void = () => {};
+  /** Set by the UI: Rocco honked at a shop counter. */
+  onShop: () => void = () => {};
 
   constructor() { super('game'); }
 
@@ -145,8 +147,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Start a cinematic once (the save remembers which were shown). */
-  /** Leash mode: the power cast (default), or the old 'classic' click-to-fling (remembered in this browser). */
-  castMode = (() => { try { return localStorage.getItem('goose-on-a-leash/leash-mode') !== 'classic'; } catch { return true; } })();
+  /** The power cast is how Biscuit is thrown (the old click-to-fling 'classic' mode stays in the sim for tests). */
+  castMode = true;
   setCastMode(on: boolean): void {
     this.castMode = on; this.sim.castMode = on;
     try { localStorage.setItem('goose-on-a-leash/leash-mode', on ? 'casting' : 'classic'); } catch { /* per-browser nicety only */ }
@@ -174,12 +176,12 @@ export class GameScene extends Phaser.Scene {
       this.cueRoom = id;
       const fresh = Object.keys(sim.world).every(k => k === 'willowmere') && !sim.kit.oar;
       if (id === 'willowmere' && fresh && this.cinemaOn && !sim.seen.has('prologue') && this.view instanceof ArtRenderer) { this.startPrologue(); return; }
-      const ch = ({ willowmere: 'ch1', 'reedmarsh-1': 'ch2', 'hollowbark-1': 'ch3' } as Record<string, string>)[id];
+      const ch = ({ willowmere: 'ch1', 'reedmarsh-1': 'ch2', 'hollowbark-1': 'ch3', 'driftwood-1': 'ch4', 'driftwood-2': 'wharf-hub' } as Record<string, string>)[id];
       if (ch) this.playCinematic(ch);
     }
     if (this.cinema.active) return;
     for (const e of sim.enemies) {
-      const k = e.kind === 'elder' || e.kind === 'heron' || e.kind === 'king' ? e.kind : null;
+      const k = e.kind === 'elder' || e.kind === 'heron' || e.kind === 'king' || e.kind === 'gullbeard' ? e.kind : null;
       if (!k) continue;
       if (e.woke > 1.0) this.playCinematic(`${k}-out`);
       else if (!e.woke && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < (k === 'elder' ? 430 : 900)) this.playCinematic(`${k}-in`);
@@ -248,7 +250,7 @@ export class GameScene extends Phaser.Scene {
       const before = this.modes.get(e.id), now = e.mode;
       if (before !== now) {
         this.modes.set(e.id, now);
-        if (now === 'wind') sound.play(({ frog: 'ribbit', snapper: 'hiss', squirrel: 'chatter', badger: 'growl', king: 'growl' } as Record<string, string>)[e.kind] ?? 'kraa');
+        if (now === 'wind') sound.play(({ frog: 'ribbit', snapper: 'hiss', squirrel: 'chatter', badger: 'growl', king: 'growl', crab: 'chatter' } as Record<string, string>)[e.kind] ?? 'kraa');
         if (now === 'tunnel' || now === 'surface') sound.play('dust');
         if (now === 'lash') sound.play('tongue');
         if (now === 'leap' || now === 'charge' || now === 'takeoff') sound.play('whoosh');
@@ -281,6 +283,7 @@ export class GameScene extends Phaser.Scene {
   }
   /** Patch from the backpack screen (the sim is paused, so feed its events straight to the view). */
   ferryTo(id: string): void { if (this.sim.ferryTo(id)) this.feed(this.sim.drainEvents()); }
+  buy(id: ShopItem['id']): boolean { const ok = this.sim.buy(id); this.feed(this.sim.drainEvents()); return ok; }
   patchFromPack(): void { this.sim.patchPack(); this.feed(this.sim.drainEvents()); }
 
   /** Write the autosave now (also done on every room arrival). */
@@ -290,6 +293,7 @@ export class GameScene extends Phaser.Scene {
     if (events.some(e => e.type === 'room')) { this.prev = null; this.saveNow(); }
     if (events.some(e => e.type === 'shrine')) this.onShrine();
     if (events.some(e => e.type === 'ferry')) this.onFerry();
+    if (events.some(e => e.type === 'shop')) this.onShop();
     const sim = this.sim;
     for (const e of events) {
       if (e.type === 'room') sound.play('door');

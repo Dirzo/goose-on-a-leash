@@ -1,0 +1,302 @@
+{
+ "id": "driftwood-2",
+ "name": "Driftwood Wharf",
+ "subtitle": "Driftwood Wharf \u00b7 the harbour",
+ "width": 1280,
+ "height": 820,
+ "walls": [
+  {
+   "x": 680,
+   "y": 120,
+   "w": 580,
+   "h": 332,
+   "kind": "shed"
+  },
+  {
+   "x": 244,
+   "y": 160,
+   "w": 112,
+   "h": 64,
+   "kind": "stall"
+  },
+  {
+   "x": 507,
+   "y": 124,
+   "w": 36,
+   "h": 36,
+   "kind": "stall"
+  },
+  {
+   "x": 20,
+   "y": 440,
+   "w": 580,
+   "h": 12,
+   "kind": "rail"
+  },
+  {
+   "x": 660,
+   "y": 440,
+   "w": 20,
+   "h": 12,
+   "kind": "rail"
+  },
+  {
+   "x": 110,
+   "y": 120,
+   "w": 40,
+   "h": 36,
+   "kind": "crate"
+  },
+  {
+   "x": 152,
+   "y": 126,
+   "w": 30,
+   "h": 28,
+   "kind": "crate"
+  },
+  {
+   "x": 400,
+   "y": 360,
+   "w": 40,
+   "h": 36,
+   "kind": "crate"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 800,
+   "w": 1280,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 258.0,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 342.0,
+   "w": 20,
+   "h": 478.0,
+   "kind": "border"
+  },
+  {
+   "x": 1260,
+   "y": 0,
+   "w": 20,
+   "h": 28.0,
+   "kind": "border"
+  },
+  {
+   "x": 1260,
+   "y": 112.0,
+   "w": 20,
+   "h": 708.0,
+   "kind": "border"
+  }
+ ],
+ "pits": [
+  {
+   "x": 20,
+   "y": 452,
+   "w": 1240,
+   "h": 348,
+   "kind": "water"
+  }
+ ],
+ "bridges": [
+  {
+   "x": 600,
+   "y": 440,
+   "w": 60,
+   "h": 340,
+   "kind": "dock"
+  },
+  {
+   "x": 1112,
+   "y": 690,
+   "w": 84,
+   "h": 70,
+   "kind": "island"
+  }
+ ],
+ "refills": [
+  {
+   "x": 470,
+   "y": 120,
+   "w": 110,
+   "h": 90
+  }
+ ],
+ "posts": [
+  {
+   "x": 1152,
+   "y": 720,
+   "r": 9
+  },
+  {
+   "x": 650,
+   "y": 770,
+   "r": 9
+  }
+ ],
+ "vents": [],
+ "breadSpots": [
+  {
+   "x": 450,
+   "y": 400
+  }
+ ],
+ "enemies": [],
+ "doors": [
+  {
+   "id": "w",
+   "x": 0,
+   "y": 258.0,
+   "w": 26,
+   "h": 84,
+   "to": "driftwood-1",
+   "toDoor": "e",
+   "spawn": {
+    "x": 66,
+    "y": 300
+   },
+   "label": "Gull Rookery",
+   "side": "W"
+  },
+  {
+   "id": "e",
+   "x": 1254,
+   "y": 28.0,
+   "w": 26,
+   "h": 84,
+   "to": "driftwood-3",
+   "toDoor": "w",
+   "spawn": {
+    "x": 1214,
+    "y": 70
+   },
+   "label": "Net Lofts",
+   "side": "E"
+  }
+ ],
+ "paths": [
+  [
+   [
+    66,
+    300
+   ],
+   [
+    300,
+    280
+   ],
+   [
+    630,
+    320
+   ],
+   [
+    640,
+    70
+   ],
+   [
+    1214,
+    70
+   ]
+  ],
+  [
+   [
+    300,
+    280
+   ],
+   [
+    300,
+    230
+   ]
+  ]
+ ],
+ "zones": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 820,
+   "name": "Driftwood Wharf"
+  }
+ ],
+ "lanterns": [
+  {
+   "x": 260,
+   "y": 120
+  },
+  {
+   "x": 640,
+   "y": 300
+  },
+  {
+   "x": 640,
+   "y": 430
+  }
+ ],
+ "gate": null,
+ "bell": null,
+ "exit": null,
+ "bucket": null,
+ "knightSpawn": null,
+ "kits": [
+  {
+   "x": 160,
+   "y": 390
+  }
+ ],
+ "feathers": [
+  {
+   "x": 1140,
+   "y": 742
+  }
+ ],
+ "glass": [
+  {
+   "x": 1172,
+   "y": 705
+  }
+ ],
+ "ferry": {
+  "x": 560,
+  "y": 400,
+  "name": "Driftwood Jetty"
+ },
+ "shop": {
+  "x": 300,
+  "y": 190,
+  "name": "Pickett's Tackle"
+ },
+ "pump": {
+  "x": 525,
+  "y": 150
+ },
+ "biome": "wharf",
+ "lightKind": "crab",
+ "heavyKind": "crab",
+ "ventSpawns": false,
+ "rooms": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 820
+  }
+ ],
+ "playerStart": {
+  "x": 66,
+  "y": 300
+ }
+}

@@ -95,6 +95,17 @@ strip('king', [critters_hd.burrow_king(), critters_hd.burrow_king(blink=True), c
                critters_hd.burrow_king(pose='charge'), critters_hd.burrow_king(pose='dazed')], (52, 70))
 strip('king_awake', [critters_hd.burrow_king(awake=True), critters_hd.burrow_king(blink=True, awake=True)], (52, 70))
 
+# Driftwood Wharf: crab (idle, blink, guard, snap), gull (idle, blink, fly, flap, dive), Captain Gullbeard
+# (idle, blink, fly, flap, swoop, dazed), Pickett the otter (idle, blink, wave)
+strip('crab', [critters_hd.crab(), critters_hd.crab(blink=True), critters_hd.crab(pose='guard'), critters_hd.crab(pose='snap')], (20, 26))
+strip('crab_awake', [critters_hd.crab(awake=True), critters_hd.crab(blink=True, awake=True)], (20, 26))
+strip('gull', [critters_hd.gull(), critters_hd.gull(blink=True), critters_hd.gull(pose='fly'), critters_hd.gull(pose='flap'), critters_hd.gull(pose='dive')], (21, 32))
+strip('gull_awake', [critters_hd.gull(awake=True), critters_hd.gull(blink=True, awake=True), critters_hd.gull(pose='fly', awake=True), critters_hd.gull(pose='flap', awake=True)], (21, 32))
+strip('gullbeard', [critters_hd.gullbeard(), critters_hd.gullbeard(blink=True), critters_hd.gullbeard(pose='fly'), critters_hd.gullbeard(pose='flap'),
+                    critters_hd.gullbeard(pose='swoop'), critters_hd.gullbeard(pose='dazed')], critters_hd.GULLBEARD_ANCHOR)
+strip('gullbeard_awake', [critters_hd.gullbeard(awake=True), critters_hd.gullbeard(blink=True, awake=True)], critters_hd.GULLBEARD_ANCHOR)
+strip('pickett', [critters_hd.pickett(), critters_hd.pickett(blink=True), critters_hd.pickett(pose='wave')], (17, 39))
+
 strip('tree', [props_hd.tree(v) for v in range(3)], props_hd.TREE_ANCHOR)
 
 # backpack screen: Bimbo (happy, worried, gasping x open/blink), the pack, patches, tears
