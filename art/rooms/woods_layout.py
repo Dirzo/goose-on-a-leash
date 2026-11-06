@@ -42,6 +42,7 @@ ROOMS.append(room(
     vents=[{'x': 860, 'y': 560}],
     enemies=[sq(480, 220), sq(760, 400), sq(900, 260)],
     bread=[{'x': 300, 'y': 300}], spools=[{'x': 640, 'y': 560}],
+    nests=[{'x': 560, 'y': 80, 'drop': 'spool'}],
     lantern={'x': 610, 'y': 282},
     paths=[[[66, 350], [460, 330], [660, 260], [1054, 300]]],
 ))
@@ -63,6 +64,7 @@ ROOMS.append(room(
               rect(420, 380, 90, 60), rect(720, 120, 80, 60)],
     enemies=[sq(460, 200), sq(760, 500), sq(1000, 180)],
     barrels=[{'x': 1000, 'y': 520}],
+    nests=[{'x': 960, 'y': 90, 'drop': 'feather'}],
     bread=[{'x': 760, 'y': 280}],
     paths=[[[66, 320], [1054, 320]]],
 ))
@@ -102,6 +104,7 @@ ROOMS.append(room(
     props=[tree(380, 260), tree(600, 420), tree(840, 330), tree(150, 470)],
     enemies=[bg(600, 260), sq(300, 520), sq(860, 160)],
     spools=[{'x': 150, 'y': 580}],
+    nests=[{'x': 840, 'y': 262, 'drop': 'kit'}],
     bread=[{'x': 480, 'y': 330}],
     paths=[[[66, 320], [500, 320], [760, 200], [760, 70]]],
 ))
@@ -122,6 +125,7 @@ ROOMS.append(room(
     vents=[{'x': 200, 'y': 560}, {'x': 900, 'y': 570}],
     enemies=[sq(400, 150), sq(600, 520), sq(820, 180), sq(700, 420), bg(900, 300)],
     bread=[{'x': 160, 'y': 160}], spools=[{'x': 1000, 'y': 560}],
+    nests=[{'x': 680, 'y': 262, 'drop': 'feather'}],
     paths=[[[66, 320], [1054, 320]]],
 ))
 
@@ -137,6 +141,7 @@ ROOMS.append(room(
     bushes=[{'x': 692, 'y': 118, 'r': 26}],
     chest={'x': 440, 'y': 200, 'leash': 'vine'},
     kits=[{'x': 300, 'y': 400}], feathers=[{'x': 790, 'y': 80}],
+    ferry={'x': 560, 'y': 430, 'name': 'Hollow Stump Spring'},
     bread=[{'x': 150, 'y': 450}],
     lantern={'x': 480, 'y': 180},
     paths=[[[66, 280], [814, 280]]],

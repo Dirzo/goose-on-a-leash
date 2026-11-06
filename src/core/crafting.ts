@@ -21,6 +21,8 @@ export class Kit {
   traits: Set<TraitId>;
   /** The Ferryman's Oar (from the Heron): guard, parry and brace. */
   oar = false;
+  /** Ferry stops Rocco has stood at (room ids). */
+  ferries = new Set<string>();
 
   constructor() {
     this.mats = Object.fromEntries(Object.keys(ITEMS).map(k => [k, 0])) as Record<ItemId, number>;

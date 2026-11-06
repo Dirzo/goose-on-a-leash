@@ -45,8 +45,11 @@ def rect_mask(r, grow=0.0):
     return (xx >= r['x'] - grow) & (xx < r['x'] + r['w'] + grow) & (yy >= r['y'] - grow) & (yy < r['y'] + r['h'] + grow)
 
 # ---------------------------------------------------------------- ground
-g = np.sin(xx * 0.021 + yy * 0.013) + np.sin(xx * 0.009 - yy * 0.027) + 0.35 * np.sin(xx * 0.23 + yy * 0.19) * np.sin(yy * 0.31 - xx * 0.07)
-img[:] = P['Q1']; img[g < -1.35] = P['Q0']; img[g >= 0.9] = P['Q2']
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from ground import paint_ground, paint_path  # noqa: E402
+rng_np = np.random.default_rng(4242)
+P.setdefault('Q5', P['Q4'] * 1.25)
+paint_ground(img, np.ones((H, W), bool), P, rng_np, 4242, woods=False)
 
 # organic water: union of the pit rects, edge pushed in/out a few pixels by noise, corners rounded
 edge_noise = 9.0 * np.sin(xx * 0.021 + yy * 0.033) + 6.0 * np.sin(yy * 0.047 - xx * 0.029) + 2.0 * np.sin(yy * 0.17 - xx * 0.07)
@@ -87,7 +90,7 @@ for seq, rad in ((pts, 15), (pts2, 10)):
             path |= np.hypot(xx - cx, (yy - cy) * 1.3) < r
 path &= ~water & ~bank
 pn = np.sin(xx * 0.31 + yy * 0.17) * np.sin(yy * 0.43 - xx * 0.12)
-img[path] = P['D1']; img[path & (pn > 0.45)] = P['D2']; img[path & (pn < -0.55)] = P['D0']
+paint_path(img, path, P, rng_np, 4249, woods=False)
 
 land = ~water & ~bank & ~path
 def scatter(n, fn, x0=24, x1=W - 24, y0=24, y1=H - 24):
@@ -98,7 +101,7 @@ def blade(x, y):
     for k, (dx, dy) in enumerate([(0, 0), (-1, -1), (1, -1), (-2, -2), (2, -3), (0, -2), (0, -3)]):
         img[y + dy, x + dx] = P['Q3'] if k < 4 else P['Q4']
 def flower(x, y): img[y, x] = P[rng.choice(['FLW', 'FLW2', 'FLW3'])]
-scatter(900, blade); scatter(110, flower)
+scatter(250, blade); scatter(40, flower)
 
 def px(x, y, c):
     if 0 <= x < W and 0 <= y < H: img[int(y), int(x)] = P[c]

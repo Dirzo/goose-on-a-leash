@@ -38,6 +38,8 @@ export class GameScene extends Phaser.Scene {
   onReady: (scene: GameScene) => void = () => {};
   /** Set by the UI: Rocco stepped up to Biscuit's shrine. */
   onShrine: () => void = () => {};
+  /** Set by the UI: Rocco called the ferry. */
+  onFerry: () => void = () => {};
 
   constructor() { super('game'); }
 
@@ -130,6 +132,7 @@ export class GameScene extends Phaser.Scene {
     return true;
   }
   /** Patch from the backpack screen (the sim is paused, so feed its events straight to the view). */
+  ferryTo(id: string): void { if (this.sim.ferryTo(id)) this.feed(this.sim.drainEvents()); }
   patchFromPack(): void { this.sim.patchPack(); this.feed(this.sim.drainEvents()); }
 
   /** Write the autosave now (also done on every room arrival). */
@@ -138,6 +141,7 @@ export class GameScene extends Phaser.Scene {
   private feed(events: ReturnType<Sim['drainEvents']>): void {
     if (events.some(e => e.type === 'room')) { this.prev = null; this.saveNow(); }
     if (events.some(e => e.type === 'shrine')) this.onShrine();
+    if (events.some(e => e.type === 'ferry')) this.onFerry();
     const sim = this.sim;
     for (const e of events) {
       if (e.type === 'room') sound.play('door');

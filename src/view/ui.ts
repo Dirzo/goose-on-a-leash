@@ -169,13 +169,36 @@ export function mountUi(scene: GameScene): void {
   $('book-close').onclick = closeBook;
   book.addEventListener('click', e => { if (e.target === book) closeBook(); });
 
+  // the Ferryman: honk at a ferry stop to pick where to sail
+  const ferry = $('ferry'), stops = $('ferry-stops');
+  let ferryOpen = false;
+  function closeFerry(): void { ferryOpen = false; ferry.hidden = true; scene.paused = false; scene.game.canvas.focus(); }
+  function openFerry(): void {
+    const sim = scene.sim, here = sim.room.def.id;
+    const all = Object.values(ROOMS).filter(r => r.ferry).sort((a, b) => rank(a.id) - rank(b.id));
+    stops.innerHTML = all.map(r => {
+      const known = sim.kit.ferries.has(r.id), at = r.id === here;
+      return `<button type="button" data-ferry="${r.id}" ${known && !at ? '' : 'disabled'}><b>${esc(r.ferry!.name)}</b><small>${at ? 'You are here.' : known ? esc(r.subtitle ?? r.name) : 'Not visited yet.'}</small></button>`;
+    }).join('');
+    ferryOpen = true; ferry.hidden = false; scene.paused = true;
+    (stops.querySelector('button:not([disabled])') as HTMLButtonElement | null ?? $('ferry-close')).focus();
+  }
+  stops.addEventListener('click', e => {
+    const b = (e.target as HTMLElement).closest('button[data-ferry]') as HTMLButtonElement | null;
+    if (!b || b.disabled) return;
+    closeFerry(); scene.ferryTo(b.dataset.ferry!);
+  });
+  $('ferry-close').onclick = closeFerry;
+  ferry.addEventListener('click', e => { if (e.target === ferry) closeFerry(); });
+  scene.onFerry = () => { if (!open && !ferryOpen) { scene.setPackOpen(false); openFerry(); } };
+
   // the shrine opens the book on Biscuit's page
   scene.onShrine = () => { if (!open) { scene.setPackOpen(false); tab = 'biscuit'; openBook(); } };
 
   scene.controls.onUi = a => {
     if (a === 'book') { if (open) closeBook(); else { scene.setPackOpen(false); openBook(); } }
     else if (a === 'pack') { if (open) closeBook(); scene.setPackOpen(!scene.packOpen); }
-    else if (a === 'closeBook' || a === 'close') { if (open) closeBook(); scene.setPackOpen(false); }
+    else if (a === 'closeBook' || a === 'close') { if (open) closeBook(); if (ferryOpen) closeFerry(); scene.setPackOpen(false); }
     else if (a === 'patch') { if (scene.packOpen) scene.patchFromPack(); }
     else if (a === 'reset') { if (open) closeBook(); scene.setPackOpen(false); scene.resetRoom(); }
   };

@@ -100,7 +100,7 @@ def merge(area_id, name, subtitle, ids):
            'doors': [], 'paths': [], 'zones': [], 'lanterns': [], 'gate': None, 'bell': None, 'exit': None, 'bucket': None,
            'knightSpawn': None}
     lists = ['pits', 'bridges', 'refills', 'posts', 'vents', 'breadSpots', 'enemies', 'kits', 'spools', 'brambles',
-             'bushes', 'barrels', 'shrooms', 'feathers']
+             'bushes', 'barrels', 'shrooms', 'feathers', 'nests']
     for i in ids:
         R, (ox, oy) = rooms[i], pos[i]
         x0, y0, w, h = rects[i]
@@ -110,7 +110,7 @@ def merge(area_id, name, subtitle, ids):
         out['walls'] += [shift_pt(wl, ox, oy) for wl in R['walls'] if wl.get('kind') != 'border']
         out['paths'] += [[[x + ox, y + oy] for x, y in pl] for pl in R.get('paths', [])]
         if R.get('lantern'): out['lanterns'].append(shift_pt(R['lantern'], ox, oy))
-        for k in ('gate', 'bell', 'chest', 'shrine'):
+        for k in ('gate', 'bell', 'chest', 'shrine', 'ferry'):
             if R.get(k):
                 assert not out.get(k), f'{area_id}: two {k}s'
                 out[k] = shift_pt(R[k], ox, oy)

@@ -341,6 +341,11 @@
   "y": 260,
   "leash": "vine"
  },
+ "ferry": {
+  "x": 560,
+  "y": 490,
+  "name": "Hollow Stump Spring"
+ },
  "biome": "woods",
  "lightKind": "squirrel",
  "heavyKind": "badger",

@@ -244,5 +244,10 @@
   "x": 330,
   "y": 300
  },
+ "ferry": {
+  "x": 330,
+  "y": 250,
+  "name": "The Ferryman's Pool"
+ },
  "winText": "Reedmarsh cleared! The Heron Ferryman will carry you on to Hollowbark Woods."
 }

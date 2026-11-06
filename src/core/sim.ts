@@ -30,7 +30,7 @@ export const KING_HP = 50;
 const WAKE_TIME = 1.6;
 
 /** What a room remembers after you leave it. */
-export interface RoomMemory { gateOpen: boolean; bread: boolean[]; chest: boolean; rang: boolean; kits?: boolean[]; spools?: boolean[]; feathers?: boolean[]; boss?: boolean;
+export interface RoomMemory { gateOpen: boolean; bread: boolean[]; chest: boolean; rang: boolean; kits?: boolean[]; spools?: boolean[]; feathers?: boolean[]; nests?: boolean[]; boss?: boolean;
   bushes?: boolean[]; barrels?: number[] }
 
 export interface Player {
@@ -128,7 +128,9 @@ export type SimEvent =
   /** Rocco arrived in a room through a door (or a save was loaded). */
   | { type: 'room'; id: string }
   /** Rocco stepped up to Biscuit's shrine. */
-  | { type: 'shrine' };
+  | { type: 'shrine' }
+  /** Rocco honked at a ferry stop with the Ferryman awake: choose where to sail. */
+  | { type: 'ferry' };
 
 const QUIPS = {
   fling: ['HONK!', 'Airborne goose', 'Yeet.', 'Go get em'],
@@ -166,6 +168,8 @@ export class Sim {
   kitsGot: boolean[] = [];
   spoolsGot: boolean[] = [];
   feathersGot: boolean[] = [];
+  /** Nests knocked down in this room. */
+  nestsDown: boolean[] = [];
   /** Standing at Biscuit's shrine (traits can be learned). */
   atShrine = false;
   buff: Buffs = { noFury: 0, bagel: 0, mega: 0 };
@@ -404,7 +408,7 @@ export class Sim {
     if (!this.room) return;
     const id = this.room.def.id;
     this.world[id] = { gateOpen: !!this.room.def.gate && !this.room.gateClosed, bread: [...this.breadGot],
-      chest: this.world[id]?.chest ?? false, rang: this.rang, kits: [...this.kitsGot], spools: [...this.spoolsGot], feathers: [...this.feathersGot],
+      chest: this.world[id]?.chest ?? false, rang: this.rang, kits: [...this.kitsGot], spools: [...this.spoolsGot], feathers: [...this.feathersGot], nests: [...this.nestsDown],
       bushes: [...this.room.bushAlive], barrels: [...this.barrelWater],
       boss: this.world[id]?.boss || this.enemies.some(e => BOSS.has(e.kind) && e.woke > 0) };
   }
@@ -422,6 +426,7 @@ export class Sim {
     this.kitsGot = (def.kits ?? []).map((_, i) => mem?.kits?.[i] ?? false);
     this.spoolsGot = (def.spools ?? []).map((_, i) => mem?.spools?.[i] ?? false);
     this.feathersGot = (def.feathers ?? []).map((_, i) => mem?.feathers?.[i] ?? false);
+    this.nestsDown = (def.nests ?? []).map((_, i) => mem?.nests?.[i] ?? false);
     if (mem?.bushes) this.room.bushAlive = (def.bushes ?? []).map((_, i) => mem.bushes![i] ?? true);
     this.barrelWater = (def.barrels ?? []).map((_, i) => mem?.barrels?.[i] ?? 0.6);
     this.shroomCd = (def.shrooms ?? []).map(() => 0);
@@ -471,6 +476,25 @@ export class Sim {
     g.x = p.x + dx * 18; g.y = p.y + dy * 18; g.vx = dx * fs; g.vy = dy * fs;
     g.state = 'flying'; g.face = dx >= 0 ? 1 : -1;
     this.say(this.pick('fling'));
+  }
+
+  /** The Ferryman rows once he's awake (he gave you his oar). */
+  ferryReady(): boolean { return this.kit.oar; }
+
+  /** Sail to another ferry stop you've visited: arrive on its landing, with the room as you left it. */
+  ferryTo(id: string): boolean {
+    const def = ROOMS[id];
+    if (!def?.ferry || !this.kit.ferries.has(id) || !this.ferryReady() || id === this.room.def.id) return false;
+    this.enterRoom(def, null);
+    const p = this.player, g = this.goose, f = def.ferry;
+    const spots = [[0, 30], [30, 22], [-30, 22], [40, 0], [-40, 0], [0, -30]];
+    const ok = spots.find(([dx, dy]) => !this.room.inPit(f.x + dx!, f.y + dy!, 8) && !this.room.collide({ x: f.x + dx!, y: f.y + dy!, r: p.r })) ?? [0, 30];
+    p.x = f.x + ok[0]!; p.y = f.y + ok[1]!; p.vx = p.vy = 0;
+    g.x = p.x - 30; g.y = p.y; g.state = 'held';
+    this.rope = new Rope(p);
+    this.lastSafe = { x: p.x, y: p.y };
+    this.say(`The Ferryman sets you down at ${f.name}. "Mind the fish."`);
+    return true;
   }
 
   /** True in the safe opening of a roll. */
@@ -566,6 +590,13 @@ export class Sim {
         e.vx += (ex / (d || 1)) * k; e.vy += (ey / (d || 1)) * k; e.stun = Math.max(e.stun, 1.3 + (this.kit.has('h2') ? 0.7 : 0));
         if (g.state === 'latched' && g.target === e) g.state = 'held';
       }
+    }
+    const fy = this.room.def.ferry;
+    if (fy && this.ferryReady() && Math.hypot(fy.x - this.player.x, fy.y - this.player.y) < 90) {
+      this.fx('ring', fy.x, fy.y - 30);
+      this.say('HONK! Far off, a heron answers. Where to?');
+      this.events.push({ type: 'ferry' });
+      return;
     }
     const bell = this.room.def.bell;
     if (bell && !bell.parryOnly) {
@@ -875,6 +906,12 @@ export class Sim {
       this.fx('chest', k.x, k.y - 10);
       this.say(`✦ A Golden Feather! (${this.kit.mats.feather}) Spend it at Biscuit's shrine in Willowmere.`);
     });
+    const fy = room.def.ferry;
+    if (fy && Math.hypot(fy.x - p.x, fy.y - p.y) < 70 && !this.kit.ferries.has(room.def.id)) {
+      this.kit.ferries.add(room.def.id);
+      this.fx('ring', fy.x, fy.y - 30);
+      this.say(this.ferryReady() ? `Ferry stop: ${fy.name}. Honk here to call the Ferryman.` : `A ferry stop: ${fy.name}. Nobody to row it... yet.`);
+    }
     const sh = room.def.shrine;
     if (sh) {
       const near = Math.hypot(sh.x - p.x, sh.y - p.y) < 34;
@@ -1158,6 +1195,7 @@ export class Sim {
     // help the aim a little: the nearest thing worth hitting close to where you pointed
     const cands: Vec[] = this.enemies.filter(e => this.active(e) && !e.woke).map(e => ({ x: e.x, y: e.y }));
     const bell = this.room.def.bell; if (bell && this.room.gateClosed) cands.push(bell);
+    (this.room.def.nests ?? []).forEach((n, i) => { if (!this.nestsDown[i]) cands.push(n); });
     let best: Vec | null = null, bd = 90;
     for (const c of cands) {
       const k = Math.hypot(c.x - tx, c.y - ty), r = Math.hypot(c.x - p.x, c.y - p.y);
@@ -1173,6 +1211,19 @@ export class Sim {
   private batted(d: Dart): void {
     const rock = d.kind === 'rock';
     this.fx('thud', d.tx, d.ty - 6);
+    const nests = this.room.def.nests ?? [];
+    for (let i = 0; i < nests.length; i++) {
+      const n = nests[i]!;
+      if (this.nestsDown[i] || Math.hypot(n.x - d.tx, n.y - d.ty) > 30) continue;
+      this.nestsDown[i] = true;
+      this.fx('poof', n.x, n.y); this.fx('chest', n.x, n.y + 30);
+      const k = this.kit.mats, pk = this.pack;
+      if (n.drop === 'feather') { k.feather++; this.say(`The nest tumbles down. ✦ A Golden Feather inside! (${k.feather})`); }
+      else if (n.drop === 'kit') { pk.needles += C.kitNeedles; this.say('The nest tumbles down. Someone hoarded a sewing kit in it!'); }
+      else if (n.drop === 'spool') { k.fluff += 3; this.say('The nest tumbles down: it was woven from twine. +3 Twine.'); }
+      else { k.egg++; this.say('The nest tumbles down. A Golden Egg rolls out!'); }
+      return;
+    }
     const bell = this.room.def.bell;
     if (bell && Math.hypot(bell.x - d.tx, bell.y - d.ty) < bell.r + 26) {
       this.fx('ring', bell.x, bell.y);

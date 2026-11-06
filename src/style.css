@@ -107,3 +107,12 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--caution);outlin
 .branch>.chip{align-self:flex-start}
 .rc.trait.locked{opacity:.6}
 .rc .tier{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--paper-dim)}
+
+/* the Ferryman's stops */
+.ferry-inner{max-width:520px}
+.ferry-sub{margin:4px 0 0;font-style:italic;opacity:.75}
+.ferry-stops{display:grid;gap:8px;margin-top:14px}
+.ferry-stops button{text-align:left;padding:10px 12px;font:inherit;border:1px solid rgba(0,0,0,.25);border-radius:6px;background:rgba(255,255,255,.35);cursor:pointer}
+.ferry-stops button:hover:not([disabled]),.ferry-stops button:focus-visible{background:rgba(255,255,255,.7)}
+.ferry-stops button[disabled]{opacity:.55;cursor:default}
+.ferry-stops small{display:block;opacity:.7;margin-top:2px}

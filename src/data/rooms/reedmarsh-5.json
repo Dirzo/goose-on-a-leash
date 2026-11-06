@@ -246,6 +246,11 @@
    "y": 80
   }
  ],
+ "ferry": {
+  "x": 330,
+  "y": 250,
+  "name": "The Ferryman's Pool"
+ },
  "lightKind": "frog",
  "heavyKind": "snapper",
  "weather": "rain",

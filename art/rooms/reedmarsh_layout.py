@@ -376,6 +376,7 @@ ROOMS.append(room(
     kits=[{'x': 140, 'y': 620}], spools=[{'x': 980, 'y': 80}, {'x': 140, 'y': 80}],
     lantern={'x': 330, 'y': 300},
     paths=[[[66, 350], [356, 350]], [[854, 350], [1054, 350]]],
+    ferry={'x': 330, 'y': 250, 'name': "The Ferryman's Pool"},
     winText='Reedmarsh cleared! The Heron Ferryman will carry you on to Hollowbark Woods.',
 ))
 

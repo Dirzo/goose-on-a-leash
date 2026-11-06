@@ -181,6 +181,11 @@
    "y": 80
   }
  ],
+ "ferry": {
+  "x": 560,
+  "y": 430,
+  "name": "Hollow Stump Spring"
+ },
  "lantern": {
   "x": 480,
   "y": 180

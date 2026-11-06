@@ -597,6 +597,18 @@
    "h": 60
   }
  ],
+ "nests": [
+  {
+   "x": 560,
+   "y": 100,
+   "drop": "spool"
+  },
+  {
+   "x": 2080,
+   "y": 90,
+   "drop": "feather"
+  }
+ ],
  "biome": "woods",
  "lightKind": "squirrel",
  "heavyKind": "badger",

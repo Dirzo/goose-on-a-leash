@@ -179,6 +179,8 @@ export class Atmosphere {
     (def.kits ?? []).forEach((k, i) => { if (!sim.kitsGot[i]) L.push({ x: k.x, y: k.y, r: 55, c: 0xff8aa8, a: 0.55, bloom: 0.2, wash: 0.1 }); });
     (def.spools ?? []).forEach((k, i) => { if (!sim.spoolsGot[i]) L.push({ x: k.x, y: k.y, r: 40, c: 0xffd0a0, a: 0.4 }); });
     (def.feathers ?? []).forEach((k, i) => { if (!sim.feathersGot[i]) L.push({ x: k.x, y: k.y, r: 60, c: 0xffd860, a: 0.6, bloom: 0.3 }); });
+    if (def.ferry) L.push({ x: def.ferry.x + 14, y: def.ferry.y - 38, r: 110, c: 0xffc060, a: sim.ferryReady() && sim.kit.ferries.has(def.id) ? 0.8 : 0.2, bloom: 0.3, wash: 0.12 });
+    (def.nests ?? []).forEach((n, i) => { if (!sim.nestsDown[i] && n.drop === 'feather') L.push({ x: n.x, y: n.y, r: 34, c: 0xffd860, a: 0.3, bloom: 0.15 }); });
     if (def.shrine) L.push({ x: def.shrine.x, y: def.shrine.y - 16, r: 120, c: 0xffe090, a: 0.7, bloom: 0.3, wash: 0.14 });
     // grapple posts are always findable; rock pillars and islands catch the moon
     for (const p of def.posts) L.push({ x: p.x, y: p.y - 10, r: 56, c: 0xf0d8a8, a: 0.55, bloom: 0.12 });

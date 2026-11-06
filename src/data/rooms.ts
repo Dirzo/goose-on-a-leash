@@ -49,6 +49,10 @@ export interface RoomDef {
   lantern?: Vec;
   /** Several lanterns (areas stitched from rooms). */
   lanterns?: Vec[];
+  /** Nests hanging in the trees: knock one down with a batted-back acorn for what's inside. */
+  nests?: (Vec & { drop: 'feather' | 'kit' | 'spool' | 'egg' })[];
+  /** A ferry stop: once the Ferryman is awake, honk here to sail to any stop you've visited. */
+  ferry?: Vec & { name: string };
   /** Named parts of an area (the rooms it was stitched from): the name shows as you walk in. */
   zones?: (Rect & { name: string })[];
   /** The room rects the area is made of (for the painter); outside them is solid. */

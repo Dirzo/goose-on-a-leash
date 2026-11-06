@@ -266,6 +266,35 @@ export class ArtRenderer {
       g.fillStyle(0x1a1522, 1); g.fillRect(bx - 10, by + 7, 20, 2); g.fillRect(bx - 1, by + 9, 3, 3);
       if (lit) this.wt('HONK ME', bell.x - 2, bell.y + 26, 7, '#f2c230', 0.6 + 0.4 * Math.sin(time * 4));
     }
+    // nests up in the trees (knock down with a batted acorn), and the ferry stop
+    (def.nests ?? []).forEach((n, i) => {
+      if (sim.nestsDown[i]) return;
+      const sway = Math.sin(time * 1.3 + i) * 1.5, x = n.x + sway, y = n.y;
+      const fl = this.fxg;
+      fl.lineStyle(1, 0x1a1522, 1); fl.lineBetween(n.x, y - 18, x, y - 7);
+      fl.fillStyle(0x1a1522, 1); fl.fillEllipse(x, y, 22, 16);
+      fl.fillStyle(0x5e3e20, 1); fl.fillEllipse(x, y, 19, 13);
+      for (let k = 0; k < 7; k++) { const a = k * 0.9; fl.fillStyle(k % 2 ? 0x8a6030 : 0x3a2614, 1); fl.fillRect(Math.round(x + Math.cos(a) * 6), Math.round(y + Math.sin(a) * 4), 3, 1); }
+      if (n.drop === 'feather' && Math.floor(time * 2 + i) % 3 === 0) { fl.fillStyle(0xffe27a, 1); fl.fillRect(Math.round(x + 4), Math.round(y - 3), 2, 2); }
+      if (sim.kit.oar && Math.hypot(sim.player.x - n.x, sim.player.y - n.y) < 300) this.wt('nest', x, y - 16, 6, '#c9a46a', 0.6, 'mono');
+    });
+    const fy = def.ferry;
+    if (fy) {
+      const on = sim.kit.ferries.has(def.id), ready = sim.ferryReady();
+      g.fillStyle(0x000000, 0.35); g.fillEllipse(fy.x + 2, fy.y + 4, 18, 6);
+      g.fillStyle(0x1a1522, 1); g.fillRect(fy.x - 3, fy.y - 46, 6, 50);
+      g.fillStyle(0x6a4a2c, 1); g.fillRect(fy.x - 2, fy.y - 45, 4, 48);
+      g.fillStyle(0x1a1522, 1); g.fillRect(fy.x - 2, fy.y - 48, 18, 3);                 // the arm
+      const lx = fy.x + 14, ly = fy.y - 38 + Math.sin(time * 1.6) * 0.8;
+      g.fillStyle(0x1a1522, 1); g.fillRect(lx - 4, ly - 6, 8, 10);
+      g.fillStyle(ready && on ? 0xffc860 : 0x4a4436, 1); g.fillRect(lx - 3, ly - 5, 6, 8);
+      // a heron feather pennant
+      g.fillStyle(0xd8dce4, 1); fillP(g, [{ x: fy.x + 3, y: fy.y - 44 }, { x: fy.x + 3, y: fy.y - 36 }, { x: fy.x - 9 + Math.sin(time * 3) * 2, y: fy.y - 41 }], true);
+      if (Math.hypot(sim.player.x - fy.x, sim.player.y - fy.y) < 120) {
+        this.wt(fy.name, fy.x, fy.y - 62, 7, '#e9e4d6', 0.85);
+        this.wt(ready ? 'HONK FOR THE FERRY' : 'FERRY STOP · THE FERRYMAN SLEEPS', fy.x, fy.y + 18, 6, ready ? '#f2c230' : '#8a8478', 0.8, 'mono');
+      }
+    }
     // tackle box (restocks Fishing Line)
     const bk = def.bucket;
     if (bk) {
