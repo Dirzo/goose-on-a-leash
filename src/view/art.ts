@@ -51,6 +51,7 @@ export class ArtRenderer {
   private utext!: Record<Face, TextPool>;
   private fx: ViewFx[] = [];
   private quips: Quip[] = [];
+  private hintText = ''; private hintT = 0;
   private drips: Drip[] = [];
   private puddles: { x: number; y: number; life: number }[] = [];
   private glints: { x: number; y: number; ph: number; len: number }[] = [];
@@ -147,6 +148,7 @@ export class ArtRenderer {
   consume(events: SimEvent[]): void {
     for (const e of events) {
       if (e.type === 'say') this.quips.push({ text: e.text, life: 2.6 });
+      else if (e.type === 'hint') { this.hintText = e.text; this.hintT = 6; }
       else if (e.type === 'fx') {
         this.fx.push({ kind: e.kind, x: e.x, y: e.y, t: 0, a: e.a, cone: e.cone, range: e.range, text: e.text });
         this.atmo.flashAt(e.kind, e.x, e.y);
@@ -168,6 +170,7 @@ export class ArtRenderer {
     this.time += dt;
     const time = this.time;
     for (const q of this.quips) q.life -= dt;
+    this.hintT = Math.max(0, this.hintT - dt);
     this.quips = this.quips.filter(q => q.life > 0);
     for (const f of this.fx) f.t += dt;
     this.fx = this.fx.filter(f => f.t < (f.kind === 'faint' ? 1.6 : 0.8));
@@ -535,12 +538,13 @@ export class ArtRenderer {
       if (e.dead) continue;
       alive.add(e.id);
       let s = this.foes.get(e.id);
-      if (!s) { s = this.worldIgnore(this.scene.add.sprite(0, 0, ({ snapper: 'snapper', heron: 'heron', squirrel: 'squirrel', badger: 'badger', king: 'king' } as Record<string, string>)[e.kind] ?? 'frog')); this.foes.set(e.id, s); }
+      if (!s) { s = this.worldIgnore(this.scene.add.sprite(0, 0, ({ snapper: 'snapper', elder: 'snapper', heron: 'heron', squirrel: 'squirrel', badger: 'badger', king: 'king' } as Record<string, string>)[e.kind] ?? 'frog')); this.foes.set(e.id, s); }
       const { x, y } = EP(e);
       const awake = e.woke > 0 || (e.stun > 0 && e.kind !== 'snapper');
       const kind = e.kind === 'heron' ? (e.woke > 0 ? 'heron_awake' : 'heron')
         : e.kind === 'snapper' ? (e.woke > 0 ? 'snapper_awake' : 'snapper') : awake ? 'frog_awake' : 'frog';
       const blink = ((time * 1.1 + e.id * 0.37) % 3.2) < 0.14;
+      if (e.kind === 'elder') { this.drawElder(sim, e, s, x, y, time); continue; }
       if (e.kind === 'squirrel' || e.kind === 'badger' || e.kind === 'king') {
         this.drawWoodsCritter(sim, e, s, x, y, time);
         continue;
@@ -789,6 +793,15 @@ export class ArtRenderer {
     if (bf.length) this.ht('mono', bf.join(' · '), 30, H - 84, 12, '#8cc3e8', 1, 'left', true);
     this.ht('mono', '[B] RECIPE BOOK', W - 24, H - 24, 11, '#9aa3a6', 0.8, 'right', true);
 
+    // tutorial hint: a framed prompt above the quips
+    if (this.hintT > 0) {
+      const a = Math.min(1, this.hintT / 0.5, (6 - this.hintT) / 0.3), y = H - 190;
+      const t = this.ht('body', this.hintText, W / 2, y, 20, '#ffe8a8', a, 'center', true);
+      const w2 = t.width + 40;
+      g.fillStyle(0x0b0a10, 0.85 * a); g.fillRect(W / 2 - w2 / 2, y - 22, w2, 34);
+      g.lineStyle(2, 0xc9a46a, a); g.strokeRect(W / 2 - w2 / 2, y - 22, w2, 34);
+      g.fillStyle(0xc9a46a, a); g.fillRect(W / 2 - w2 / 2 + 8, y - 6, 4, 4);
+    }
     // quips
     this.quips.forEach((q, i) => {
       const a = Math.min(1, q.life / 0.5), y = H - 110 - (this.quips.length - 1 - i) * 30;
@@ -797,11 +810,11 @@ export class ArtRenderer {
     });
 
     // boss health
-    const boss = sim.enemies.find(e => (e.kind === 'heron' || e.kind === 'king') && !e.woke);
+    const boss = sim.enemies.find(e => (e.kind === 'heron' || e.kind === 'king' || (e.kind === 'elder' && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < 620)) && !e.woke);
     if (boss) {
       const bw2 = 520, bx2 = W / 2 - bw2 / 2, by2 = 150, angry = boss.hp < boss.max / 2;
       g.fillStyle(0x0b0a10, 0.8); g.fillRect(bx2 - 12, by2 - 30, bw2 + 24, 52);
-      this.ht('display', boss.kind === 'king' ? 'THE BURROW KING' : 'THE HERON FERRYMAN', W / 2, by2 - 8, 16, angry ? '#ff8a8a' : '#e9e4d6');
+      this.ht('display', boss.kind === 'king' ? 'THE BURROW KING' : boss.kind === 'elder' ? 'OLD SNAPPER' : 'THE HERON FERRYMAN', W / 2, by2 - 8, 16, angry ? '#ff8a8a' : '#e9e4d6');
       g.fillStyle(0x1a1522, 1); g.fillRect(bx2, by2, bw2, 12);
       g.fillStyle(angry ? 0xe05a47 : 0xc94b3a, 1); g.fillRect(bx2 + 2, by2 + 2, (bw2 - 4) * Math.max(0, boss.hp / boss.max), 8);
       g.fillStyle(0xe9e4d6, 0.5); g.fillRect(bx2 + bw2 / 2, by2, 1, 12);
@@ -953,6 +966,59 @@ export class ArtRenderer {
     this.ut('mono', canPatch ? '[P] PATCH A TEAR' : pk.holes ? (pk.needles ? 'NEED TWINE TO PATCH' : 'NEED A SEWING KIT TO PATCH') : 'NO TEARS TO PATCH', X, 570, 15,
       canPatch ? '#f2c230' : pk.holes ? '#ff8a8a' : '#7cc48a', 1, 'left', true);
     this.ut('mono', '[I] / [ESC] CLOSE', X, 600, 12, '#9aa3a6', 1, 'left', true);
+  }
+
+  /** Old Snapper: a huge mossy snapping turtle. Rears before a charge, pants when winded, hides, flips. */
+  private drawElder(sim: Sim, e: Enemy, s: Phaser.GameObjects.Sprite, x: number, y: number, time: number): void {
+    const g = this.floor, f = this.fxg, awake = e.woke > 0, SC = 1.8;
+    this.show(s, awake ? 'snapper_awake' : 'snapper', e.mode === 'wind' || e.mode === 'charge' ? 1 : 0);
+    const flip = e.mode === 'charge' ? e.hx < 0 : sim.player.x < x;
+    const pant = e.mode === 'tired' ? Math.sin(time * 14) * 0.06 : 0;
+    const rear = e.mode === 'wind' ? Math.min(1, e.modeT / 0.5) * 0.22 : 0;
+    const flipped = e.mode === 'flipped';
+    s.setVisible(true).setPosition(Math.round(x), Math.round(y + (flipped ? -18 : 0))).setDepth(y).setFlipX(flip).setFlipY(flipped)
+      .setScale(SC * (1 - pant), SC * (1 + rear + pant)).setAlpha(1);
+    const tell = e.mode === 'wind' && Math.floor(e.modeT * 14) % 2 === 0;
+    if (e.hitT > 0 || tell) s.setTint(e.hitT > 0 ? 0xffffff : 0xffd0d0).setTintMode(Phaser.TintModes.FILL);
+    else s.clearTint().setTintMode(Phaser.TintModes.MULTIPLY).setTint(e.mode === 'shell' ? 0x6a7a5a : 0xb8c8a0);
+    g.fillStyle(0x000000, 0.4); g.fillEllipse(x, y + 3, 110, 22);
+    if (awake) {
+      if (e.woke < 6) this.wt('Old Snapper', x, y - 66, 9, '#c8e0a0', Math.min(1, 6 - e.woke));
+      return;
+    }
+    // moss and weed hanging off the shell
+    for (let i = 0; i < 6; i++) {
+      const mx = x + (i - 2.5) * 12 * (flip ? -1 : 1), my = y - (flipped ? 6 : 34) + Math.abs(i - 2.5) * 3;
+      f.fillStyle(i % 2 ? 0x5a7a3a : 0x3e5a2a, 1); f.fillRect(Math.round(mx), Math.round(my), 5, 3);
+      if (i % 2 === 0 && !flipped) { f.fillStyle(0x3e5a2a, 1); f.fillRect(Math.round(mx + 2), Math.round(my + 3), 1, 4 + Math.round(Math.sin(time * 2 + i) * 1.5)); }
+    }
+    if (e.mode === 'shell') {                                    // head and legs pulled in: just the dome
+      f.fillStyle(0x1a1522, 1); f.fillEllipse(x, y - 18, 92, 46);
+      f.fillStyle(0x3e5232, 1); f.fillEllipse(x, y - 19, 88, 42);
+      f.fillStyle(0x52683e, 1); for (let i = -2; i <= 2; i++) f.fillEllipse(x + i * 15, y - 22 - (2 - Math.abs(i)) * 3, 12, 9);
+      this.wt('in his shell: bite + yank [E]', x, y - 52, 6, '#e9e4d6', 0.75, 'mono');
+    }
+    if (flipped) for (let i = 0; i < 4; i++) {                    // little legs waving in the air
+      const lx = x - 30 + i * 20, ly = y - 30 + Math.sin(time * 16 + i * 1.7) * 3;
+      f.fillStyle(0x1a1522, 1); f.fillRect(Math.round(lx) - 3, Math.round(ly) - 8, 7, 10);
+      f.fillStyle(0x6a7a4a, 1); f.fillRect(Math.round(lx) - 2, Math.round(ly) - 7, 5, 8);
+    }
+    if (flipped || e.mode === 'tired') {
+      const n = flipped ? 3 : 0;
+      for (let i = 0; i < n; i++) { const a = time * 5 + i * 2.1; f.fillStyle(0xf2c230, 1); this.star(f, x + Math.cos(a) * 26, y - 50 + Math.sin(a) * 4, 3.5); }
+      if (e.mode === 'tired') {
+        for (let i = 0; i < 2; i++) { const t = (time * 1.4 + i * 0.5) % 1; f.fillStyle(0x9ae0ff, 1 - t); f.fillRect(Math.round(x + (flip ? -30 : 30) + i * 4), Math.round(y - 38 + t * 14), 2, 3); }
+        this.wt('winded!', x, y - 58, 7, '#f2c230', 0.6 + 0.4 * Math.sin(time * 8), 'mono');
+      }
+    }
+    if (e.mode === 'wind') {
+      this.wt('!', x, y - 70, 16, '#ff4a4a', 1);
+      if (e.attack === 'charge') {
+        const l = Math.hypot(e.tx - x, e.ty - y) || 1;
+        g.lineStyle(5, 0xff4a4a, 0.25 + 0.35 * Math.sin(time * 14)); g.lineBetween(x, y, x + ((e.tx - x) / l) * 380, y + ((e.ty - y) / l) * 380);
+      }
+    }
+    if (e.mode === 'charge' && Math.floor(time * 30) % 2 === 0) { g.fillStyle(0x6a5a40, 0.6); g.fillCircle(x - e.hx * 40, y + 6, 6); }
   }
 
   /** A wooden wind-chime hung from the gallows: honks don't ring it; a batted-back acorn does. */

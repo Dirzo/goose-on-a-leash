@@ -442,19 +442,9 @@
    "y": 460
   },
   {
-   "kind": "frog",
-   "x": 1672,
-   "y": 170
-  },
-  {
-   "kind": "frog",
-   "x": 1732,
-   "y": 450
-  },
-  {
-   "kind": "frog",
-   "x": 2012,
-   "y": 330
+   "kind": "elder",
+   "x": 1752,
+   "y": 340
   }
  ],
  "doors": [
@@ -589,11 +579,7 @@
   "w": 12,
   "h": 92
  },
- "bell": {
-  "x": 2092,
-  "y": 128,
-  "r": 14
- },
+ "bell": null,
  "exit": null,
  "bucket": null,
  "knightSpawn": null,
@@ -629,6 +615,8 @@
    "y": 330
   }
  ],
+ "ventSpawns": false,
+ "boss": "elder",
  "rooms": [
   {
    "x": 0,

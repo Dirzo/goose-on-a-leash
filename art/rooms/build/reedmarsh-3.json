@@ -111,11 +111,7 @@
   }
  ],
  "posts": [],
- "bell": {
-  "x": 780,
-  "y": 118,
-  "r": 14
- },
+ "bell": null,
  "exit": null,
  "vents": [
   {
@@ -152,19 +148,9 @@
  ],
  "enemies": [
   {
-   "kind": "frog",
-   "x": 360,
-   "y": 160
-  },
-  {
-   "kind": "frog",
-   "x": 420,
-   "y": 440
-  },
-  {
-   "kind": "frog",
-   "x": 700,
-   "y": 320
+   "kind": "elder",
+   "x": 440,
+   "y": 330
   }
  ],
  "knightSpawn": null,
@@ -217,6 +203,8 @@
    ]
   ]
  ],
+ "boss": "elder",
+ "ventSpawns": false,
  "spools": [
   {
    "x": 300,

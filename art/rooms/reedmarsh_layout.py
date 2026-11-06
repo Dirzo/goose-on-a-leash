@@ -96,6 +96,7 @@ def room(id, name, w, h, doors, start_door, **kw):
 
 
 def frog(x, y): return {'kind': 'frog', 'x': x, 'y': y}
+def foe(kind, x, y): return {'kind': kind, 'x': x, 'y': y}
 def snapper(x, y): return {'kind': 'snapper', 'x': x, 'y': y}
 def post(x, y): return {'x': x, 'y': y, 'r': 9}
 
@@ -154,8 +155,7 @@ ROOMS.append(room(
 ))
 
 # 3 ---------------------------------------------------------------- Burrow Field
-bell3 = {'x': 780, 'y': 118, 'r': 14}
-check_reach('burrow: honk the bell from the moat bank', (700, 240), (bell3['x'], bell3['y']), 178 + 14 + 30)
+# Old Snapper's wallow: the tutorial boss. Waking him opens the way on.
 ROOMS.append(room(
     'reedmarsh-3', 'Burrow Field', 960, 600,
     [dict(id='w', side='W', at=300, to='reedmarsh-2', toDoor='e', label='Mooring Run'),
@@ -165,10 +165,10 @@ ROOMS.append(room(
     pits=[rect(640, 30, 290, 190)],
     bridges=[rect(720, 70, 120, 96, kind='island')],
     refills=[rect(630, 218, 300, 26), rect(616, 30, 26, 190)],
-    bell=bell3,
     props=[rect(330, 250, 40, 28, kind='stump'), rect(600, 400, 56, 24, kind='log'), rect(150, 380, 40, 30, kind='rock')],
+    boss='elder', ventSpawns=False,
     vents=[{'x': 170, 'y': 140}, {'x': 210, 'y': 500}, {'x': 520, 'y': 520}, {'x': 470, 'y': 110}],
-    enemies=[frog(360, 160), frog(420, 440), frog(700, 320)],
+    enemies=[foe('elder', 440, 330)],
     bread=[{'x': 100, 'y': 540}, {'x': 560, 'y': 300}, {'x': 860, 'y': 520}],
     spools=[{'x': 300, 'y': 540}, {'x': 850, 'y': 430}],
     lantern={'x': 640, 'y': 236},

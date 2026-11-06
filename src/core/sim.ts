@@ -18,12 +18,13 @@ export type GooseState = 'held' | 'flying' | 'latched' | 'loose' | 'returning';
 export type { EnemyKind };
 
 /** How close Rocco must get before an entranced critter notices him. Room 01's pests see across the room. */
-const AGGRO: Partial<Record<EnemyKind, number>> = { frog: 160, snapper: 210, heron: 520, squirrel: 260, badger: 230, king: 700 };
-const HEAVY: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['knight', 'snapper', 'heron', 'badger', 'king']);
+const AGGRO: Partial<Record<EnemyKind, number>> = { elder: 620, frog: 160, snapper: 210, heron: 520, squirrel: 260, badger: 230, king: 700 };
+const HEAVY: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['knight', 'snapper', 'heron', 'badger', 'king', 'elder']);
 /** Animals under the blood moon's trance. Beaten, they wake up and wander off instead of dying. */
-const ENTRANCED: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['frog', 'snapper', 'heron', 'squirrel', 'badger', 'king']);
+const ENTRANCED: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['frog', 'snapper', 'heron', 'squirrel', 'badger', 'king', 'elder']);
 /** Bosses stand their ground: no knockback, they never fall in, and they stay once woken. */
-const BOSS: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['heron', 'king']);
+const BOSS: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['heron', 'king', 'elder']);
+export const ELDER_HP = 24;
 export const HERON_HP = 40;
 export const KING_HP = 50;
 /** Seconds a woken critter takes to hop away. */
@@ -76,11 +77,13 @@ export interface Enemy {
  * recover: a beat of vulnerability after an attack.
  */
 export type CritterMode = 'stalk' | 'wind' | 'leap' | 'lash' | 'charge' | 'recover' | 'spear' | 'gust' | 'darts' | 'call' | 'swim'
-  | 'takeoff' | 'fly' | 'slam' | 'grounded' | 'return' | 'perch' | 'tunnel' | 'surface' | 'dazed';
+  | 'takeoff' | 'fly' | 'slam' | 'grounded' | 'return' | 'perch' | 'tunnel' | 'surface' | 'dazed'
+  /** Old Snapper: winded after a charge, hiding in his shell, flipped on his back. */
+  | 'tired' | 'shell' | 'flipped';
 export type AttackKind = 'leap' | 'lash' | 'charge' | 'bite' | 'spear' | 'gust' | 'dart' | 'slam' | 'peck' | 'acorn' | 'erupt' | 'rock' | 'thorn' | 'dig' | 'rocks';
 
 /** A feather dart lobbed at Bimbo: it lands on the marked spot when t reaches T. */
-export interface Dart { x0: number; y0: number; tx: number; ty: number; t: number; T: number; kind?: 'feather' | 'acorn' | 'rock'; /** batted back by the oar: hits critters and bells, not Rocco */ back?: boolean }
+export interface Dart { x0: number; y0: number; tx: number; ty: number; t: number; T: number; kind?: 'feather' | 'acorn' | 'rock'; /** batted back by the oar: hits critters and bells, not Rocco */ back?: boolean; /** the critter it's batted at (it follows him) */ at?: number }
 
 export interface PostTarget { x: number; y: number; r: number; post: true }
 export type Target = Enemy | PostTarget;
@@ -130,7 +133,9 @@ export type SimEvent =
   /** Rocco stepped up to Biscuit's shrine. */
   | { type: 'shrine' }
   /** Rocco honked at a ferry stop with the Ferryman awake: choose where to sail. */
-  | { type: 'ferry' };
+  | { type: 'ferry' }
+  /** A tutorial prompt: shown on screen for a few seconds. */
+  | { type: 'hint'; text: string };
 
 const QUIPS = {
   fling: ['HONK!', 'Airborne goose', 'Yeet.', 'Go get em'],
@@ -442,7 +447,7 @@ export class Sim {
   mkEnemy(kind: EnemyKind, x: number, y: number): Enemy {
     const k = HEAVY.has(kind), boss = BOSS.has(kind);
     const stats: Partial<Record<EnemyKind, [number, number, number]>> = {   // hp, radius, speed
-      heron: [HERON_HP, 24, 0], king: [KING_HP, 34, 48], squirrel: [2, 10, 115], badger: [10, 18, 50],
+      heron: [HERON_HP, 24, 0], king: [KING_HP, 34, 48], elder: [ELDER_HP, 26, 46], squirrel: [2, 10, 115], badger: [10, 18, 50],
     };
     const [hp, r, spd] = stats[kind] ?? [k ? 8 : 3, k ? 20 : 13, k ? 42 : 78];
     return { id: this.nextId++, kind, x, y, r, hp, max: hp, heavy: k, stun: 0,
@@ -555,6 +560,12 @@ export class Sim {
     if (g.state === 'flying') { g.state = 'held'; g.vx *= -0.3; g.vy *= -0.3; return; }
     if (g.state !== 'latched' || !g.target) return;
     const t = g.target;
+    if (!isPost(t) && t.kind === 'elder' && t.mode === 'shell') {
+      t.mode = 'flipped'; t.modeT = 0;
+      this.fx('slam', t.x, t.y); this.say('HEAVE! Old Snapper flips onto his back!');
+      this.hint('flip', 'Flipped! He can\'t get up for a moment: bite, bite, bite!');
+      return;
+    }
     if (isPost(t) || t.heavy) {
       p.pull = t; p.air = true;
       this.say(isPost(t) ? 'Wheee!' : t.kind === 'knight' ? 'The knight drags you in. HEADBUTT incoming.' : 'Biscuit drags you across. HEADBUTT incoming!');
@@ -586,6 +597,14 @@ export class Sim {
       if (!this.active(e)) continue;
       const ex = e.x - g.x, ey = e.y - g.y, d = Math.hypot(ex, ey);
       if (d < range + e.r && Math.abs(angDiff(Math.atan2(ey, ex), ang)) < cone) {
+        if (e.kind === 'elder') {
+          if (e.mode === 'stalk' || e.mode === 'wind' || e.mode === 'tired') {
+            e.mode = 'shell'; e.modeT = 0;
+            this.say('HONK! Old Snapper yanks his head into his shell.');
+            this.hint('shell', 'He\'s hiding! Fling Biscuit at him [Click], then YANK [E] to flip him over.');
+          }
+          continue;
+        }
         const k = (e.heavy ? 260 : 470) * (furyB ? 1.4 : 1) * (0.8 + 0.1 * this.power());
         e.vx += (ex / (d || 1)) * k; e.vy += (ey / (d || 1)) * k; e.stun = Math.max(e.stun, 1.3 + (this.kit.has('h2') ? 0.7 : 0));
         if (g.state === 'latched' && g.target === e) g.state = 'held';
@@ -758,6 +777,14 @@ export class Sim {
 
   damage(e: Enemy, amt: number): void {
     if (e.dead) return;
+    if (e.kind === 'elder' && !e.woke) {
+      if (e.mode === 'shell') {
+        if (this.elderClonkT <= 0) { this.say('CLONK. He\'s in his shell. Yank [E] while Biscuit holds on to flip him!'); this.elderClonkT = 3; }
+        this.fx('block', e.x, e.y - 10);
+        return;
+      }
+      amt *= e.mode === 'flipped' ? 2.5 : e.mode === 'tired' ? 2 : 0.5;    // armoured unless winded or flipped
+    }
     e.hp -= amt; e.hitT = 0.15;
     if (e.hp > 0) return;
     this.handled++;
@@ -769,10 +796,13 @@ export class Sim {
         for (const o of this.enemies) if (o !== e && this.active(o)) { o.woke = 0.001; this.fx('wake', o.x, o.y); }   // his frogs wake too
         this.room.gateClosed = false;
         this.world[this.room.def.id] = { ...(this.world[this.room.def.id] ?? { gateOpen: true, bread: [...this.breadGot], chest: false, rang: this.rang }), boss: true, gateOpen: true };
-        if (e.kind === 'king' || this.kit.oar) this.say(e.kind === 'king' ? 'The Burrow King shakes his great head. "...What was I digging for? Go on, little raccoon. Mind the fish."'
+        if (e.kind === 'elder') this.say('Old Snapper blinks. The red drains away. "Hmph. Bimbo, is it? Go on through, the both of you."');
+        else if (e.kind === 'king' || this.kit.oar) this.say(e.kind === 'king' ? 'The Burrow King shakes his great head. "...What was I digging for? Go on, little raccoon. Mind the fish."'
           : 'The red drains from the Heron\'s eyes. "...Raccoon. I am the Ferryman. The way on is open."');
         // his gifts go straight into the satchel (wherever the fight ended), and he refills Bimbo
-        this.kit.mats.crest++; this.kit.mats.chain += 3; this.kit.mats.fluff += 4; this.kit.mats.egg++; this.kit.mats.feather += 2;
+        const elder = e.kind === 'elder';
+        this.kit.mats.crest++; this.kit.mats.chain += elder ? 2 : 3; this.kit.mats.fluff += elder ? 3 : 4; this.kit.mats.feather += elder ? 1 : 2;
+        if (!elder) this.kit.mats.egg++;
         const oarGift = e.kind === 'heron' && !this.kit.oar;
         if (oarGift) {
           this.kit.oar = true;
@@ -781,7 +811,7 @@ export class Sim {
         this.pack.needles += C.kitNeedles; this.pack.water = 1;
         if (e.kind === 'heron') { e.air = 0; e.x = e.hx; e.y = e.hy; }
         this.puddles = [];
-        this.fx('pick', this.player.x, this.player.y - 46, { text: (oarGift ? "THE FERRYMAN'S OAR · " : '') + "2 Golden Feathers, Snapper's Crest, Golden Egg, 3 Scute, 4 Twine, a sewing kit" });
+        this.fx('pick', this.player.x, this.player.y - 46, { text: elder ? "A Golden Feather, Snapper's Crest, 2 Scute, 3 Twine, a sewing kit" : (oarGift ? "THE FERRYMAN'S OAR · " : '') + "2 Golden Feathers, Snapper's Crest, Golden Egg, 3 Scute, 4 Twine, a sewing kit" });
         this.fx('chest', this.player.x, this.player.y - 20);
       } else this.say(e.heavy ? 'Old Snapper blinks. The red fades from his eyes.' : this.pick('wake'));
     } else { e.dead = true; this.fx('poof', e.x, e.y); }
@@ -1094,6 +1124,7 @@ export class Sim {
       if (e.mode === 'swim') { e.mode = 'recover'; e.modeT = 0; e.cd = 1.2; }   // climbed out, shaking off
       if (e.kind === 'heron') [ax, ay] = this.heronAI(e, dt, d);
       else if (e.kind === 'king') [ax, ay] = this.kingAI(e, dt);
+      else if (e.kind === 'elder') [ax, ay] = this.elderAI(e, dt, d);
       else if (e.kind === 'squirrel') [ax, ay] = this.squirrelAI(e, dt, d, slow);
       else if (e.kind === 'badger') [ax, ay] = this.badgerAI(e, dt, slow);
       else if (critter) [ax, ay] = this.critterAI(e, dt, d, slow);
@@ -1133,6 +1164,7 @@ export class Sim {
     const p = this.player;
     for (const d of [...this.darts]) {   // a copy: parries add darts while we go
       d.t += dt;
+      if (d.back && d.at !== undefined) { const e = this.enemies.find(o => o.id === d.at && this.active(o)); if (e) { d.tx = e.x; d.ty = e.y; } }
       if (d.t >= d.T) {
         const kind = d.kind ?? 'feather', b = this.packPoint(10);
         this.fx(kind === 'feather' ? 'splash' : 'thud', d.tx, d.ty - 6);
@@ -1193,16 +1225,16 @@ export class Sim {
     const reach = Math.min(C.parryRange, Math.max(80, l));
     let tx = p.x + (dx / l) * reach, ty = p.y + (dy / l) * reach;
     // help the aim a little: the nearest thing worth hitting close to where you pointed
-    const cands: Vec[] = this.enemies.filter(e => this.active(e) && !e.woke).map(e => ({ x: e.x, y: e.y }));
+    const cands: (Vec & { id?: number })[] = this.enemies.filter(e => this.active(e) && !e.woke).map(e => ({ x: e.x, y: e.y, id: e.id }));
     const bell = this.room.def.bell; if (bell && this.room.gateClosed) cands.push(bell);
     (this.room.def.nests ?? []).forEach((n, i) => { if (!this.nestsDown[i]) cands.push(n); });
-    let best: Vec | null = null, bd = 90;
+    let best: (Vec & { id?: number }) | null = null, bd = 90;
     for (const c of cands) {
       const k = Math.hypot(c.x - tx, c.y - ty), r = Math.hypot(c.x - p.x, c.y - p.y);
       if (k < bd && r < C.parryRange + 40) { bd = k; best = c; }
     }
     if (best) { tx = best.x; ty = best.y; }
-    this.darts.push({ x0: p.x + p.fx * 16, y0: p.y - 26, tx, ty, t: 0, T: 0.32, kind: d.kind, back: true });
+    this.darts.push({ x0: p.x + p.fx * 16, y0: p.y - 26, tx, ty, t: 0, T: 0.32, kind: d.kind, back: true, at: best?.id });
     this.fx('parry', p.x + p.fx * 18, p.y - 22);
     this.say(this.pick('parry'));
   }
@@ -1538,6 +1570,92 @@ export class Sim {
    * is dazed: bite him then), tunnels and erupts under Bimbo with a spray of rocks, lobs rocks, and calls
    * squirrels. Below half health he charges faster and erupts twice in a row.
    */
+  /** Tutorial prompts, each shown once per playthrough of a fight. */
+  private hintsShown = new Set<string>();
+  private elderClonkT = 0;
+  hint(id: string, text: string): void {
+    if (this.hintsShown.has(id)) return;
+    this.hintsShown.add(id);
+    this.events.push({ type: 'hint', text });
+  }
+
+  /**
+   * Old Snapper, the tutorial boss. He stalks, winds up and charges (roll aside), and is winded
+   * afterwards (bite: double damage). A honk sends him into his shell, where bites only clonk; bite
+   * and yank to flip him on his back for the big damage. Below half he charges twice, and snaps at
+   * Bimbo when you're close. Armoured otherwise: bites do half.
+   */
+  private elderAI(e: Enemy, dt: number, d: number): [number, number] {
+    const p = this.player, bimbo = this.packPoint(10), room = this.room, angry = e.hp < e.max / 2;
+    this.elderClonkT = Math.max(0, this.elderClonkT - dt);
+    e.modeT += dt; e.stun = 0;
+    if (d < 520) this.hint('elder', 'OLD SNAPPER! Watch him: roll away from his charge, then bite him while he\'s winded.');
+    switch (e.mode) {
+      case 'stalk': {
+        e.cd -= dt;
+        if (e.cd <= 0 && d < 420) {
+          const close = Math.hypot(bimbo.x - e.x, bimbo.y - e.y) < 70;
+          e.mode = 'wind'; e.modeT = 0; e.attack = close && angry ? 'bite' : 'charge';
+          e.tx = bimbo.x; e.ty = bimbo.y; e.hit = false;
+          if (e.attack === 'charge') this.hint('roll', 'He\'s winding up a charge! ROLL out of the way [Shift / B].');
+          return [0, 0];
+        }
+        const [ux, uy] = dirTo(e, p);
+        return [ux * e.spd, uy * e.spd];
+      }
+      case 'wind': {
+        const T = e.attack === 'bite' ? 0.4 : e.grip2 > 0 ? 0.45 : 0.9;
+        if (e.attack === 'charge') { e.tx = bimbo.x; e.ty = bimbo.y; }       // tracks you while rearing
+        if (e.modeT >= T) {
+          if (e.attack === 'bite') {
+            if (Math.hypot(bimbo.x - e.x, bimbo.y - e.y) < e.r + 30) this.hurtPlayer(1, true, e, 'bite');
+            e.mode = 'stalk'; e.cd = 1.2; return [0, 0];
+          }
+          const [ux, uy] = dirTo(e, { x: e.tx, y: e.ty }); e.hx = ux; e.hy = uy;
+          e.mode = 'charge'; e.modeT = 0;
+        }
+        return [0, 0];
+      }
+      case 'charge': {
+        const sp = (angry ? 400 : 340) * dt, sub = 4;
+        for (let i = 0; i < sub; i++) {
+          const nx = e.x + (e.hx * sp) / sub, ny = e.y + (e.hy * sp) / sub;
+          if (room.inPit(nx, ny, -e.r * 0.5) || e.modeT > 1.1) { this.elderTired(e, angry); return [0, 0]; }
+          e.x = nx; e.y = ny;
+          if (room.collide(e) || e.x < e.r + 22 || e.y < e.r + 22 || e.x > room.def.width - e.r - 22 || e.y > room.def.height - e.r - 22) {
+            this.keepInside(e); this.fx('slam', e.x, e.y); this.elderTired(e, angry, true); return [0, 0];
+          }
+          if (!e.hit && Math.hypot(bimbo.x - e.x, bimbo.y - e.y) < e.r + 14) { e.hit = true; this.hurtPlayer(1, true, e, 'charge'); }
+        }
+        return [0, 0];
+      }
+      case 'tired': {
+        if (e.modeT > (angry ? 1.4 : 1.9)) {
+          if (angry && e.grip2 <= 0) { e.grip2 = 1; e.mode = 'wind'; e.modeT = 0; e.attack = 'charge'; e.hit = false; return [0, 0]; }   // and again!
+          e.grip2 = 0; e.mode = 'stalk'; e.cd = angry ? 1 : 1.6;
+          if (this.hintsShown.has('tired') && !this.hintsShown.has('honk')) this.hint('honk', 'Another way in: HONK [Space] at him to scare him into his shell.');
+        }
+        return [0, 0];
+      }
+      case 'shell': {
+        if (e.modeT > 2.8) { e.mode = 'stalk'; e.cd = 0.6; }
+        return [0, 0];
+      }
+      case 'flipped': {
+        if (e.modeT > 3.2) { e.mode = 'stalk'; e.cd = 1; this.say('Old Snapper rocks himself back onto his feet.'); }
+        return [0, 0];
+      }
+      default: e.mode = 'stalk'; return [0, 0];
+    }
+  }
+
+  private elderTired(e: Enemy, angry: boolean, crashed = false): void {
+    e.mode = 'tired'; e.modeT = 0;
+    if (crashed) this.say('THUD. He ploughs into it and stands there wheezing.');
+    this.hint('tired', 'He\'s winded! Fling Biscuit at him [Click]: bites do double damage now.');
+    void angry;
+  }
+
   private kingAI(e: Enemy, dt: number): [number, number] {
     const p = this.player, g = this.goose, angry = e.hp < e.max / 2;
     e.modeT += dt; e.cd -= dt;
