@@ -222,8 +222,8 @@ def rocco(frame):
     dr.ellipse([26, 86, 38, 92], fill=(30, 22, 16, 255))            # boots
     # head with the hat, snout pointing left
     dr.ellipse([34, 22 + b, 56, 44 + b], fill=D + (255,))
-    dr.polygon([(36, 32 + b), (24, 36 + b), (36, 40 + b)], fill=D + (255,))
-    dr.point((25, 36 + b), fill=(10, 8, 14, 255))
+    dr.polygon([(37, 33 + b), (31, 36 + b), (37, 39 + b)], fill=D + (255,))   # a small snout
+    dr.point((31, 36 + b), fill=(10, 8, 14, 255))
     dr.polygon([(48, 22 + b), (52, 14 + b), (55, 24 + b)], fill=D + (255,))   # ear
     dr.rectangle([30, 22 + b, 60, 25 + b], fill=(28, 34, 20, 255))            # hat brim
     dr.rounded_rectangle([36, 12 + b, 54, 24 + b], radius=3, fill=(32, 40, 24, 255))
@@ -232,8 +232,12 @@ def rocco(frame):
     dr.point((38, 31 + b), fill=(240, 240, 255, 255))
     # arms and the rod, angled up and out to the left
     dr.line([(48, 52 + b), (34, 56 + b)], fill=D2 + (255,), width=4)
-    tip = (4, 6 + tw)
-    dr.line([(40, 60 + b), tip], fill=(70, 48, 26, 255), width=2)
+    if frame == 3:                                                 # reeling: the rod bent hard toward the water
+        tip = (6, 46)
+        dr.line([(40, 60), (30, 38), (20, 28), (11, 30), (7, 37), tip], fill=(70, 48, 26, 255), width=2, joint='curve')
+    else:
+        tip = (4, 6 + tw)
+        dr.line([(40, 60 + b), tip], fill=(70, 48, 26, 255), width=2)
     dr.line([(40, 60 + b), (30, 46 + b)], fill=(110, 76, 40, 255), width=2)
     dr.ellipse([36, 56 + b, 42, 62 + b], fill=(150, 150, 160, 255))           # reel
     a = np.array(im).astype(np.float32)
@@ -274,6 +278,11 @@ def shark(frame):
     dr.polygon([(14, 76), (60, 82), (110, 80), (60, 92)], fill=P['shk0'] + (255,))   # jaw shadow
     for x in range(30, 80, 7): dr.polygon([(x, 78), (x + 3, 84), (x + 6, 78)], fill=(70, 60, 60, 255))   # teeth, barely
     for k in range(4): dr.line([(86 + k * 8, 58), (82 + k * 8, 74)], fill=P['scar'] + (255,), width=2)   # gills, faint red
+    if frame == 2:                                                 # the smile: a long curl of bright teeth up toward the eye
+        curve = [(12 + k * 7, 79 - (k * k) * 0.13) for k in range(11)]
+        dr.line(curve, fill=(0, 0, 0, 255), width=5)
+        for (x, y) in curve[1:-1]: dr.polygon([(x - 3, y - 1), (x, y + 5), (x + 3, y - 1)], fill=(214, 204, 190, 255))
+        for (x, y) in curve[2:-1]: dr.polygon([(x - 2, y + 2), (x + 1, y - 4), (x + 3, y + 2)], fill=(190, 180, 168, 255))
     dr.line([(150, 52), (230, 60)], fill=P['shk2'] + (255,), width=1)          # an old scar along the flank
     return im
 
@@ -290,10 +299,10 @@ def main():
     strip.save(os.path.join(OUT, 'm_rocco.png'))
     ks = Image.new('RGBA', (48 * 6, 26)); [ks.paste(koi(i), (i * 48, 0)) for i in range(6)]
     ks.save(os.path.join(OUT, 'm_koi.png'))
-    ss = Image.new('RGBA', (360 * 2, 140)); [ss.paste(shark(i), (i * 360, 0)) for i in range(2)]
+    ss = Image.new('RGBA', (360 * 3, 140)); [ss.paste(shark(i), (i * 360, 0)) for i in range(3)]
     ss.save(os.path.join(OUT, 'm_shark.png'))
-    meta = {'surface': SURF, 'dockY': 334, 'moon': MOON, 'rocco': {'w': 96, 'h': 96, 'frames': 4, 'at': [380, 252], 'rodTip': list(rf[0][1])},
-            'koi': {'w': 48, 'h': 26, 'frames': 6}, 'shark': {'w': 360, 'h': 140, 'frames': 2, 'eye': [44, 62]}}
+    meta = {'surface': SURF, 'dockY': 334, 'moon': MOON, 'rocco': {'w': 96, 'h': 96, 'frames': 4, 'at': [380, 252], 'rodTip': list(rf[0][1]), 'reelTip': list(rf[3][1])},
+            'koi': {'w': 48, 'h': 26, 'frames': 6}, 'shark': {'w': 360, 'h': 140, 'frames': 3, 'eye': [44, 62]}}
     json.dump(meta, open(os.path.join(OUT, 'movie.json'), 'w'), indent=1)
     # a contact sheet to look at
     sheet = Image.new('RGBA', (W, WATER_H), (0, 0, 0, 255))

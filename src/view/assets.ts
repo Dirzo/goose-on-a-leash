@@ -3,7 +3,7 @@ import type Phaser from 'phaser';
 import manifest from '../assets/sprites/sprites.json';
 import movieMeta from '../assets/movie/movie.json';
 
-export const MOVIE = movieMeta as { surface: number; dockY: number; moon: [number, number, number]; rocco: { w: number; h: number; frames: number; at: [number, number]; rodTip: [number, number] }; koi: { w: number; h: number; frames: number }; shark: { w: number; h: number; frames: number; eye: [number, number] } };
+export const MOVIE = movieMeta as unknown as { surface: number; dockY: number; moon: [number, number, number]; rocco: { w: number; h: number; frames: number; at: [number, number]; rodTip: [number, number]; reelTip: [number, number] }; koi: { w: number; h: number; frames: number }; shark: { w: number; h: number; frames: number; eye: [number, number] } };
 
 export interface StripDef { w: number; h: number; frames: number; anchor: [number, number]; points: Record<string, [number, number]> }
 export const SPRITES = manifest as unknown as Record<string, StripDef>;

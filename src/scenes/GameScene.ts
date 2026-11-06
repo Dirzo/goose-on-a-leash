@@ -47,6 +47,8 @@ export class GameScene extends Phaser.Scene {
   prologue: Prologue | null = null;
   /** The opening film, before the prologue. */
   movie: Movie | null = null;
+  private catchFilmed = false;
+  private stash: Sim['enemies'] | null = null;
   /** Set by the UI: Rocco called the ferry. */
   onFerry: () => void = () => {};
 
@@ -77,7 +79,7 @@ export class GameScene extends Phaser.Scene {
     this.cinema.onEnd = id => {
       this.controls.dropPending(); this.lastNow = performance.now();
       if (id === 'pro-open' && this.prologue) { this.prologue.logic.phase = 'cast'; this.prologue.logic.t = 0; }
-      if (id === 'pro-catch') this.endPrologue();
+      if (id === 'pro-tie') this.endPrologue();
     };
     if (this.view instanceof ArtRenderer) this.view.cinema = this.cinema.state;
     this.feed(this.sim.drainEvents());
@@ -91,8 +93,10 @@ export class GameScene extends Phaser.Scene {
     const now = performance.now();
     const dt = this.lastNow ? Math.min(0.25, (now - this.lastNow) / 1000) : STEP;
     this.lastNow = now;
-    if (this.movie?.active) this.movie.update(dt);
-    const film = this.cinema.active || !!this.movie?.active, pro = !!this.prologue?.active;
+    if (this.movie?.active) { this.movie.update(dt); for (const s of this.movie?.sounds ?? []) sound.play(s as Parameters<typeof sound.play>[0]); if (this.movie) this.movie.sounds = []; }
+    const chasing = this.prologue?.logic.phase === 'chase';
+    const film = this.cinema.active || !!this.movie?.active, pro = !!this.prologue?.active && !chasing;
+    this.controls.verbsOff = chasing;
     this.controls.paused = this.paused || film || pro; this.controls.cinema = film;
     this.controls.pollPad();
     if (film) { if (this.cinema.active) this.cinema.update(dt, this.sim, this.sim.player); this.acc = 0; }
@@ -103,7 +107,12 @@ export class GameScene extends Phaser.Scene {
       if (L.out.length) { this.feed(L.out); L.out = []; }
       for (const s of L.sounds) sound.play(s as Parameters<typeof sound.play>[0]);
       L.sounds = [];
-      if (L.phase === 'catch' && !this.cinema.active) this.cinema.play('pro-catch');
+      if (L.phase === 'catch' && !this.cinema.active && !this.movie && !this.catchFilmed) {
+        this.catchFilmed = true;
+        this.movie = new Movie(this, this.view.layers().screen, HUD_SCALE, 'catch');
+        this.movie.onEnd = () => { this.movie = null; this.lastNow = performance.now(); this.cinema.play('pro-catch'); };
+      }
+      if (L.phase === 'tied' && !this.cinema.active) { L.phase = 'catch'; this.cinema.play('pro-tie'); }
       this.acc = 0;
     }
     else if (!this.paused && this.hitStop > 0) { this.hitStop -= dt; }
@@ -119,7 +128,15 @@ export class GameScene extends Phaser.Scene {
       if (steps === MAX_STEPS) this.acc = 0;
       this.feed(this.sim.drainEvents());
     }
-    if (!film && !pro) { this.cinema.update(dt, this.sim, this.sim.player); this.cues(); }
+    if (film && this.prologue) this.prologue.clearPresses();
+    if (chasing && !film && this.prologue) {
+      const pl = this.prologue;
+      pl.chaseFrame(dt, this.controls.aim(this.sim.player));
+      for (const s of pl.logic.sounds) sound.play(s as Parameters<typeof sound.play>[0]);
+      pl.logic.sounds = [];
+      if (pl.logic.phase === 'tied') { pl.logic.phase = 'catch'; this.cinema.play('pro-tie'); }
+    }
+    if (!film && !pro) { this.cinema.update(dt, this.sim, this.sim.player); if (!chasing) this.cues(); }
     this.listen();
     const still = this.paused || film || pro, alpha = still ? 1 : this.acc / STEP;
     this.view.draw(this.sim, still ? null : this.prev, alpha, this.paused ? 0 : dt, this.controls.aim(this.sim.player), !film);
@@ -186,6 +203,11 @@ export class GameScene extends Phaser.Scene {
       this.sim.goose.x = p.x - 40; this.sim.goose.y = p.y; this.sim.goose.face = 1;
       this.view.stage = { hideGoose: false, hideLine: true };
     }
+    if (act === 'bolt' && this.prologue) {
+      this.stash = this.sim.enemies; this.sim.enemies = [];                // the frogs keep their distance for now
+      this.prologue.logic.startChase();
+      this.view.stage = { hideGoose: false, hideLine: true };
+    }
     if (act === 'tie') this.view.stage = null;
   }
 
@@ -202,6 +224,7 @@ export class GameScene extends Phaser.Scene {
     this.prologue.logic.phase = 'done';
     this.prologue.destroy(); this.prologue = null;
     this.sim.seen.add('prologue');
+    if (this.stash) { this.sim.enemies = this.stash; this.stash = null; }
     if (this.view instanceof ArtRenderer) { this.view.stage = null; this.view.atmo.calm = 0; }
     const p = this.sim.player; this.sim.goose.x = p.x - 30; this.sim.goose.y = p.y; this.sim.goose.state = 'held';
     this.controls.dropPending(); this.lastNow = performance.now();

@@ -647,7 +647,7 @@ export class ArtRenderer {
     if (this.stage?.hideGoose || this.stage?.hideLine) smooth.length = 0;
     this.line.lineStyle(leash.heavy ? 2 : 1, hex(leash.ropeColor), 1);
     if (!smooth.length) { /* no leash yet */ } else if (leash.heavy) dashed(this.line, smooth, 4, 2); else this.line.strokePoints(smooth as unknown as Phaser.Math.Vector2[], false);
-    if (taut || go.strain > 0.7) { this.line.lineStyle(1, 0xf2c230, 0.4 + 0.4 * Math.sin(time * 20)); this.line.strokePoints(smooth as unknown as Phaser.Math.Vector2[], false); }
+    if (smooth.length && (taut || go.strain > 0.7)) { this.line.lineStyle(1, 0xf2c230, 0.4 + 0.4 * Math.sin(time * 20)); this.line.strokePoints(smooth as unknown as Phaser.Math.Vector2[], false); }
     if (sim.leashAttached) { this.line.fillStyle(0xd8ecf4, 1); this.line.fillRect(tipW.x - 1, tipW.y - 1, 2, 2); }
 
     // ---- effects

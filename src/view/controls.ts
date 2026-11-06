@@ -26,6 +26,8 @@ export class Controls {
   oar = false;
   /** Set by the scene while a cinematic plays: Space / Enter / click advance it, Esc skips. */
   cinema = false;
+  /** Set by the scene in scripted bits (catching Biscuit): walk only, no verbs. */
+  verbsOff = false;
   private rmb = false;
   private padGuard = false;
   private pending = new Set<Verb>();
@@ -152,7 +154,7 @@ export class Controls {
     const f: InputFrame = { moveX: m.x, moveY: m.y, aimX: a.x, aimY: a.y };
     if (!this.paused) f.guard = this.held.has('g') || this.rmb || this.padGuard;
     if (consume && !this.paused) {
-      for (const v of this.pending) f[v] = true;
+      if (!this.verbsOff) for (const v of this.pending) f[v] = true;
       this.pending.clear();
     }
     return f;

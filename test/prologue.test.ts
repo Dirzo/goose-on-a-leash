@@ -69,4 +69,31 @@ describe('the prologue', () => {
     }
     expect(b.L.phase).toBe('catch');
   });
+
+  it('catching Biscuit: he runs from you, flaps free if grabbed hungry, and is caught while eating bread', () => {
+    const { sim, L } = onDock();
+    L.startChase();
+    const G = L.goose, aimAt = (x: number, y: number) => ({ x, y });
+    for (let i = 0; i < 120; i++) L.chase(DT, false, false, aimAt(0, 0));
+    // he stays on dry land
+    expect(sim.room.inPit(G.x, G.y, 4)).toBe(false);
+    // walk up close: he bolts
+    sim.player.x = G.x + 30; sim.player.y = G.y;
+    const d0 = Math.hypot(G.x - sim.player.x, G.y - sim.player.y);
+    for (let i = 0; i < 30; i++) L.chase(DT, false, false, aimAt(0, 0));
+    expect(Math.hypot(G.x - sim.player.x, G.y - sim.player.y)).toBeGreaterThan(d0);
+    // a grab without bread fails
+    sim.player.x = G.x + 20; sim.player.y = G.y;
+    L.chase(DT, false, true, aimAt(0, 0));
+    expect(L.phase).toBe('chase');
+    // toss bread near him, wait for him to settle, walk up and grab
+    sim.player.x = G.x + 140; sim.player.y = G.y;
+    L.chase(DT, true, false, aimAt(G.x + 40, G.y));
+    expect(L.bread).not.toBeNull();
+    for (let i = 0; i < 200 && L.goose.eat <= 0; i++) L.chase(DT, false, false, aimAt(0, 0));
+    expect(L.goose.eat).toBeGreaterThan(0);
+    sim.player.x = G.x + 20; sim.player.y = G.y;
+    L.chase(DT, false, true, aimAt(0, 0));
+    expect(L.phase).toBe('tied');
+  });
 });
