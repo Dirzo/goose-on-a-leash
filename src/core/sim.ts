@@ -145,6 +145,8 @@ export interface Goose {
   hit?: number; perfect?: boolean;
   /** Casting mode: seconds left of his rampage after you cut the line. */
   cut?: number;
+  /** Seconds he's out for revenge: the line was cut before he was ready, and he blames Rocco (and Bimbo). */
+  grudge?: number;
 }
 
 export interface Item { mat: ItemId; x: number; y: number; vx: number; vy: number; t: number; got?: boolean }
@@ -829,7 +831,16 @@ export class Sim {
     if (g.state !== 'held' && g.state !== 'latched') return;
     if (this.castMode) {
       // cutting the line: only once he's worked up enough to fight on his own
-      if (g.fury < C.castCutFury && g.furious <= 0) { this.say(`He's not angry enough to fight alone yet. Rage ${Math.round(g.fury)} of ${C.castCutFury}.`); return; }
+      if (g.fury < C.castCutFury && g.furious <= 0) {
+        // too soon: he isn't worked up about the critters, so he gets worked up about YOU
+        const rage = Math.round(g.fury);
+        g.target = null; g.grabCd = C.grabCooldown; g.state = 'loose'; g.feral = true; g.t = 99; g.cut = 0;
+        g.furious = C.grudgeTime / 2; g.fury = 100; g.grudge = C.grudgeTime;
+        this.fx('snap', g.x, g.y); this.fx('honk', g.x, g.y, { a: Math.atan2(this.player.y - g.y, this.player.x - g.x), cone: 0.6, range: 60 });
+        this.say(`SNIP! Biscuit wasn't ready (rage ${rage} of ${C.castCutFury}). He looks at the cut line. He looks at you. Oh no.`);
+        this.bimbo("Rocco. ROCCO. Why would you DO that. He's looking at ME. Bread! Throw bread! [F]", undefined, true);
+        return;
+      }
       g.target = null; g.grabCd = C.grabCooldown; g.state = 'loose'; g.feral = false; g.t = 99; g.cut = C.castCutTime;
       this.fx('snap', g.x, g.y); this.say('SNIP! You cut the line. Go get them, Biscuit!');
       return;
@@ -838,6 +849,9 @@ export class Sim {
     if (g.furious > 0) this.goFeral('You let a furious goose go. Bad idea.');
     else { g.grabCd = C.grabCooldown; g.state = 'loose'; g.feral = false; g.t = 4; this.say('Goose unleashed. Good luck everyone.'); }
   }
+
+  /** Rocco is terrified of a feral goose: within reach of one, he scrambles (faster, and the view makes him sweat). */
+  panicked(): boolean { const g = this.goose, p = this.player; return g.feral && g.state === 'loose' && Math.hypot(g.x - p.x, g.y - p.y) < 190; }
 
   private goFeral(msg: string): void {
     const g = this.goose, p = this.player;
@@ -850,7 +864,7 @@ export class Sim {
     const g = this.goose;
     g.fury = 0; g.furious = 0; g.strain = 0;
     if (g.state === 'loose') g.state = 'returning';
-    g.feral = false;
+    g.feral = false; g.grudge = 0;
   }
 
   feedBread(): void {
@@ -1228,6 +1242,7 @@ export class Sim {
     g.grabCd = Math.max(0, g.grabCd - dt);
 
     // fury
+    if (g.grudge) { g.grudge = Math.max(0, g.grudge - dt); if (!g.feral) g.grudge = 0; }
     if (g.furious > 0) {
       g.furious -= dt * (g.feral ? 0.5 : 1);
       if (g.furious <= 0) {
@@ -1368,7 +1383,7 @@ export class Sim {
         p.vx += (p.rdx * sp - p.vx) * k; p.vy += (p.rdy * sp - p.vy) * k;
         p.fx = p.rdx; p.fy = p.rdy;
       } else {
-        const sp = C.playerSpeed * wade * (p.guard > 0 ? C.guardSpeed : 1) * (this.charging ? C.castChargeSlow : 1) * (this.enemies.some(e => e.mode === 'cling' && !e.woke && !e.dead) ? 0.7 : 1);
+        const sp = C.playerSpeed * wade * (this.panicked() ? C.panicSpeed : 1) * (p.guard > 0 ? C.guardSpeed : 1) * (this.charging ? C.castChargeSlow : 1) * (this.enemies.some(e => e.mode === 'cling' && !e.woke && !e.dead) ? 0.7 : 1);
         p.vx += (mx * sp - p.vx) * acc; p.vy += (my * sp - p.vy) * acc;
       }
       // a goose stronger than his leash tugs you around
@@ -3301,11 +3316,12 @@ export class Sim {
       if ((g.cut ?? 0) <= 0) { g.cut = 0; g.fury = 0; g.furious = 0; g.state = 'returning'; this.say('Biscuit has run out of rage. He waddles back to be tied on.'); }
     } else if (g.state === 'loose') {
       let e = this.nearestEnemy(g.x, g.y);
-      if (g.feral && (!e || Math.hypot(e.x - g.x, e.y - g.y) > 260)) e = null;
+      if (g.feral && (!e || Math.hypot(e.x - g.x, e.y - g.y) > 260 || (g.grudge ?? 0) > 0)) e = null;
       if (g.feral && !e) {
-        // nothing left to bite nearby: the janitor will do
-        const [dx, dy, d] = dirTo(g, p);
-        const sp = 215 + 12 * this.power();
+        // nothing left to bite nearby: the janitor will do. Holding a grudge, he goes round for Bimbo's backpack.
+        const grudge = (g.grudge ?? 0) > 0 && this.pack.enabled;
+        const [dx, dy, d] = grudge ? dirTo(g, this.packPoint(16)) : dirTo(g, p);
+        const sp = 215 + 12 * this.power() + (grudge ? 30 : 0);
         g.vx = dx * sp; g.vy = dy * sp;
         if (d < p.r + 12) {
           g.biteT -= dt;
@@ -3317,6 +3333,11 @@ export class Sim {
             } else if (p.inv <= 0) {
               this.hurtPlayer(this.power() >= 4 ? 2 : 1, false, g, 'bite');
               p.vx += dx * 260; p.vy += dy * 260;
+              if ((g.grudge ?? 0) > 0 && this.pack.enabled) {                 // and a peck at Bimbo through the canvas
+                this.pack.water = Math.max(0, this.pack.water - C.grudgePeck * this.diff.hurt);
+                this.fx('splash', p.x - 10, p.y - 34);
+                if (this.rng() < 0.4) this.bimbo(this.rng() < 0.5 ? 'OW. He bit the BACKPACK. I live in the backpack!' : 'BREAD. NOW. [F]', undefined, true);
+              }
               this.fx('chomp', p.x, p.y);
               if (this.kit.toothFirst || this.rng() < 0.4) { this.kit.toothFirst = false; this.drop('tooth', p.x, p.y); }
               if (p.hp > 0) this.say('The goose bit YOU.');

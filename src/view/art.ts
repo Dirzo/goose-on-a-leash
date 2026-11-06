@@ -74,6 +74,8 @@ export class ArtRenderer {
   /** Squash-and-stretch springs (0 = rest). */
   private rolled = false;
   // Biscuit's comedy: the strip he's on, the waddle phase, idle antics and the pop-up words
+  private flinchT = 0; private wasGrudge = false; private panicT = 0; private sweatAcc = 0;
+  private sweat: { x: number; y: number; vx: number; vy: number; life: number }[] = [];
   private honkT = 0; private antic: { kind: 'mutter' | 'stare' | 'honk' | 'hiss'; t: number } | null = null; private anticT = 6;
   private gStepAcc = 0; private gPrev = { x: 0, y: 0 }; private gState = 'held'; private gnawT = 0; private lastG = { x: 0, y: 0 };
   private pops: { text: string; x: number; y: number; t: number; color: string; size: number; tilt: number }[] = [];
@@ -199,6 +201,10 @@ export class ArtRenderer {
         if (e.kind === 'snap') { SETTINGS.shake && cam.shake(320, 0.009); if (SETTINGS.flashes) this.snapFlash = 1; }
         if (e.kind === 'chomp') { this.sqB = 1; SETTINGS.shake && cam.shake(70, 0.0012 * this.power); this.pop(pickOne(CHOMP_WORDS), e.x, e.y - 30, '#fff1c8', 13); }
         if (e.kind === 'perfect' && Math.random() < 0.5) this.pop(pickOne(['WHEEEE', 'HOOONK!', 'YEET']), e.x, e.y - 50, '#ffe066', 12);
+        if ((e.kind === 'honk' && Math.hypot(e.x - this.lastP.x, e.y - this.lastP.y) < 120) || (e.kind === 'chomp' && Math.hypot(e.x - this.lastP.x, e.y - this.lastP.y) < 20)) {
+          this.flinchT = 0.35;
+          if (e.kind === 'chomp' || Math.random() < 0.7) sound.play('eep'), this.pop(e.kind === 'chomp' ? pickOne(['OW!', 'OWW', 'MY TAIL']) : pickOne(['eep!', 'yip!', 'gah!']), this.lastP.x, this.lastP.y - 82, '#9fe8ff', 10);
+        }
         if (e.kind === 'honk') { this.honkT = 0.5; const h = Math.random(); this.pop(h < 0.08 ? 'honk.' : h < 0.16 ? 'HONK?!' : h < 0.24 ? 'HOOONK' : 'HONK!', e.x, e.y - 70, '#ffffff', 14 + this.power * 2); }
         if (e.kind === 'boing' && Math.hypot(e.x - this.lastG.x, e.y - this.lastG.y) < 60) { this.pop(pickOne(['HONK?!', 'hrk!', 'WHAT', '!!']), e.x, e.y - 60, '#ffd27a', 12); sound.play('squawk'); }
         if (e.kind === 'tear' || e.kind === 'splash') this.sqR = Math.max(this.sqR, e.kind === 'tear' ? 1 : 0.5);
@@ -547,6 +553,34 @@ export class ArtRenderer {
     this.wasAir = pl.air;
     const sr = Math.sin(this.sqR * Math.PI) * 0.18;
     this.rocco.setScale(1 + sr, pl.air ? 1.08 : rolling ? 0.86 : 1 - sr);
+    // ---- Rocco is terrified of his own goose
+    {
+      const gd = Math.hypot(G.x - P.x, G.y - P.y), panic = sim.panicked();
+      const nervous = !panic && ((go.furious > 0 && gd < 140) || this.antic?.kind === 'stare' || (this.antic?.kind === 'hiss' && gd < 140));
+      this.flinchT = Math.max(0, this.flinchT - dt);
+      let fear = panic ? 1 : nervous ? 0.45 : 0;
+      if (this.flinchT > 0) fear = Math.max(fear, 0.8);
+      if ((go.grudge ?? 0) > 0 && !this.wasGrudge) {
+        this.pop('BETRAYAL', G.x, G.y - 74, '#ff4a3a', 15); this.pop('...uh oh', P.x, P.y - 84, '#9fe8ff', 11);
+        this.flinchT = 0.35; sound.play('eep');
+      }
+      this.wasGrudge = (go.grudge ?? 0) > 0;
+      if (fear > 0 && !rolling && pl.dead <= 0) {
+        this.rocco.x += Math.round((Math.random() - 0.5) * 2.4 * fear);                         // the shakes
+        if (this.flinchT > 0) { const k = this.flinchT / 0.35; this.rocco.y -= Math.round(Math.sin(k * Math.PI) * 7); this.rocco.setScale(0.9, 1.12); }
+        this.rocco.setAngle(this.rocco.angle + (G.x < P.x ? 1 : -1) * 6 * fear);                 // leaning away from him
+        this.sweatAcc += dt * fear * 7;
+        while (this.sweatAcc >= 1) { this.sweatAcc -= 1; this.sweat.push({ x: P.x + (Math.random() - 0.5) * 16, y: P.y - 60, vx: (Math.random() - 0.5) * 60, vy: -50 - Math.random() * 50, life: 0.6 }); }
+      }
+      if (panic) {
+        this.panicT -= dt;
+        if (this.panicT <= 0) { this.panicT = 1.0 + Math.random() * 0.9; this.pop(pickOne(['AAAA!', 'NOPE', 'not the face!', 'GOOD BOY?!', 'eep!', 'BREAD! BREAD!', 'WHY']), P.x, P.y - 82, '#9fe8ff', 11); sound.play('eep'); }
+      } else this.panicT = 0.2;
+      if (nervous && Math.random() < dt * 0.35) { this.pop(pickOne(['gulp', '...', 'nice goose', 'easy, buddy', 'good boy?']), P.x, P.y - 80, '#cfe6ff', 9); sound.play('gulp'); }
+      for (const d of this.sweat) { d.vy += 300 * dt; d.x += d.vx * dt; d.y += d.vy * dt; d.life -= dt; }
+      this.sweat = this.sweat.filter(d => d.life > 0);
+      for (const d of this.sweat) { this.fxg.fillStyle(0xbfe8ff, Math.min(1, d.life * 3)); this.fxg.fillRect(Math.round(d.x), Math.round(d.y), 2, 3); }
+    }
     if (rolling) for (let i = 1; i <= 3; i++) {          // a dust trail behind the tumble
       const k = i / 3, a = 0.35 * (1 - k) * (1 - ru * 0.5);
       g.fillStyle(0x8a7a5a, a); g.fillEllipse(P.x - pl.rdx * 14 * i, P.y + 2 - pl.rdy * 10 * i, 14 - i * 2, 5);
@@ -598,7 +632,7 @@ export class ArtRenderer {
         const r = Math.random();
         if (r < 0.45) { this.antic = { kind: 'mutter', t: 0.6 }; sound.play('mutter'); this.pop(pickOne(['hnk.', 'hnk?', 'hrmph', '...honk', 'hnnnk']), G.x, G.y - 60, '#d8d0c0', 9); }
         else if (r < 0.75) { this.antic = { kind: 'stare', t: 2.4 }; this.pop('...', G.x, G.y - 60, '#d8d0c0', 10); }
-        else if (r < 0.92) { this.antic = { kind: 'honk', t: 0.5 }; sound.honk(this.power); this.pop(pickOne(['HONK', 'honk!', 'HONK (at nothing)']), G.x, G.y - 70, '#ffffff', 11); }
+        else if (r < 0.92) { this.antic = { kind: 'honk', t: 0.5 }; sound.honk(this.power); this.flinchT = 0.35; this.pop('eep!', P.x, P.y - 82, '#9fe8ff', 9); this.pop(pickOne(['HONK', 'honk!', 'HONK (at nothing)']), G.x, G.y - 70, '#ffffff', 11); }
         else { this.antic = { kind: 'hiss', t: 1.2 }; sound.play('goosehiss'); this.pop('hsss', G.x, G.y - 60, '#ff8a6a', 9); }
       }
     } else this.anticT = Math.max(this.anticT, 2);

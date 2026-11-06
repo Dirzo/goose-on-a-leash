@@ -75,10 +75,26 @@ describe('casting mode', () => {
     expect(Math.hypot(sim.player.x - f.x, sim.player.y - f.y)).toBeLessThanOrEqual(L + 1.5);
   });
 
-  it('cutting the line needs rage; then he fights alone, never bites Rocco, and comes back', () => {
+  it('cut too soon and he turns on Rocco and Bimbo; bread calms him', () => {
     const sim = field();
+    const w = sim.pack.water;
     sim.letGo();
-    expect(sim.goose.state).toBe('held');                // not angry enough
+    expect(sim.goose.state).toBe('loose');
+    expect(sim.goose.feral).toBe(true);
+    expect(sim.goose.grudge).toBeGreaterThan(0);
+    const f = sim.mkEnemy('frog', sim.player.x + 60, sim.player.y); f.cd = 99; sim.enemies.push(f);   // a critter right there: he ignores it
+    let panicked = false;
+    for (let i = 0; i < Math.round(4 / STEP); i++) { sim.player.inv = 0; sim.step(STEP, frame()); if (sim.panicked()) panicked = true; }
+    expect(panicked).toBe(true);
+    expect(w - sim.pack.water).toBeGreaterThan(0.1);     // he went for the pack
+    expect(f.hp).toBe(f.max);
+    sim.kit.bread.stale = 2; sim.feedBread();
+    expect(sim.goose.feral).toBe(false);
+    expect(sim.goose.grudge ?? 0).toBe(0);
+  });
+
+  it('cut with enough rage: he fights alone, never bites Rocco, and comes back', () => {
+    const sim = field();
     sim.goose.fury = C.castCutFury + 5;
     const f = sim.mkEnemy('frog', 400, 320); f.cd = 99; sim.enemies.push(f);
     const w = sim.pack.water;

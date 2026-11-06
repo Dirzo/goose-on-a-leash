@@ -153,6 +153,8 @@ export class Sound {
         else this.kazoo(260, 0.16, 0.1, 200, 0.06);                                                  // mmf
         break;
       }
+      case 'eep': { const f = 900 + Math.random() * 200; this.tone(f, 0.07, 'sine', 0.11, f * 1.6); this.tone(f * 1.2, 0.09, 'sine', 0.09, f * 1.9, 0.08); break; }   // Rocco squeaks
+      case 'gulp': this.tone(240, 0.08, 'triangle', 0.12, 120); this.tone(180, 0.07, 'sine', 0.08, 90, 0.09); break;
       case 'gnaw': this.noise(0.05, 2200, 0.08, 'bandpass', 1200, 0, 3); this.kazoo(150 + Math.random() * 60, 0.14, 0.07, 120, 0.02, undefined, 22); break;   // grrmmf
       case 'goosehiss': this.noise(0.6, 4200, 0.14, 'highpass', 6000); this.kazoo(110, 0.5, 0.05, 90, 0.05, undefined, 26); break;
       case 'mutter': { const f = 300 + Math.random() * 80; this.kazoo(f, 0.13, 0.08, f * (Math.random() < 0.5 ? 1.35 : 0.8)); break; }   // hnk? / hnk.

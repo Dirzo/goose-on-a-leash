@@ -67,7 +67,10 @@ export const C = {
   castChargeSlow: 0.65,    // Rocco's speed while winding up
   castHeel: 50,            // line out when he's back at your heel
   castCutFury: 60,         // rage needed before you can cut him loose to fight alone
-  castCutTime: 8,          // seconds he rampages after the line is cut, then comes back to be tied on
+  castCutTime: 8,
+  grudgeTime: 8,           // cut him loose before castCutFury and he's after Rocco and Bimbo for this long (bread ends it)
+  grudgePeck: 0.03,        // extra water each grudge bite pecks out of Bimbo's pack
+  panicSpeed: 1.15,        // Rocco scrambles this much faster with a feral goose at his heels          // seconds he rampages after the line is cut, then comes back to be tied on
   // the Ferryman's Oar: hold to guard Bimbo from the front; raise it just as a blow lands to parry
   guardSpeed: 0.5,
   guardArc: 1.25,          // half-angle (radians) of the arc the oar covers
