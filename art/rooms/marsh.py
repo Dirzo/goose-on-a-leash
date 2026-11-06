@@ -526,6 +526,11 @@ def render(R):
     return Image.fromarray(np.clip(img, 0, 255).astype(np.uint8))
 
 
+def save_room(im, path):
+    """Rooms ship inside a single-file build: a 256-colour palette (no dither) keeps them small."""
+    im.convert('RGB').quantize(colors=256, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).save(path, optimize=True)
+
+
 def main(ids):
     os.makedirs(OUT, exist_ok=True)
     files = [os.path.join(ROOT, 'src', 'data', 'rooms', f'{i}.json') for i in ids] if ids else \
@@ -533,7 +538,7 @@ def main(ids):
                + glob.glob(os.path.join(ROOT, 'src', 'data', 'rooms', 'driftwood-*.json')))
     for f in files:
         R = json.load(open(f))
-        render(R).save(os.path.join(OUT, f"{R['id']}.png"))
+        save_room(render(R), os.path.join(OUT, f"{R['id']}.png"))
         print('ok', R['id'], R['width'], R['height'])
 
 

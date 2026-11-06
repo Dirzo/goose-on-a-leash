@@ -254,5 +254,5 @@ for j, row in enumerate(lantern):
 
 out = os.path.join(ROOT, 'src', 'assets', 'rooms')
 os.makedirs(out, exist_ok=True)
-Image.fromarray(np.clip(img, 0, 255).astype(np.uint8)).save(os.path.join(out, 'willowmere.png'))
+Image.fromarray(np.clip(img, 0, 255).astype(np.uint8)).quantize(colors=256, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).save(os.path.join(out, 'willowmere.png'), optimize=True)
 print('ok', W, H)
