@@ -4,6 +4,7 @@
  * 1280x720 canvas) and follows Rocco; the HUD has its own camera at 1280x720 so text stays sharp.
  */
 import { SETTINGS } from './settings';
+import { sound } from './audio';
 import Phaser from 'phaser';
 import { BREADS, ITEMS, MATERIALS, isCatalyst, type ItemId } from '../data/recipes';
 import { C } from '../core/config';
@@ -28,6 +29,8 @@ interface ViewFx { kind: string; x: number; y: number; t: number; a?: number; co
 interface Quip { text: string; life: number; bimbo?: boolean }
 interface Drip { x: number; y: number; z: number; vz: number; life: number }
 
+const CHOMP_WORDS = ['CHOMP!', 'NOM', 'chomp', 'GNASH', '*crunch*', 'nyom', 'CHOMP', 'munch'];
+const pickOne = <T,>(a: readonly T[]): T => a[Math.floor(Math.random() * a.length)]!;
 const HEART = ['.XX.XX.', 'XXXXXXX', 'XXXXXXX', '.XXXXX.', '..XXX..', '...X...'];
 
 /** A sprite strip's attachment point, relative to its anchor, mirrored when the sprite faces left. */
@@ -70,7 +73,15 @@ export class ArtRenderer {
   private lead: Vec = { x: 0, y: 0 };
   /** Squash-and-stretch springs (0 = rest). */
   private rolled = false;
-  private sqB = 0; private sqR = 0; private wasAir = false; private snapFlash = 0; private power = 2;
+  // Biscuit's comedy: the strip he's on, the waddle phase, idle antics and the pop-up words
+  private honkT = 0; private antic: { kind: 'mutter' | 'stare' | 'honk' | 'hiss'; t: number } | null = null; private anticT = 6;
+  private gStepAcc = 0; private gPrev = { x: 0, y: 0 }; private gState = 'held'; private gnawT = 0; private lastG = { x: 0, y: 0 };
+  private pops: { text: string; x: number; y: number; t: number; color: string; size: number; tilt: number }[] = [];
+  private pop(text: string, x: number, y: number, color: string, size: number): void {
+    this.pops.push({ text, x: x + (Math.random() - 0.5) * 16, y, t: 0, color, size, tilt: Math.random() < 0.5 ? -1 : 1 });
+    if (this.pops.length > 8) this.pops.shift();
+  }
+  private sqB = 0; private sqR = 0; private wasAir = false; private wasFurious = false; private snapFlash = 0; private power = 2;
 
   constructor(private scene: Phaser.Scene, sim: Sim) {
     const main = scene.cameras.main;
@@ -186,7 +197,10 @@ export class ArtRenderer {
         this.atmo.flashAt(e.kind, e.x, e.y);
         const cam = this.scene.cameras.main;
         if (e.kind === 'snap') { SETTINGS.shake && cam.shake(320, 0.009); if (SETTINGS.flashes) this.snapFlash = 1; }
-        if (e.kind === 'chomp') { this.sqB = 1; SETTINGS.shake && cam.shake(70, 0.0012 * this.power); }
+        if (e.kind === 'chomp') { this.sqB = 1; SETTINGS.shake && cam.shake(70, 0.0012 * this.power); this.pop(pickOne(CHOMP_WORDS), e.x, e.y - 30, '#fff1c8', 13); }
+        if (e.kind === 'perfect' && Math.random() < 0.5) this.pop(pickOne(['WHEEEE', 'HOOONK!', 'YEET']), e.x, e.y - 50, '#ffe066', 12);
+        if (e.kind === 'honk') { this.honkT = 0.5; const h = Math.random(); this.pop(h < 0.08 ? 'honk.' : h < 0.16 ? 'HONK?!' : h < 0.24 ? 'HOOONK' : 'HONK!', e.x, e.y - 70, '#ffffff', 14 + this.power * 2); }
+        if (e.kind === 'boing' && Math.hypot(e.x - this.lastG.x, e.y - this.lastG.y) < 60) { this.pop(pickOne(['HONK?!', 'hrk!', 'WHAT', '!!']), e.x, e.y - 60, '#ffd27a', 12); sound.play('squawk'); }
         if (e.kind === 'tear' || e.kind === 'splash') this.sqR = Math.max(this.sqR, e.kind === 'tear' ? 1 : 0.5);
         if (e.kind === 'tear' || (e.kind === 'splash' && Math.hypot(e.x - this.lastP.x, e.y + 34 - this.lastP.y) < 40)) this.atmo.hurtFlash = (e.kind === 'tear' ? 1 : 0.6) * (SETTINGS.flashes ? 1 : 0.25);
         if (e.kind === 'tear') SETTINGS.shake && cam.shake(120, 0.003);
@@ -559,28 +573,87 @@ export class ArtRenderer {
 
     // ---- Biscuit
     const hauled = go.state === 'held' && go.drag > 0;     // dragged along after a roll: flapping
-    const flying = go.state === 'flying' || go.state === 'latched' || hauled;
-    const bstrip = flying ? 'biscuit_fling' : 'biscuit_idle';
-    const bflip = go.face < 0;
-    const waddle = go.state === 'loose' || go.state === 'returning';
-    this.show(this.biscuit, bstrip, Math.floor(time * (flying ? 16 : waddle ? 12 : 6)));
-    const glift = go.state === 'flying' ? 10 : hauled ? 3 + Math.abs(Math.sin(time * 20)) * 3 : 0;
-    this.biscuit.setFlipX(bflip).setPosition(Math.round(G.x), Math.round(G.y - glift)).setDepth(G.y).setVisible(!this.stage?.hideGoose);
-    const sb = Math.sin(this.sqB * Math.PI) * 0.22, stretch = go.state === 'flying' ? 0.1 : 0;
-    this.biscuit.setScale(1 + sb + stretch, 1 - sb - stretch * 0.6);
+    const latched = go.state === 'latched';
+    const flying = go.state === 'flying' || hauled;
     const furious = go.furious > 0;
+    const gsp = Math.hypot(go.vx, go.vy);
+    const gMoving = gsp > 30;
+    this.gPrev = { x: G.x, y: G.y }; this.lastG = G;
+    this.honkT = Math.max(0, this.honkT - dt);
+    // sounds on state changes: a slide whistle out, a slide whistle back, a hiss when he loses it
+    if (go.state !== this.gState) {
+      if (go.state === 'flying') sound.play('slide');
+      else if (this.gState === 'latched' && go.state === 'held') sound.play('slidedown');
+      this.gState = go.state;
+    }
+    if (furious && !this.wasFurious) { sound.play('goosehiss'); this.pop('HSSSSS', G.x, G.y - 64, '#ff8a6a', 12); }
+    this.wasFurious = furious;
+    // idle antics at heel: a mutter, a long suspicious stare at Rocco, a honk at absolutely nothing
+    const idle = go.state === 'held' && !gMoving && !hauled && !furious && !sim.charging && !this.stage?.hideGoose;
+    if (this.antic) { this.antic.t -= dt; if (this.antic.t <= 0) this.antic = null; }
+    if (idle) {
+      this.anticT -= dt;
+      if (this.anticT <= 0 && !this.antic) {
+        this.anticT = 5 + Math.random() * 7;
+        const r = Math.random();
+        if (r < 0.45) { this.antic = { kind: 'mutter', t: 0.6 }; sound.play('mutter'); this.pop(pickOne(['hnk.', 'hnk?', 'hrmph', '...honk', 'hnnnk']), G.x, G.y - 60, '#d8d0c0', 9); }
+        else if (r < 0.75) { this.antic = { kind: 'stare', t: 2.4 }; this.pop('...', G.x, G.y - 60, '#d8d0c0', 10); }
+        else if (r < 0.92) { this.antic = { kind: 'honk', t: 0.5 }; sound.honk(this.power); this.pop(pickOne(['HONK', 'honk!', 'HONK (at nothing)']), G.x, G.y - 70, '#ffffff', 11); }
+        else { this.antic = { kind: 'hiss', t: 1.2 }; sound.play('goosehiss'); this.pop('hsss', G.x, G.y - 60, '#ff8a6a', 9); }
+      }
+    } else this.anticT = Math.max(this.anticT, 2);
+    // which strip
+    let bstrip = 'biscuit_idle', rate = 6;
+    if (latched) { bstrip = 'biscuit_bite'; rate = 14; }
+    else if (flying) { bstrip = 'biscuit_fling'; rate = 16; }
+    else if (this.honkT > 0 || this.antic?.kind === 'honk') { bstrip = 'biscuit_honk'; rate = 10; }
+    else if ((furious || go.feral || this.antic?.kind === 'hiss') && gsp < 70) { bstrip = 'biscuit_hiss'; rate = 8; }
+    else if (gMoving || go.state === 'loose' || go.state === 'returning') { bstrip = 'biscuit_walk'; rate = Math.min(22, 8 + gsp / 14); }
+    let bflip = go.face < 0;
+    if (this.antic?.kind === 'stare') bflip = P.x < G.x;    // turns to give Rocco a long, judgemental look
+    // the waddle: footsteps and a rock about the feet
+    let rot = 0;
+    if (bstrip === 'biscuit_walk') {
+      this.gStepAcc += dt * rate / 4;
+      if (this.gStepAcc >= 1) {
+        this.gStepAcc -= 1; sound.gooseStep(gsp > 160);
+        if (go.state === 'loose' && Math.random() < 0.18) this.pop(pickOne(['pap', 'pap pap', 'flap']), G.x, G.y - 8, '#f0a060', 8);
+      }
+      rot = Math.sin(time * rate * Math.PI / 4) * (0.07 + Math.min(0.08, gsp / 3000));
+    }
+    // biting: thrash, grumble, and land the beak on whatever he's got
+    let bx = G.x, by = G.y;
+    if (latched) {
+      bx = G.x - (bflip ? -1 : 1) * 34 + (Math.random() - 0.5) * 2.5; by = G.y + 14;
+      this.gnawT -= dt;
+      if (this.gnawT <= 0) { this.gnawT = 0.45 + Math.random() * 0.4; sound.play('gnaw'); if (Math.random() < 0.35) this.pop(pickOne(['grr', 'mmf!', 'nom nom', 'grrrr', '*shake*']), G.x, G.y - 34, '#fff1c8', 9); }
+    }
+    this.show(this.biscuit, bstrip, Math.floor(time * rate));
+    const glift = go.state === 'flying' ? 10 : hauled ? 3 + Math.abs(Math.sin(time * 20)) * 3 : 0;
+    this.biscuit.setFlipX(bflip).setPosition(Math.round(bx), Math.round(by - glift)).setDepth(latched ? G.y + 4 : G.y).setVisible(!this.stage?.hideGoose)
+      .setRotation(bflip ? -rot : rot);
+    const sb = Math.sin(this.sqB * Math.PI) * 0.22, stretch = go.state === 'flying' ? 0.1 : 0;
+    const puff = bstrip === 'biscuit_honk' ? 0.06 * Math.sin(time * 40) : 0;
+    this.biscuit.setScale(1 + sb + stretch + puff, 1 - sb - stretch * 0.6 + puff);
     if (go.feral) this.biscuit.setTint(Math.floor(time * 8) % 2 ? 0xff6a5a : 0xff9a8a);
     else if (furious) this.biscuit.setTint(0xffc4b8);
     else this.biscuit.clearTint();
-    if (!this.stage?.hideGoose) { g.fillStyle(0x000000, glift ? 0.22 : 0.35); g.fillEllipse(G.x, G.y + (flying ? 6 : 1), 22, 6); }
+    if (!this.stage?.hideGoose) { g.fillStyle(0x000000, glift ? 0.22 : 0.35); g.fillEllipse(latched ? bx + (bflip ? -6 : 6) : G.x, (latched ? by - 12 : G.y) + (flying ? 6 : 1), latched ? 34 : 22, 6); }
     const neck = point(bstrip, 'neck', bflip);
-    const neckW = { x: Math.round(G.x) + neck.x, y: Math.round(G.y - glift) + neck.y };
+    const neckW = { x: Math.round(bx) + neck.x, y: Math.round(by - glift) + neck.y };
     if (furious || go.feral) for (let i = 0; i < 2; i++) {
       const a = time * 3 + i * 3;
       this.fxg.fillStyle(0xe05a47, 0.7); this.fxg.fillRect(Math.round(G.x - 4 + Math.sin(a) * 4 + i * 6), Math.round(G.y - 64 - ((time * 26 + i * 11) % 14)), 2, 2);
     }
     if (go.state === 'loose' || go.state === 'returning') {
       this.wt(go.state === 'loose' ? (go.feral ? 'FERAL' : 'RAMPAGE') : '...', G.x, G.y - 72, go.feral ? 10 : 8, go.feral ? '#ff2a1a' : '#f08a24');
+    }
+    // comic pop-up words: they burst in big, wobble, drift up and fade
+    for (const q of this.pops) q.t += dt;
+    this.pops = this.pops.filter(q => q.t < 1.1);
+    for (const q of this.pops) {
+      const k = q.t < 0.12 ? 1.6 - q.t * 5 : 1, a = Math.min(1, (1.1 - q.t) / 0.35);
+      this.wt(q.text, q.x + Math.sin(q.t * 18) * q.tilt * Math.max(0, 0.4 - q.t) * 6, q.y - q.t * 22, Math.round(q.size * k), q.color, a);
     }
 
     for (const t of this.trees) {

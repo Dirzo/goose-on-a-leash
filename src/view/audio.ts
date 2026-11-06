@@ -95,18 +95,76 @@ export class Sound {
   }
 
   // ------------------------------------------------------------------ effects
-  /** Biscuit's honk: two reedy voices, lower and longer as Goose Power grows. */
+  /**
+   * A goose voice: a buzzy kazoo (sawtooth through a nasal formant) with a wobbly vibrato. `to` slides the pitch,
+   * `crack` jumps it up an octave part-way through like a voice breaking.
+   */
+  private kazoo(f: number, dur: number, vol = 0.16, to?: number, at = 0, crack?: number, wob = 9): void {
+    const c = this.ctx; if (!c) return;
+    const t = c.currentTime + at, o = c.createOscillator(), o2 = c.createOscillator(), lfo = c.createOscillator(), lg = c.createGain();
+    const form = c.createBiquadFilter(), nose = c.createBiquadFilter(), g = c.createGain();
+    o.type = 'sawtooth'; o2.type = 'square'; o2.detune.value = 14;
+    for (const x of [o, o2]) {
+      x.frequency.setValueAtTime(f, t);
+      if (crack) { x.frequency.setValueAtTime(f * 1.9, t + dur * crack); x.frequency.exponentialRampToValueAtTime(Math.max(40, (to ?? f) * 1.6), t + dur); }
+      else if (to) x.frequency.exponentialRampToValueAtTime(Math.max(40, to), t + dur);
+    }
+    lfo.frequency.value = wob; lg.gain.value = f * 0.035; lfo.connect(lg); lg.connect(o.frequency); lg.connect(o2.frequency);
+    form.type = 'bandpass'; form.frequency.value = 1150; form.Q.value = 2.4;
+    nose.type = 'peaking'; nose.frequency.value = 2600; nose.gain.value = 9;
+    const mix = c.createGain(); mix.gain.value = 0.7;
+    o.connect(form); o2.connect(mix).connect(form); form.connect(nose).connect(g).connect(this.sfxBus);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.015);
+    g.gain.setValueAtTime(vol, t + dur * 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    for (const x of [o, o2, lfo]) { x.start(t); x.stop(t + dur + 0.05); }
+  }
+
+  /** Biscuit's honk: a kazoo, lower as Goose Power grows. Never quite the same twice; sometimes his voice cracks. */
   honk(power = 2): void {
-    const f = 340 - power * 22;
-    this.tone(f, 0.26, 'sawtooth', 0.16, f * 0.78); this.tone(f * 1.01, 0.26, 'square', 0.08, f * 0.8);
-    this.noise(0.18, 1400, 0.08, 'bandpass', 900, 0, 3);
+    const f = (340 - power * 22) * (0.9 + Math.random() * 0.2), r = Math.random();
+    if (r < 0.15) {                                                        // HO-ONK: the voice cracks
+      this.kazoo(f, 0.36, 0.2, f * 0.8, 0, 0.35);
+    } else if (r < 0.27) {                                                 // honk-honk
+      this.kazoo(f, 0.14, 0.18, f * 0.85); this.kazoo(f * 1.06, 0.2, 0.18, f * 0.8, 0.17);
+    } else if (r < 0.33) {                                                 // HOOOOOONK
+      this.kazoo(f, 0.6, 0.18, f * 0.62, 0, undefined, 6);
+    } else this.kazoo(f, 0.26, 0.19, f * 0.78);
+    this.noise(0.12, 1400, 0.06, 'bandpass', 900, 0, 3);
+  }
+
+  private stepN = 0;
+  /** Biscuit's big flat feet: pap, pip, pap, pip. */
+  gooseStep(fast = false): void {
+    if (!this.ctx || this.muted) return;
+    const hi = (this.stepN++ & 1) ? 1.22 : 1;
+    this.tone(260 * hi, 0.05, 'triangle', fast ? 0.09 : 0.06, 150 * hi);
+    this.noise(0.04, 700, 0.04, 'lowpass', 300);
   }
 
   play(kind: string, power = 2): void {
     if (!this.ctx || this.muted) return;
     switch (kind) {
       case 'honk': this.honk(power); break;
-      case 'chomp': this.noise(0.07, 1800, 0.35, 'bandpass', 900, 0, 2); this.tone(140, 0.09, 'triangle', 0.3, 70); break;
+      case 'chomp': {                                                     // CRUNCH, then a pleased little squeak
+        this.noise(0.07, 1800, 0.35, 'bandpass', 900, 0, 2); this.tone(140, 0.09, 'triangle', 0.3, 70);
+        const r = Math.random();
+        if (r < 0.45) { this.tone(900, 0.06, 'sine', 0.1, 1400, 0.07); }                              // nom
+        else if (r < 0.75) { this.tone(820, 0.05, 'sine', 0.09, 1250, 0.07); this.tone(880, 0.06, 'sine', 0.09, 1350, 0.15); }   // nom nom
+        else this.kazoo(260, 0.16, 0.1, 200, 0.06);                                                  // mmf
+        break;
+      }
+      case 'gnaw': this.noise(0.05, 2200, 0.08, 'bandpass', 1200, 0, 3); this.kazoo(150 + Math.random() * 60, 0.14, 0.07, 120, 0.02, undefined, 22); break;   // grrmmf
+      case 'goosehiss': this.noise(0.6, 4200, 0.14, 'highpass', 6000); this.kazoo(110, 0.5, 0.05, 90, 0.05, undefined, 26); break;
+      case 'mutter': { const f = 300 + Math.random() * 80; this.kazoo(f, 0.13, 0.08, f * (Math.random() < 0.5 ? 1.35 : 0.8)); break; }   // hnk? / hnk.
+      case 'squawk': this.kazoo(520, 0.32, 0.16, 260, 0, 0.2, 14); break;                              // HONK?!
+      case 'slide': { const c = this.ctx; const o = c.createOscillator(), g = c.createGain(), t = c.currentTime;  // the slide whistle on a cast
+        o.type = 'sine'; o.frequency.setValueAtTime(520, t); o.frequency.exponentialRampToValueAtTime(1560, t + 0.3);
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.08, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.34);
+        o.connect(g).connect(this.sfxBus); o.start(t); o.stop(t + 0.4); break; }
+      case 'slidedown': { const c = this.ctx; const o = c.createOscillator(), g = c.createGain(), t = c.currentTime;
+        o.type = 'sine'; o.frequency.setValueAtTime(1300, t); o.frequency.exponentialRampToValueAtTime(380, t + 0.22);
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.07, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+        o.connect(g).connect(this.sfxBus); o.start(t); o.stop(t + 0.3); break; }
       case 'block': this.tone(520, 0.06, 'square', 0.12, 300); this.noise(0.08, 2400, 0.2, 'bandpass', 1400); break;
       case 'perfect': this.tone(660, 0.06, 'triangle', 0.16, 990); this.tone(990, 0.2, 'triangle', 0.14, 1480, 0.05); break;
       case 'parry': this.tone(880, 0.05, 'square', 0.14, 1320); this.tone(1320, 0.18, 'triangle', 0.12, 1760, 0.04); this.noise(0.1, 3000, 0.2, 'highpass', 2000); break;

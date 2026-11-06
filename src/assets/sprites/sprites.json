@@ -204,6 +204,66 @@
    ]
   }
  },
+ "biscuit_walk": {
+  "w": 48,
+  "h": 62,
+  "frames": 8,
+  "anchor": [
+   24,
+   58
+  ],
+  "points": {
+   "neck": [
+    31,
+    26
+   ]
+  }
+ },
+ "biscuit_bite": {
+  "w": 64,
+  "h": 50,
+  "frames": 8,
+  "anchor": [
+   16,
+   48
+  ],
+  "points": {
+   "neck": [
+    24,
+    20
+   ]
+  }
+ },
+ "biscuit_honk": {
+  "w": 48,
+  "h": 62,
+  "frames": 4,
+  "anchor": [
+   24,
+   58
+  ],
+  "points": {
+   "neck": [
+    31,
+    26
+   ]
+  }
+ },
+ "biscuit_hiss": {
+  "w": 62,
+  "h": 62,
+  "frames": 4,
+  "anchor": [
+   22,
+   58
+  ],
+  "points": {
+   "neck": [
+    29,
+    30
+   ]
+  }
+ },
  "biscuit_fling": {
   "w": 52,
   "h": 46,
