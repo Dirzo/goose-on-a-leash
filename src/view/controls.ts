@@ -16,7 +16,7 @@ const DEADZONE = 0.22;
  *
  * Keyboard (prototype layout): WASD/arrows move, Space honk, E yank, Q let go, F bread, C swap bread, P patch pack,
  * I or Tab backpack screen, B book, R restart room.
- * Mouse: left click fling, right click yank, cursor aims.
+ * Mouse: hold left to wind up a cast, release to fling (classic mode: click to fling), right click yank, cursor aims.
  * Gamepad: left stick move, right stick aim, RT fling, LT or RB yank, A honk, B let go, X bread, Y swap bread,
  * LB patch pack, Start book, Back (View) backpack screen.
  */

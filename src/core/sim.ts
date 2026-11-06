@@ -95,6 +95,8 @@ export interface Goose {
   t: number; fury: number; furious: number; tug: number; honkCd: number; biteT: number; grabCd: number;
   /** Seconds left of being hauled along by the leash (after Rocco rolls away): he scrambles and flaps. */
   drag: number;
+  /** Power cast in flight: damage multiplier for the first bite, and whether it was a perfect cast. */
+  hit?: number; perfect?: boolean;
   /** Casting mode: seconds left of his rampage after you cut the line. */
   cut?: number;
 }
@@ -125,7 +127,7 @@ export interface InputFrame {
   castHold?: boolean;
 }
 
-export type FxKind = 'block' | 'parry' | 'honk' | 'chomp' | 'boing' | 'poof' | 'ring' | 'snap' | 'bread' | 'pick' | 'tear' | 'splash' | 'faint' | 'patch' | 'wake' | 'chest' | 'gust' | 'slam'
+export type FxKind = 'perfect' | 'block' | 'parry' | 'honk' | 'chomp' | 'boing' | 'poof' | 'ring' | 'snap' | 'bread' | 'pick' | 'tear' | 'splash' | 'faint' | 'patch' | 'wake' | 'chest' | 'gust' | 'slam'
   | 'thud' | 'dust' | 'spores' | 'bush';
 export type SimEvent =
   | { type: 'say'; text: string }
@@ -143,6 +145,7 @@ export type SimEvent =
 
 const QUIPS = {
   fling: ['HONK!', 'Airborne goose', 'Yeet.', 'Go get em'],
+  perfect: ['PERFECT CAST!', 'Right on the money.', 'Textbook cast.', 'Grandpa would be proud.'],
   bite: ['CHOMP', 'The goose has chosen violence', 'Bite secured'],
   boing: ['BOING. Leash tight.', 'Leash limit!'],
   refuse: ['The goose refuses.', 'Goose says no.', 'Not now, Rocco.'],
@@ -618,7 +621,7 @@ export class Sim {
           if (e.mode === 'stalk' || e.mode === 'wind' || e.mode === 'tired') {
             e.mode = 'shell'; e.modeT = 0;
             this.say('HONK! Old Snapper yanks his head into his shell.');
-            this.hint('shell', 'He\'s hiding! Fling Biscuit at him [Click], then YANK [E] to flip him over.');
+            this.hint('shell', 'He\'s hiding! Cast Biscuit at him [hold, release click], then YANK [E] to flip him over.');
           }
           continue;
         }
@@ -649,15 +652,47 @@ export class Sim {
     this.say(mega ? 'MEGA HONK' : this.pick('honk'));
   }
 
-  /** Casting mode: line runs out while the spool is open (button held), and comes back in at heel. */
+  /** Power cast: hold to wind up, release to cast. While he's out, holding lets line run (back away from a fight). */
   private castHolding = false;
+  /** Wind-up: seconds held (the meter swings up and back), and whether a fresh press may start one. */
+  private chargeT = 0; private chargeArmed = true;
+  /** True while Rocco is winding up a cast. */
+  charging = false;
+  /** The power meter, 0..1, swinging up to full and back down while the button is held. */
+  charge(): number {
+    const u = this.chargeT / C.castChargeTime, ph = u % 2;
+    return Math.max(C.castMinPower, ph <= 1 ? ph : 2 - ph);
+  }
+  /** How far a cast at this power sends him. */
+  castReach(pw: number): number { return C.castHeel + (this.leashLen() - C.castHeel) * pw; }
   private stepCast(dt: number, hold: boolean): void {
     this.castHolding = hold;
     const g = this.goose, p = this.player, max = this.leashLen();
     const out = Math.hypot(g.x - p.x, g.y - p.y);
+    const canWind = g.state === 'held' && !p.dead && !this.won && !p.pull && p.roll <= 0;
+    if (canWind && hold && this.chargeArmed) { this.chargeT += dt; this.charging = true; }
+    else if (this.charging && !hold && canWind) { this.charging = false; this.release(this.charge()); this.chargeT = 0; }
+    else {
+      if (this.charging) { this.charging = false; this.chargeT = 0; }       // interrupted (a roll, a hit, a yank)
+      if (hold && !canWind) this.chargeArmed = false;                        // holding through: needs a fresh press
+    }
+    if (!hold) this.chargeArmed = true;
     if (g.state === 'held') this.castLen = Math.max(C.castHeel, Math.min(this.castLen, out + 30) - 260 * dt);   // reeled back in as he trots to heel
-    else if (hold && (g.state === 'flying' || g.state === 'latched')) this.castLen = Math.min(max, Math.max(this.castLen, out + 3));
+    else if (hold && g.state === 'latched') this.castLen = Math.min(max, Math.max(this.castLen, out + 3));
     else if (g.state === 'loose' || g.state === 'returning') this.castLen = C.castHeel;
+  }
+
+  /** Let fly: the power sets the line and the bite. */
+  private release(pw: number): void {
+    const g = this.goose;
+    this.fling(this.aim);
+    if (g.state !== 'flying') return;
+    const perfect = pw >= C.castSweet;
+    this.castLen = this.castReach(perfect ? 1 : pw);
+    const k = 0.55 + 0.6 * pw; g.vx *= k; g.vy *= k;                       // weak casts fly slower too
+    g.hit = perfect ? C.castPerfectHit : C.castWeakHit + (1 - C.castWeakHit) * Math.min(1, pw / C.castSweet);
+    g.perfect = perfect;
+    if (perfect) { this.fx('perfect', g.x, g.y); this.say(this.pick('perfect')); }
   }
 
   letGo(): void {
@@ -915,7 +950,7 @@ export class Sim {
     if (input) {
       const aim = { x: input.aimX, y: input.aimY };
       this.aim = aim;
-      if (input.fling) this.fling(aim);
+      if (input.fling && !this.castMode) this.fling(aim);
       if (input.yank) this.yank();
       if (input.honk) this.honk(aim);
       if (input.letGo) this.letGo();
@@ -1071,7 +1106,7 @@ export class Sim {
         p.vx += (p.rdx * sp - p.vx) * k; p.vy += (p.rdy * sp - p.vy) * k;
         p.fx = p.rdx; p.fy = p.rdy;
       } else {
-        const sp = C.playerSpeed * wade * (p.guard > 0 ? C.guardSpeed : 1);
+        const sp = C.playerSpeed * wade * (p.guard > 0 ? C.guardSpeed : 1) * (this.charging ? C.castChargeSlow : 1);
         p.vx += (mx * sp - p.vx) * acc; p.vy += (my * sp - p.vy) * acc;
       }
       // a goose stronger than his leash tugs you around
@@ -1709,7 +1744,7 @@ export class Sim {
   private elderTired(e: Enemy, angry: boolean, crashed = false): void {
     e.mode = 'tired'; e.modeT = 0;
     if (crashed) this.say('THUD. He ploughs into it and stands there wheezing.');
-    this.hint('tired', 'He\'s winded! Fling Biscuit at him [Click]: bites do double damage now.');
+    this.hint('tired', 'He\'s winded! Cast Biscuit at him: a PERFECT cast bites hardest, and bites do double damage now.');
     void angry;
   }
 
@@ -1862,7 +1897,7 @@ export class Sim {
   private stepGoose(dt: number): void {
     const g = this.goose, p = this.player, room = this.room;
     // casting mode with the spool open: line runs freely, up to the whole leash
-    const L = this.castMode && this.castHolding && (g.state === 'flying' || g.state === 'latched') ? this.leashLen() : this.lineLen();
+    const L = this.castMode && this.castHolding && g.state === 'latched' ? this.leashLen() : this.lineLen();
     g.t -= dt;
     if (g.state === 'held' || g.state === 'returning') {
       if (g.state === 'held') {
@@ -1881,8 +1916,11 @@ export class Sim {
         if (!this.active(e)) continue;
         if (Math.hypot(e.x - g.x, e.y - g.y) < e.r + 11 + (this.kit.has('f2') ? 8 : 0)) {
           g.state = 'latched'; g.target = e; g.ox = g.x - e.x; g.oy = g.y - e.y;
-          this.damage(e, this.pw()); e.stun = Math.max(e.stun, 0.3); this.addFury(14);
-          this.say(this.pick('bite')); this.fx('chomp', g.x, g.y);
+          const hit = this.castMode ? g.hit ?? 1 : 1, perfect = this.castMode && !!g.perfect;
+          this.damage(e, this.pw() * hit); e.stun = Math.max(e.stun, perfect ? 1.1 : 0.3); this.addFury(perfect ? 24 : 14);
+          if (perfect) { e.vx += g.vx * 0.25; e.vy += g.vy * 0.25; this.fx('perfect', g.x, g.y); this.say('PERFECT BITE!'); }
+          else this.say(this.pick('bite'));
+          this.fx('chomp', g.x, g.y); g.hit = undefined; g.perfect = false;
           break;
         }
       }
@@ -2023,7 +2061,7 @@ export class Sim {
 
     // rope: attached unless the goose is loose or returning on his own
     const attached = g.state !== 'loose' && g.state !== 'returning';
-    if (this.castMode && this.castHolding && (g.state === 'flying' || g.state === 'latched')) this.castLen = Math.min(this.leashLen(), Math.max(this.castLen, Math.hypot(g.x - p.x, g.y - p.y)));
+    if (this.castMode && this.castHolding && g.state === 'latched') this.castLen = Math.min(this.leashLen(), Math.max(this.castLen, Math.hypot(g.x - p.x, g.y - p.y)));
     this.rope.step(attached ? p : null, g, L);
 
     // grab the trailing leash of a loose goose

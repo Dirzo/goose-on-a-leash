@@ -516,6 +516,7 @@ export class ArtRenderer {
     for (const d of this.drips) { this.fxg.fillStyle(0x9ae0ff, 1); this.fxg.fillRect(Math.round(d.x), Math.round(d.y - d.z), 1, 2); }
 
     this.drawOar(sim, P, time);
+    if (sim.castMode && sim.charging) this.drawCharge(sim, P, time);
 
     // ---- Biscuit
     const hauled = go.state === 'held' && go.drag > 0;     // dragged along after a roll: flapping
@@ -660,6 +661,7 @@ export class ArtRenderer {
         if (kk < 0.5) this.wt('HONK', f.x + Math.cos(f.a) * 30, f.y - 50 + Math.sin(f.a) * 30 - kk * 16, 14, '#f2c230', 1 - kk * 2);
       }
       if (f.kind === 'chomp') this.wt('CHOMP', f.x, f.y - 26 - kk * 16, 10, '#f08a24', 1 - kk);
+      if (f.kind === 'perfect') { this.wt('PERFECT!', f.x, f.y - 40 - kk * 20, 12, '#ffe27a', 1 - kk); f2.lineStyle(2, 0xffe27a, 1 - kk); f2.strokeCircle(f.x, f.y - 16, 6 + kk * 30); }
       if (f.kind === 'boing') this.wt('BOING', f.x, f.y - 30 - kk * 12, 9, '#c9a46a', 1 - kk);
       if (f.kind === 'pick' && f.text) this.wt(f.text, f.x, f.y - 40 - kk * 18, 7, '#e9e4d6', 1 - kk, 'mono');
       if (f.kind === 'snap') this.wt('SNAP!', f.x, f.y - 20 - kk * 24, 20, '#e05a47', 1 - kk);
@@ -799,7 +801,7 @@ export class ArtRenderer {
       g.fillStyle(0x1a1522, 1); g.fillRect(W - 282, 82, 252, 6);
       g.fillStyle(0xd8ecf4, 1); g.fillRect(W - 282, 82, 252 * Math.min(1, out / max), 6);
       const canCut = (go.fury >= C.castCutFury || go.furious > 0) && (go.state === 'held' || go.state === 'latched');
-      const label = cut > 0 ? `CUT LOOSE · ${Math.ceil(cut)}s` : canCut ? '[Q] CUT THE LINE' : `LINE ${Math.round(out)}/${max} · hold to let out`;
+      const label = cut > 0 ? `CUT LOOSE · ${Math.ceil(cut)}s` : canCut ? '[Q] CUT THE LINE' : go.state === 'held' ? `LINE ${Math.round(out)}/${max} · hold, release to cast` : `LINE ${Math.round(out)}/${max} · hold to let out`;
       this.ht('mono', label, W - 282, 104, 11, cut > 0 ? '#ff8a6a' : canCut ? '#f2c230' : '#9aa3a6', canCut && cut <= 0 ? 0.6 + 0.4 * Math.sin(this.time * 6) : 1, 'left', true);
     }
 
@@ -1067,6 +1069,23 @@ export class ArtRenderer {
       g.lineStyle(1, 0xf2c230, 0.4 + 0.4 * p); g.strokeCircle(b.x, b.y - 6, b.r + 8 + p * 3);
       this.wt('BAT AN ACORN INTO IT', b.x, b.y + 26, 6, '#f2c230', 0.6 + 0.4 * p, 'mono');
     }
+  }
+
+  /** Power cast wind-up: a meter over Rocco's head that swings up and back, and where the cast will land. */
+  private drawCharge(sim: Sim, P: Vec, time: number): void {
+    const g = this.fxg, c = sim.charge(), sweet = c >= C.castSweet;
+    const w = 46, x = Math.round(P.x - w / 2), y = Math.round(P.y - 68);
+    g.fillStyle(0x1a1522, 0.9); g.fillRect(x - 1, y - 1, w + 2, 7);
+    g.fillStyle(0x5a4a2a, 1); g.fillRect(x + Math.round(w * C.castSweet), y, w - Math.round(w * C.castSweet), 5);
+    g.fillStyle(sweet ? 0xfff0a0 : 0xd8ecf4, 1); g.fillRect(x, y, Math.round(w * c), 5);
+    if (sweet) { g.lineStyle(1, 0xf2c230, 0.6 + 0.4 * Math.sin(time * 30)); g.strokeRect(x - 2, y - 2, w + 4, 9); }
+    // where he'll come down: along the aim, as far as this much line reaches
+    const a = sim.aim, dx = a.x - P.x, dy = a.y - P.y, d = Math.hypot(dx, dy) || 1;
+    const r = sim.castReach(sweet ? 1 : c), tx = P.x + (dx / d) * r, ty = P.y + (dy / d) * r;
+    const col = sweet ? 0xf2c230 : 0xd8ecf4;
+    for (let i = 1; i < 12; i++) { const k = i / 12; if (i % 2) { g.fillStyle(col, 0.35); g.fillRect(Math.round(P.x + (tx - P.x) * k), Math.round(P.y - 12 + (ty - P.y) * k + 12 * k), 2, 2); } }
+    g.lineStyle(1, col, 0.85); g.strokeCircle(tx, ty, sweet ? 9 + Math.sin(time * 20) : 7);
+    g.lineBetween(tx - 3, ty, tx + 3, ty); g.lineBetween(tx, ty - 3, tx, ty + 3);
   }
 
   /** The Ferryman's Oar: held crosswise in front while guarding, slung on the back otherwise. */

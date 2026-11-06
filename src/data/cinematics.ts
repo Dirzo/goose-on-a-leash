@@ -66,6 +66,7 @@ export const CINEMATICS: Record<string, Step[]> = {
     { act: 'tie' }, { sound: 'patch' },
     { say: "There. Tied to my fishing line. You bite anything that moves, and tonight that's exactly what we need.", who: 'rocco' },
     { say: 'HONK!!', who: 'biscuit' },
+    { say: "Same as casting a line: hold to wind up, let go at the top. Get it right and he hits like a freight train.", who: 'rocco' },
     { say: "I'm going to die in a backpack.", who: 'bimbo' },
   ],
   ch1: [

@@ -145,8 +145,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** Start a cinematic once (the save remembers which were shown). */
-  /** Leash mode: 'classic' fling, or the experimental 'casting' (remembered in this browser). */
-  castMode = (() => { try { return localStorage.getItem('goose-on-a-leash/leash-mode') === 'casting'; } catch { return false; } })();
+  /** Leash mode: the power cast (default), or the old 'classic' click-to-fling (remembered in this browser). */
+  castMode = (() => { try { return localStorage.getItem('goose-on-a-leash/leash-mode') !== 'classic'; } catch { return true; } })();
   setCastMode(on: boolean): void {
     this.castMode = on; this.sim.castMode = on;
     try { localStorage.setItem('goose-on-a-leash/leash-mode', on ? 'casting' : 'classic'); } catch { /* per-browser nicety only */ }
@@ -299,7 +299,7 @@ export class GameScene extends Phaser.Scene {
       sound.play(k, sim.power());
     }
     for (const e of events) if (e.type === 'fx') {
-      const stop = e.kind === 'snap' ? 0.28 : e.kind === 'slam' ? 0.12 : e.kind === 'tear' ? 0.07 : e.kind === 'chomp' ? 0.045 : e.kind === 'wake' ? 0.08 : 0;
+      const stop = e.kind === 'snap' ? 0.28 : e.kind === 'slam' ? 0.12 : e.kind === 'tear' ? 0.07 : e.kind === 'chomp' ? 0.045 : e.kind === 'perfect' ? 0.06 : e.kind === 'wake' ? 0.08 : 0;
       this.hitStop = Math.max(this.hitStop, stop);
     }
     this.view.consume(events);
