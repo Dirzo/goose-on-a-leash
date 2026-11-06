@@ -38,7 +38,8 @@ def cast(name, a, b):
 ROOMS.append(room(
     'castle-1', 'Honkmore Gate', 1280, 900,
     [dict(id='s', side='S', at=640, to='tide-3', toDoor='n', label='Moonlit Cove'),
-     dict(id='w', side='W', at=360, to='castle-2', toDoor='e', label='The Grand Foyer')],
+     dict(id='w', side='W', at=360, to='castle-2', toDoor='e', label='The Grand Foyer'),
+     dict(id='e', side='E', at=360, to='castle-5', toDoor='w', label='The Royal Kitchens')],
     's', subtitle='Castle Honkmore · the gate', **K(),
     pits=[rect(20, 640, 1240, 120, kind='water')],                           # the moat
     bridges=[rect(596, 630, 88, 140, kind='dock')],                          # the drawbridge
@@ -51,7 +52,7 @@ ROOMS.append(room(
     kits=[{'x': 1150, 'y': 160}],
     bread=[{'x': 160, 'y': 160}],
     lanterns=[{'x': 520, 'y': 600}, {'x': 760, 'y': 600}, {'x': 640, 'y': 160}],
-    paths=[[[640, 834], [640, 420]], [[640, 300], [66, 360]]],
+    paths=[[[640, 834], [640, 420]], [[640, 300], [66, 360]], [[640, 300], [1214, 360]]],
     ventSpawns=False,
 ))
 
@@ -110,6 +111,61 @@ ROOMS.append(room(
     carpets=[rect(80, 360, 1040, 80), rect(560, 80, 80, 640)],
     ventSpawns=False,
     paths=[],
+))
+
+# ================================================================ the Royal Kitchens (east wing)
+mimic = lambda x, y: foe('mimic', x, y)
+steam = lambda x, y, period=3.2, phase=0.0: {'x': x, 'y': y, 'period': period, 'phase': phase}
+counter = lambda x, y, w, h: rect(x, y, w, h, kind='counter')
+
+# 5 ---------------------------------------------------------------- The Scullery
+ROOMS.append(room(
+    'castle-5', 'The Scullery', 1200, 720,
+    [dict(id='w', side='W', at=360, to='castle-1', toDoor='e', label='Honkmore Gate'),
+     dict(id='e', side='E', at=360, to='castle-6', toDoor='w', label='The Great Kitchen')],
+    'w', subtitle='Castle Honkmore · the Royal Kitchens', **K(),
+    props=[counter(260, 120, 200, 50), counter(260, 550, 200, 50), counter(760, 120, 220, 50), counter(760, 550, 220, 50)],
+    pits=[rect(560, 90, 90, 60, kind='water'), rect(560, 570, 90, 60, kind='water')],     # the big sinks
+    refills=[rect(540, 70, 130, 100), rect(540, 550, 130, 100)],
+    grease=[rect(300, 260, 240, 200), rect(700, 300, 280, 140)],
+    enemies=[mimic(380, 380), mimic(860, 220), mimic(1000, 520), turtle(840, 380), bellhop(300, 640)],
+    bread=[{'x': 160, 'y': 200}, {'x': 1060, 'y': 180}],
+    lanterns=[{'x': 600, 'y': 360}],
+    tiles=True, paths=[],
+))
+
+# 6 ---------------------------------------------------------------- The Great Kitchen
+ROOMS.append(room(
+    'castle-6', 'The Great Kitchen', 1400, 760,
+    [dict(id='w', side='W', at=360, to='castle-5', toDoor='e', label='The Scullery'),
+     dict(id='e', side='E', at=360, to='castle-7', toDoor='w', label='The Royal Pantry')],
+    'w', subtitle='Castle Honkmore · the Royal Kitchens', **K(),
+    props=[counter(220, 80, 160, 60), counter(220, 620, 160, 60), counter(1020, 80, 160, 60), counter(1020, 620, 160, 60), counter(600, 520, 200, 50)],
+    steam=[steam(420, 240, 3.0, 0.0), steam(420, 480, 3.0, 1.5), steam(700, 220, 2.6, 0.8), steam(980, 240, 3.0, 2.2), steam(980, 480, 3.0, 0.7), steam(700, 420, 2.6, 2.0)],
+    firebars=[fire(700, 640, 5, 1.5)],                                        # the rotisserie
+    grease=[rect(520, 300, 360, 80)],
+    enemies=[mimic(300, 360), mimic(1120, 360), turtle(560, 160), turtle(860, 560), bellhop(1200, 180)],
+    refills=[rect(80, 640, 90, 80)], springs=[{'x': 120, 'y': 670}],
+    kits=[{'x': 1300, 'y': 640}],
+    bread=[{'x': 700, 'y': 120}],
+    lanterns=[{'x': 300, 'y': 360}, {'x': 1100, 'y': 360}],
+    tiles=True, paths=[],
+))
+
+# 7 ---------------------------------------------------------------- The Royal Pantry (boss)
+ROOMS.append(room(
+    'castle-7', 'The Royal Pantry', 1200, 800,
+    [dict(id='w', side='W', at=400, to='castle-6', toDoor='e', label='The Great Kitchen')],
+    'w', subtitle='Castle Honkmore · the Pelican Chef', **K(),
+    props=[counter(140, 80, 260, 50), counter(800, 80, 260, 50), counter(140, 670, 260, 50), counter(800, 670, 260, 50)],
+    steam=[steam(360, 260, 3.4, 0.0), steam(840, 260, 3.4, 1.7), steam(360, 540, 3.4, 1.1), steam(840, 540, 3.4, 2.6)],
+    grease=[rect(500, 330, 200, 140)],
+    enemies=[foe('pelican', 760, 400)],
+    boss='pelican', ventSpawns=False,
+    vents=[{'x': 600, 'y': 120}, {'x': 600, 'y': 690}],
+    refills=[rect(1080, 360, 90, 80)], springs=[{'x': 1120, 'y': 390}],
+    lanterns=[{'x': 600, 'y': 400}, {'x': 300, 'y': 400}, {'x': 900, 'y': 400}],
+    tiles=True, paths=[],
 ))
 
 os.makedirs(OUT, exist_ok=True)

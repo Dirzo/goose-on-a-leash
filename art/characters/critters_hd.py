@@ -697,3 +697,58 @@ def bellhop(blink=False, awake=False, pose='idle'):
         bell.line([(9, 30), (6, 34)], 'SW1', 2); bell.poly([(3, 40), (9, 40), (8, 34), (4, 34)], 'BELL')
     L.append(bell)
     return composite(L)
+
+
+def pelican_chef(blink=False, awake=False, pose='idle'):
+    """The Pelican Chef: a big white pelican in a tall toque and a stained apron, with a great orange pouch.
+    Poses: idle, wind (a pot raised), scoop (pouch gaping, lunging), gulp (pouch bulging with a goose),
+    stir (wooden spoon in both wings), dazed (toque askew)."""
+    w, h = 108, 100
+    P = dict(KPAL)
+    P.update({k: hx(v) for k, v in {'PW0': 'c8ccd4', 'PW1': 'eef0f6', 'PB0': 'c8781a', 'PB1': 'f2a030', 'PB2': 'ffc860',
+                                      'TQ0': 'd8d8e0', 'TQ1': 'ffffff', 'AP0': 'b8b0a0', 'AP1': 'e8e0d0', 'STAIN': 'a85a3a',
+                                      'POT0': '8a4a2a', 'POT1': 'c8784a', 'POT2': 'f0a878', 'GO': 'f4f1e8', 'GOB': 'f08a24'}.items()})
+    L = []
+    lean = 8 if pose == 'scoop' else 0
+    body = Layer('body', w, h, P)
+    body.line([(36, 84), (34, 98)], 'PB0', 3); body.line([(52, 84), (54, 98)], 'PB0', 3)
+    body.ell(44, 68, 24, 20, 'PW1'); body.ell(38, 64, 14, 10, 'PW0')
+    body.poly([(22, 64), (8, 58), (12, 72)], 'PW0')                                # tail
+    L.append(body)
+    apron = Layer('apron', w, h, P)
+    apron.poly([(34, 56), (60, 56), (64, 86), (32, 86)], 'AP1'); apron.line([(34, 56), (60, 56)], 'AP0')
+    for (x, y) in [(42, 70), (54, 76), (46, 80)]: apron.ell(x, y, 2.5, 1.5, 'STAIN')
+    L.append(apron)
+    neck = Layer('neck', w, h, P)
+    nx, ny = 58 + lean, 26
+    for i in range(10): neck.ell(52 + lean * i / 10 + i * 0.6, 54 - i * 3, 5, 5, 'PW1')
+    neck.ell(nx, ny, 9, 8, 'PW1')
+    L.append(neck)
+    bill = Layer('bill', w, h, P)
+    bx = nx + 6
+    if pose == 'scoop':
+        bill.poly([(bx, ny - 4), (bx + 34, ny - 8), (bx + 34, ny - 4), (bx + 2, ny)], 'PB1')
+        bill.poly([(bx, ny + 2), (bx + 32, ny + 18), (bx + 24, ny + 30), (bx + 4, ny + 14)], 'PB0'); bill.poly([(bx + 4, ny + 4), (bx + 28, ny + 18), (bx + 22, ny + 26), (bx + 6, ny + 12)], 'STAIN')
+    elif pose == 'gulp':
+        bill.poly([(bx, ny - 3), (bx + 30, ny), (bx + 30, ny + 3), (bx, ny + 3)], 'PB1')
+        bill.ell(bx + 16, ny + 18, 16, 14, 'PB1'); bill.ell(bx + 14, ny + 15, 10, 8, 'PB2')
+        bill.ell(bx + 18, ny + 14, 6, 5, 'GO'); bill.ell(bx + 17, ny + 13, 1, 1, 'BK'); bill.poly([(bx + 22, ny + 13), (bx + 26, ny + 14), (bx + 22, ny + 16)], 'GOB')   # Biscuit's beak poking out
+    else:
+        bill.poly([(bx, ny - 3), (bx + 30, ny), (bx + 30, ny + 3), (bx, ny + 3)], 'PB1')
+        bill.poly([(bx, ny + 3), (bx + 30, ny + 3), (bx + 18, ny + 12), (bx + 2, ny + 9)], 'PB0')
+    L.append(bill)
+    hat = Layer('hat', w, h, P)
+    tilt = 6 if pose == 'dazed' else 0
+    hat.rect(nx - 9 + tilt, ny - 12, nx + 7 + tilt, ny - 6, 'TQ0')
+    for (dx, dy, r) in [(-6, -20, 6), (0, -24, 7), (6, -19, 6), (0, -16, 6)]: hat.ell(nx + dx + tilt, ny + dy, r, r * 0.9, 'TQ1')
+    L.append(hat)
+    eye = Layer('eye', w, h, P)
+    ex, ey = nx + 2, ny - 3
+    if blink or pose == 'dazed': eye.line([(ex - 2, ey), (ex + 2, ey)], 'PW0')
+    else: eye.rect(ex - 1, ey - 1, ex + 1, ey + 1, 'BK' if awake else 'FR'); eye.px(ex - 1, ey - 1, 'BW' if awake else 'FR2')
+    L.append(eye)
+    if pose == 'wind':
+        pot = Layer('pot', w, h, P); pot.ell(30, 30, 10, 8, 'POT1'); pot.rect(20, 26, 40, 30, 'POT0'); pot.ell(28, 28, 4, 2, 'POT2'); pot.line([(26, 42), (32, 34)], 'PW1', 3); L.append(pot)
+    if pose == 'stir':
+        sp = Layer('spoon', w, h, P); sp.line([(30, 74), (60, 20)], 'POT0', 3); sp.ell(30, 76, 4, 3, 'POT1'); L.append(sp)
+    return composite(L)

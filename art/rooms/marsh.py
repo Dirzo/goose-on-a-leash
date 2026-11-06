@@ -125,7 +125,14 @@ def render(R):
     # ---- ground: organic tone fields, thickets and clearings of clutter (water and trails paint over it)
     paint_ground(img, np.ones((H, W), bool), P, rng_np, int(seed * 1000) % 100000, woods)
 
-    if castle:                                             # flagstones: a big grid, each stone its own shade, dark grout
+    if castle and R.get('tiles'):                          # kitchen tiles: a small checker, cream and slate, worn
+        cx_ = (xx // 16).astype(int); cy_ = (yy // 16).astype(int)
+        chk = (cx_ + cy_) % 2 == 0
+        wear = fbm(H, W, 60, 2, int(seed * 77) % 9999)
+        tile = np.where(chk[..., None], hx('6a6458'), hx('2e2c36'))
+        img[:] = tile * (0.75 + 0.35 * wear[..., None])
+        img[(xx.astype(int) % 16 == 0) | (yy.astype(int) % 16 == 0)] = hx('1a1820')
+    elif castle:                                             # flagstones: a big grid, each stone its own shade, dark grout
         sx_ = (xx // 32).astype(int); sy_ = (yy // 24).astype(int)
         shade = ((sx_ * 7919 + sy_ * 104729) % 7) / 6.0
         stone = np.stack([P['Q1'], P['Q2'], P['Q3']])[(shade * 2.99).astype(int)]
@@ -367,6 +374,16 @@ def render(R):
                 m2 = (np.hypot(xx - x + 1.5, (yy - y + 2) * 1.2) < r * 0.55) & m
                 img[m2] = P['HD2']
             img[y0, x0:x1] = P['HD2']; img[y1 - 1, x0:x1] = P['OUT']
+            continue
+        if kind == 'counter':
+            x0, y0, x1, y1 = int(w['x']), int(w['y']), int(w['x'] + w['w']), int(w['y'] + w['h'])
+            shadow((x0 + x1) / 2 + 6, y1 + 4, w['w'] / 2 + 8, 8, 0.5)
+            img[y0:y1, x0:x1] = P['B1']; img[y0:y0 + 10, x0:x1] = P['B3']; img[y0 + 10:y0 + 12, x0:x1] = P['B0']
+            for x in range(x0 + 4, x1 - 4, 8): img[y0 + 12:y1, x] = P['B0']
+            for k, xx_ in enumerate(range(x0 + 16, x1 - 12, 34)):                 # pots and jars on the counter
+                c_ = ['COL2', 'B2', 'CP1'][k % 3]
+                disk(xx_, y0 + 4, 6, 'OUT'); disk(xx_, y0 + 4, 5, c_); px(xx_ - 2, y0 + 2, 'COL3')
+            img[y0, x0:x1] = P['OUT']; img[y1 - 1, x0:x1] = P['OUT']; img[y0:y1, x0] = P['OUT']; img[y0:y1, x1 - 1] = P['OUT']
             continue
         if kind == 'pillar':
             cx, cy, r = w['x'] + w['w'] / 2, w['y'] + w['h'] / 2, w['w'] / 2

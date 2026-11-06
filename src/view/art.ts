@@ -543,7 +543,7 @@ export class ArtRenderer {
     this.drawOar(sim, P, time);
     if (sim.castMode && sim.charging) this.drawCharge(sim, P, time);
     if (sim.room.def.fishing) this.drawFishing(sim, P, time);
-    if (sim.room.def.firebars || sim.room.def.crushers) this.drawCastle(sim, time);
+    if (sim.room.def.firebars || sim.room.def.crushers || sim.room.def.steam || sim.room.def.grease) this.drawCastle(sim, time);
 
     // ---- Biscuit
     const hauled = go.state === 'held' && go.drag > 0;     // dragged along after a roll: flapping
@@ -581,7 +581,7 @@ export class ArtRenderer {
       if (e.dead) continue;
       alive.add(e.id);
       let s = this.foes.get(e.id);
-      if (!s) { s = this.worldIgnore(this.scene.add.sprite(0, 0, ({ snapper: 'snapper', elder: 'snapper', heron: 'heron', squirrel: 'squirrel', badger: 'badger', king: 'king', crab: 'crab', gull: 'gull', gullbeard: 'gullbeard', eel: 'eel', turtle: 'turtle', bellhop: 'bellhop' } as Record<string, string>)[e.kind] ?? 'frog')); this.foes.set(e.id, s); }
+      if (!s) { s = this.worldIgnore(this.scene.add.sprite(0, 0, ({ snapper: 'snapper', elder: 'snapper', heron: 'heron', squirrel: 'squirrel', badger: 'badger', king: 'king', crab: 'crab', gull: 'gull', gullbeard: 'gullbeard', eel: 'eel', turtle: 'turtle', bellhop: 'bellhop', pelican: 'pelican', mimic: 'crab' } as Record<string, string>)[e.kind] ?? 'frog')); this.foes.set(e.id, s); }
       const { x, y } = EP(e);
       const awake = e.woke > 0 || (e.stun > 0 && e.kind !== 'snapper');
       const kind = e.kind === 'heron' ? (e.woke > 0 ? 'heron_awake' : 'heron')
@@ -593,6 +593,8 @@ export class ArtRenderer {
         continue;
       }
       if (e.kind === 'turtle' || e.kind === 'bellhop') { this.drawCastleCritter(sim, e, s, x, y, time); continue; }
+      if (e.kind === 'mimic') { s.setVisible(false); this.drawMimic(sim, e, x, y, time); continue; }
+      if (e.kind === 'pelican') { this.drawPelican(sim, e, s, x, y, time); continue; }
       if (e.kind === 'crab' || e.kind === 'gull' || e.kind === 'gullbeard' || e.kind === 'eel') {
         this.drawWharfCritter(sim, e, s, x, y, time);
         continue;
@@ -882,11 +884,11 @@ export class ArtRenderer {
     if (this.wtWave) { panel(W / 2 - 110, 124, 220, 30); this.ht('mono', this.wtWave, W / 2, 144, 13, '#ff8a6a', 0.8 + 0.2 * Math.sin(this.time * 6), 'center', true); }
 
     // boss health
-    const boss = sim.enemies.find(e => (e.kind === 'heron' || e.kind === 'king' || (e.kind === 'gullbeard' && e.mode !== 'stalk') || (e.kind === 'elder' && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < 620)) && !e.woke);
+    const boss = sim.enemies.find(e => (e.kind === 'heron' || e.kind === 'king' || (e.kind === 'pelican' && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < 700) || (e.kind === 'gullbeard' && e.mode !== 'stalk') || (e.kind === 'elder' && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < 620)) && !e.woke);
     if (boss) {
       const bw2 = 520, bx2 = W / 2 - bw2 / 2, by2 = 150, angry = boss.hp < boss.max / 2;
       g.fillStyle(0x0b0a10, 0.8); g.fillRect(bx2 - 12, by2 - 30, bw2 + 24, 52);
-      this.ht('display', boss.kind === 'king' ? 'THE BURROW KING' : boss.kind === 'gullbeard' ? 'CAPTAIN GULLBEARD' : boss.kind === 'elder' ? 'OLD SNAPPER' : 'THE HERON FERRYMAN', W / 2, by2 - 8, 16, angry ? '#ff8a8a' : '#e9e4d6');
+      this.ht('display', boss.kind === 'king' ? 'THE BURROW KING' : boss.kind === 'gullbeard' ? 'CAPTAIN GULLBEARD' : boss.kind === 'pelican' ? 'THE PELICAN CHEF' : boss.kind === 'elder' ? 'OLD SNAPPER' : 'THE HERON FERRYMAN', W / 2, by2 - 8, 16, angry ? '#ff8a8a' : '#e9e4d6');
       g.fillStyle(0x1a1522, 1); g.fillRect(bx2, by2, bw2, 12);
       g.fillStyle(angry ? 0xe05a47 : 0xc94b3a, 1); g.fillRect(bx2 + 2, by2 + 2, (bw2 - 4) * Math.max(0, boss.hp / boss.max), 8);
       g.fillStyle(0xe9e4d6, 0.5); g.fillRect(bx2 + bw2 / 2, by2, 1, 12);
@@ -1246,9 +1248,68 @@ export class ArtRenderer {
     if (e.haste) this.wt('!!', x, y - 50, 9, '#ffb080', 0.8);
   }
 
+  /** A mimic loaf: just bread (with a red glint now and then), until it bites. */
+  private drawMimic(sim: Sim, e: Enemy, x: number, y: number, time: number): void {
+    const g = e.mode === 'cling' ? this.fxg : this.floor, f = this.fxg, awake = e.woke > 0;
+    if (awake) { const a = Math.max(0, 1 - e.woke / 1.6); g.fillStyle(0xc98a3c, a); g.fillEllipse(x, y - e.woke * 10, 18, 10); return; }
+    const lurk = e.mode === 'lurk' || e.mode === 'stalk', hop = e.mode === 'hop' ? -Math.abs(Math.sin(time * 10 + e.id)) * 6 : 0;
+    const yy = Math.round(y + hop + (lurk ? Math.sin(time * 3 + x) * 1.5 : 0));
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(x + 1, y + 7, 18, 6);
+    g.fillStyle(0x1a1522, 1); g.fillEllipse(x, yy, 20, 12);
+    g.fillStyle(0xc98a3c, 1); g.fillEllipse(x, yy, 18, 10);
+    g.fillStyle(0xe8b86a, 1); g.fillEllipse(x - 1, yy - 2, 12, 4);
+    for (let k = -1; k <= 1; k++) { g.fillStyle(0x8a5a24, 1); g.fillRect(x + k * 4, yy - 3, 1, 4); }
+    if (lurk) {                                          // the tell: a red glint, every few seconds
+      if ((time + e.id * 0.7) % 3.4 < 0.18) { f.fillStyle(0xff3a3a, 1); f.fillRect(x - 3, yy - 1, 2, 1); f.fillRect(x + 2, yy - 1, 2, 1); }
+      return;
+    }
+    // awake and hungry: a jagged mouth and red eyes
+    f.fillStyle(0x1a1522, 1); f.fillRect(x - 6, yy + 1, 12, 3);
+    f.fillStyle(0xf6f1e6, 1); for (let k = -5; k <= 4; k += 3) f.fillTriangle(x + k, yy + 1, x + k + 2, yy + 1, x + k + 1, yy + 3);
+    f.fillStyle(0xff3a3a, 1); f.fillRect(x - 4, yy - 3, 2, 2); f.fillRect(x + 2, yy - 3, 2, 2);
+    if (e.mode === 'cling') this.wt('ROLL!', x, yy - 20, 8, '#ff8a6a', 0.6 + 0.4 * Math.sin(time * 14));
+  }
+
+  /** The Pelican Chef: pots, the pouch lunge (a red cone first), Biscuit wriggling in her pouch. */
+  private drawPelican(sim: Sim, e: Enemy, s: Phaser.GameObjects.Sprite, x: number, y: number, time: number): void {
+    const g = this.floor, f = this.fxg, awake = e.woke > 0;
+    const blink = ((time * 1.1 + e.id * 0.37) % 3.2) < 0.14;
+    let frame = blink ? 1 : 0;
+    if (!awake) frame = e.mode === 'wind' ? 2 : e.mode === 'scoop' ? 3 : e.mode === 'gulp' ? 4 : e.mode === 'stir' ? 5 : e.mode === 'dazed' ? 6 : frame;
+    this.show(s, awake ? 'pelican_awake' : 'pelican', Math.min(frame, awake ? 1 : 6));
+    const wob = e.mode === 'gulp' ? Math.sin(time * 30) * 2 : 0;
+    s.setPosition(Math.round(x + wob), Math.round(y)).setDepth(y).setFlipX(sim.player.x < x).setAlpha(1);
+    const tell = (e.mode === 'wind' || e.mode === 'scoop' && e.modeT < 0.5) && Math.floor(e.modeT * 16) % 2 === 0;
+    if (e.hitT > 0 || tell) s.setTint(e.hitT > 0 ? 0xffffff : 0xffd0d0).setTintMode(Phaser.TintModes.FILL); else s.clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
+    g.fillStyle(0x000000, 0.35); g.fillEllipse(x, y + 2, 60, 14);
+    if (awake) { if (e.woke < 6) this.wt('The Pelican Chef', x, y - 112, 9, '#f2c94c', Math.min(1, 6 - e.woke)); return; }
+    if (e.mode === 'scoop' && e.modeT < 0.7) {
+      const a = Math.atan2(e.ty - y, e.tx - x);
+      g.fillStyle(0xff4a4a, 0.18 + 0.12 * Math.sin(time * 20)); g.slice(x, y, 200, a - 0.45, a + 0.45, false); g.fillPath();
+      this.wt('!', x, y - 112, 16, '#ff4a4a', 1);
+    }
+    if (e.mode === 'gulp') this.wt(`YANK [E]  ${e.grip2}/3`, x, y - 116, 12, '#f2c230', 0.7 + 0.3 * Math.sin(time * 18));
+    if (e.mode === 'wind' || e.mode === 'stir') this.wt('!', x, y - 112, 14, '#ff4a4a', 1);
+    if (e.mode === 'dazed') for (let i = 0; i < 3; i++) { const a = time * 5 + i * 2.1; f.fillStyle(0xf2c230, 1); this.star(f, x + Math.cos(a) * 22, y - 108 + Math.sin(a) * 3, 3.5); }
+  }
+
   /** Fire bars (a stone hub, a chain of fireballs, an ember glow) and the slamming goose statues. */
   private drawCastle(sim: Sim, time: number): void {
     const g = this.floor, f = this.fxg, def = sim.room.def;
+    for (const r of def.grease ?? []) {                // a greasy sheen that shimmers
+      for (let k = 0; k < 6; k++) { const gx = r.x + ((k * 97 + time * 12) % r.w), gy = r.y + ((k * 53) % r.h); g.fillStyle(0xf0d890, 0.12); g.fillEllipse(gx, gy, 22, 6); }
+    }
+    for (const v of def.steam ?? []) {
+      const st = sim.steamAll > 0 ? 'burst' : sim.steamState(v);
+      g.fillStyle(0x1a1522, 1); g.fillRect(v.x - 13, v.y - 9, 26, 18);
+      g.fillStyle(st === 'idle' ? 0x3a3640 : 0xa83a20, 1); g.fillRect(v.x - 11, v.y - 7, 22, 14);
+      g.fillStyle(0x1a1522, 1); for (let k = -8; k <= 8; k += 4) g.fillRect(v.x + k, v.y - 7, 1, 14);
+      if (st === 'warn') { g.lineStyle(2, 0xff4a4a, 0.4 + 0.4 * Math.sin(time * 25)); g.strokeCircle(v.x, v.y, 36); for (let k = 0; k < 2; k++) { f.fillStyle(0xe8eef2, 0.5); f.fillCircle(v.x + Math.sin(time * 9 + k) * 6, v.y - 6 - ((time * 40 + k * 8) % 12), 2); } }
+      if (st === 'burst') for (let k = 0; k < 7; k++) {
+        const t2 = (time * 1.8 + k / 7) % 1, rr = 6 + t2 * 18;
+        f.fillStyle(0xf0f4f8, 0.55 * (1 - t2)); f.fillCircle(v.x + Math.sin(k * 2.1 + time * 3) * 10 * t2, v.y - 8 - t2 * 60, rr);
+      }
+    }
     for (const b of def.firebars ?? []) { g.fillStyle(0x1a1522, 1); g.fillCircle(b.x, b.y, 9); g.fillStyle(0x4e4a5a, 1); g.fillCircle(b.x, b.y, 7); g.fillStyle(0x7a7688, 1); g.fillCircle(b.x - 2, b.y - 2, 3); }
     for (const b of sim.fireballs()) {
       const fl = 1 + Math.sin(time * 30 + b.x) * 0.15;

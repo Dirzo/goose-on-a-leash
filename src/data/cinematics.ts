@@ -4,7 +4,7 @@
  * View-only scripts: the game is paused while one plays. Seen ones are saved.
  */
 
-export type Speaker = 'rocco0' | 'rocco' | 'bimbo' | 'biscuit' | 'elder' | 'heron' | 'king' | 'gullbeard' | 'pickett';
+export type Speaker = 'rocco0' | 'rocco' | 'bimbo' | 'biscuit' | 'elder' | 'heron' | 'king' | 'gullbeard' | 'pickett' | 'pelican';
 /** Where to point the camera: Rocco, the boss in the room, or a world point. */
 export type CamTarget = 'player' | 'boss' | { x: number; y: number };
 
@@ -29,6 +29,7 @@ export const SPEAKERS: Record<Speaker, { name: string; color: string; strip: str
   heron: { name: 'The Heron', color: '#a8c8e8', strip: 'heron', frame: 0, scale: 1.8, ax: 0.6, ay: 0 },
   king: { name: 'The Burrow King', color: '#d8b890', strip: 'king', frame: 0, scale: 1.5, ax: 0.5, ay: 0.1 },
   gullbeard: { name: 'Captain Gullbeard', color: '#8fe0d0', strip: 'gullbeard', frame: 0, scale: 1.5, ax: 0.72, ay: 0.12 },
+  pelican: { name: 'The Pelican Chef', color: '#f2c94c', strip: 'pelican', frame: 0, scale: 1.7, ax: 0.6, ay: 0.08 },
   pickett: { name: 'Pickett', color: '#c49a6a', strip: 'pickett', frame: 2, scale: 2.4, ax: 0.5, ay: 0.05 },
 };
 
@@ -206,6 +207,28 @@ export const CINEMATICS: Record<string, Step[]> = {
     { title: 'The Foyer Seal', sub: 'One of three Royal Seals. The Royal Kitchens and the Lava Keep hold the others.', hold: 3.2 },
     { say: 'One seal. Two to go. And they only get worse from here, I bet.', who: 'bimbo' },
     { say: "You're getting the hang of being carried into danger, though.", who: 'rocco' },
+  ],
+  'pelican-in': [
+    { pan: 'boss', dur: 1.1 },
+    { sound: 'kraa' }, { shake: 0.4 },
+    { say: "Raccoon! In MY pantry! And you've brought... a goose. Plump. Free range.", who: 'pelican' },
+    { say: "He's not an ingredient!", who: 'rocco' },
+    { say: 'Everything is an ingredient, darling. Especially the little fish in the bag.', who: 'pelican' },
+    { say: 'Why does EVERYONE want to eat me?!', who: 'bimbo' },
+    { say: "If she swallows Biscuit, I yank him out. Hard. Three times if I have to.", who: 'rocco' },
+    { pan: 'player', dur: 0.8 },
+  ],
+  'pelican-out': [
+    { wait: 0.8 },
+    { pan: 'boss', dur: 1 },
+    { say: '...My souffle. My beautiful kitchen. What did that moon DO to me?', who: 'pelican' },
+    { say: "Take the Kitchen Seal, dear. And these muffins: they're mostly water. For the little fish.", who: 'pelican' },
+    { pan: 'player', dur: 0.7 },
+  ],
+  'seal-kitchens': [
+    { wait: 0.3 },
+    { title: 'The Kitchen Seal', sub: 'Two of three Royal Seals. The Lava Keep holds the last.', hold: 3 },
+    { say: 'Lava. Of course it is lava. Next to a koi. Wonderful.', who: 'bimbo' },
   ],
   'moray-out': [
     { wait: 0.6 },

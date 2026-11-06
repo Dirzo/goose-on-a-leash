@@ -1,0 +1,187 @@
+{
+ "id": "castle-7",
+ "name": "The Royal Pantry",
+ "subtitle": "Castle Honkmore \u00b7 the Pelican Chef",
+ "width": 1200,
+ "height": 800,
+ "playerStart": {
+  "x": 66,
+  "y": 400
+ },
+ "walls": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1200,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 780,
+   "w": 1200,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 358.0,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 442.0,
+   "w": 20,
+   "h": 358.0,
+   "kind": "border"
+  },
+  {
+   "x": 1180,
+   "y": 0,
+   "w": 20,
+   "h": 800,
+   "kind": "border"
+  },
+  {
+   "x": 140,
+   "y": 80,
+   "w": 260,
+   "h": 50,
+   "kind": "counter"
+  },
+  {
+   "x": 800,
+   "y": 80,
+   "w": 260,
+   "h": 50,
+   "kind": "counter"
+  },
+  {
+   "x": 140,
+   "y": 670,
+   "w": 260,
+   "h": 50,
+   "kind": "counter"
+  },
+  {
+   "x": 800,
+   "y": 670,
+   "w": 260,
+   "h": 50,
+   "kind": "counter"
+  }
+ ],
+ "gate": null,
+ "pits": [],
+ "bridges": [],
+ "refills": [
+  {
+   "x": 1080,
+   "y": 360,
+   "w": 90,
+   "h": 80
+  }
+ ],
+ "posts": [],
+ "bell": null,
+ "exit": null,
+ "vents": [
+  {
+   "x": 600,
+   "y": 120
+  },
+  {
+   "x": 600,
+   "y": 690
+  }
+ ],
+ "bucket": null,
+ "breadSpots": [],
+ "enemies": [
+  {
+   "kind": "pelican",
+   "x": 760,
+   "y": 400
+  }
+ ],
+ "knightSpawn": null,
+ "doors": [
+  {
+   "id": "w",
+   "x": 0,
+   "y": 358.0,
+   "w": 26,
+   "h": 84,
+   "to": "castle-6",
+   "toDoor": "e",
+   "spawn": {
+    "x": 66,
+    "y": 400
+   },
+   "label": "The Great Kitchen"
+  }
+ ],
+ "paths": [],
+ "biome": "castle",
+ "lightKind": "turtle",
+ "heavyKind": "turtle",
+ "steam": [
+  {
+   "x": 360,
+   "y": 260,
+   "period": 3.4,
+   "phase": 0.0
+  },
+  {
+   "x": 840,
+   "y": 260,
+   "period": 3.4,
+   "phase": 1.7
+  },
+  {
+   "x": 360,
+   "y": 540,
+   "period": 3.4,
+   "phase": 1.1
+  },
+  {
+   "x": 840,
+   "y": 540,
+   "period": 3.4,
+   "phase": 2.6
+  }
+ ],
+ "grease": [
+  {
+   "x": 500,
+   "y": 330,
+   "w": 200,
+   "h": 140
+  }
+ ],
+ "boss": "pelican",
+ "ventSpawns": false,
+ "springs": [
+  {
+   "x": 1120,
+   "y": 390
+  }
+ ],
+ "lanterns": [
+  {
+   "x": 600,
+   "y": 400
+  },
+  {
+   "x": 300,
+   "y": 400
+  },
+  {
+   "x": 900,
+   "y": 400
+  }
+ ],
+ "tiles": true
+}

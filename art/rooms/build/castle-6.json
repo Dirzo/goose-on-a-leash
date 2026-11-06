@@ -1,0 +1,252 @@
+{
+ "id": "castle-6",
+ "name": "The Great Kitchen",
+ "subtitle": "Castle Honkmore \u00b7 the Royal Kitchens",
+ "width": 1400,
+ "height": 760,
+ "playerStart": {
+  "x": 66,
+  "y": 360
+ },
+ "walls": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1400,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 740,
+   "w": 1400,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 318.0,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 402.0,
+   "w": 20,
+   "h": 358.0,
+   "kind": "border"
+  },
+  {
+   "x": 1380,
+   "y": 0,
+   "w": 20,
+   "h": 318.0,
+   "kind": "border"
+  },
+  {
+   "x": 1380,
+   "y": 402.0,
+   "w": 20,
+   "h": 358.0,
+   "kind": "border"
+  },
+  {
+   "x": 220,
+   "y": 80,
+   "w": 160,
+   "h": 60,
+   "kind": "counter"
+  },
+  {
+   "x": 220,
+   "y": 620,
+   "w": 160,
+   "h": 60,
+   "kind": "counter"
+  },
+  {
+   "x": 1020,
+   "y": 80,
+   "w": 160,
+   "h": 60,
+   "kind": "counter"
+  },
+  {
+   "x": 1020,
+   "y": 620,
+   "w": 160,
+   "h": 60,
+   "kind": "counter"
+  },
+  {
+   "x": 600,
+   "y": 520,
+   "w": 200,
+   "h": 50,
+   "kind": "counter"
+  }
+ ],
+ "gate": null,
+ "pits": [],
+ "bridges": [],
+ "refills": [
+  {
+   "x": 80,
+   "y": 640,
+   "w": 90,
+   "h": 80
+  }
+ ],
+ "posts": [],
+ "bell": null,
+ "exit": null,
+ "vents": [],
+ "bucket": null,
+ "breadSpots": [
+  {
+   "x": 700,
+   "y": 120
+  }
+ ],
+ "enemies": [
+  {
+   "kind": "mimic",
+   "x": 300,
+   "y": 360
+  },
+  {
+   "kind": "mimic",
+   "x": 1120,
+   "y": 360
+  },
+  {
+   "kind": "turtle",
+   "x": 560,
+   "y": 160
+  },
+  {
+   "kind": "turtle",
+   "x": 860,
+   "y": 560
+  },
+  {
+   "kind": "bellhop",
+   "x": 1200,
+   "y": 180
+  }
+ ],
+ "knightSpawn": null,
+ "doors": [
+  {
+   "id": "w",
+   "x": 0,
+   "y": 318.0,
+   "w": 26,
+   "h": 84,
+   "to": "castle-5",
+   "toDoor": "e",
+   "spawn": {
+    "x": 66,
+    "y": 360
+   },
+   "label": "The Scullery"
+  },
+  {
+   "id": "e",
+   "x": 1374,
+   "y": 318.0,
+   "w": 26,
+   "h": 84,
+   "to": "castle-7",
+   "toDoor": "w",
+   "spawn": {
+    "x": 1334,
+    "y": 360
+   },
+   "label": "The Royal Pantry"
+  }
+ ],
+ "paths": [],
+ "biome": "castle",
+ "lightKind": "turtle",
+ "heavyKind": "turtle",
+ "steam": [
+  {
+   "x": 420,
+   "y": 240,
+   "period": 3.0,
+   "phase": 0.0
+  },
+  {
+   "x": 420,
+   "y": 480,
+   "period": 3.0,
+   "phase": 1.5
+  },
+  {
+   "x": 700,
+   "y": 220,
+   "period": 2.6,
+   "phase": 0.8
+  },
+  {
+   "x": 980,
+   "y": 240,
+   "period": 3.0,
+   "phase": 2.2
+  },
+  {
+   "x": 980,
+   "y": 480,
+   "period": 3.0,
+   "phase": 0.7
+  },
+  {
+   "x": 700,
+   "y": 420,
+   "period": 2.6,
+   "phase": 2.0
+  }
+ ],
+ "firebars": [
+  {
+   "x": 700,
+   "y": 640,
+   "n": 5,
+   "speed": 1.5,
+   "phase": 0.0
+  }
+ ],
+ "grease": [
+  {
+   "x": 520,
+   "y": 300,
+   "w": 360,
+   "h": 80
+  }
+ ],
+ "springs": [
+  {
+   "x": 120,
+   "y": 670
+  }
+ ],
+ "kits": [
+  {
+   "x": 1300,
+   "y": 640
+  }
+ ],
+ "lanterns": [
+  {
+   "x": 300,
+   "y": 360
+  },
+  {
+   "x": 1100,
+   "y": 360
+  }
+ ],
+ "tiles": true
+}

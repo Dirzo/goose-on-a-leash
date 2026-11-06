@@ -774,6 +774,26 @@
   ],
   "points": {}
  },
+ "pelican": {
+  "w": 108,
+  "h": 100,
+  "frames": 7,
+  "anchor": [
+   44,
+   98
+  ],
+  "points": {}
+ },
+ "pelican_awake": {
+  "w": 108,
+  "h": 100,
+  "frames": 2,
+  "anchor": [
+   44,
+   98
+  ],
+  "points": {}
+ },
  "tree": {
   "w": 96,
   "h": 140,

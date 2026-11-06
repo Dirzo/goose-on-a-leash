@@ -1,0 +1,213 @@
+{
+ "id": "castle-5",
+ "name": "The Scullery",
+ "subtitle": "Castle Honkmore \u00b7 the Royal Kitchens",
+ "width": 1200,
+ "height": 720,
+ "playerStart": {
+  "x": 66,
+  "y": 360
+ },
+ "walls": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1200,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 700,
+   "w": 1200,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 318.0,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 402.0,
+   "w": 20,
+   "h": 318.0,
+   "kind": "border"
+  },
+  {
+   "x": 1180,
+   "y": 0,
+   "w": 20,
+   "h": 318.0,
+   "kind": "border"
+  },
+  {
+   "x": 1180,
+   "y": 402.0,
+   "w": 20,
+   "h": 318.0,
+   "kind": "border"
+  },
+  {
+   "x": 260,
+   "y": 120,
+   "w": 200,
+   "h": 50,
+   "kind": "counter"
+  },
+  {
+   "x": 260,
+   "y": 550,
+   "w": 200,
+   "h": 50,
+   "kind": "counter"
+  },
+  {
+   "x": 760,
+   "y": 120,
+   "w": 220,
+   "h": 50,
+   "kind": "counter"
+  },
+  {
+   "x": 760,
+   "y": 550,
+   "w": 220,
+   "h": 50,
+   "kind": "counter"
+  }
+ ],
+ "gate": null,
+ "pits": [
+  {
+   "x": 560,
+   "y": 90,
+   "w": 90,
+   "h": 60,
+   "kind": "water"
+  },
+  {
+   "x": 560,
+   "y": 570,
+   "w": 90,
+   "h": 60,
+   "kind": "water"
+  }
+ ],
+ "bridges": [],
+ "refills": [
+  {
+   "x": 540,
+   "y": 70,
+   "w": 130,
+   "h": 100
+  },
+  {
+   "x": 540,
+   "y": 550,
+   "w": 130,
+   "h": 100
+  }
+ ],
+ "posts": [],
+ "bell": null,
+ "exit": null,
+ "vents": [],
+ "bucket": null,
+ "breadSpots": [
+  {
+   "x": 160,
+   "y": 200
+  },
+  {
+   "x": 1060,
+   "y": 180
+  }
+ ],
+ "enemies": [
+  {
+   "kind": "mimic",
+   "x": 380,
+   "y": 380
+  },
+  {
+   "kind": "mimic",
+   "x": 860,
+   "y": 220
+  },
+  {
+   "kind": "mimic",
+   "x": 1000,
+   "y": 520
+  },
+  {
+   "kind": "turtle",
+   "x": 840,
+   "y": 380
+  },
+  {
+   "kind": "bellhop",
+   "x": 300,
+   "y": 640
+  }
+ ],
+ "knightSpawn": null,
+ "doors": [
+  {
+   "id": "w",
+   "x": 0,
+   "y": 318.0,
+   "w": 26,
+   "h": 84,
+   "to": "castle-1",
+   "toDoor": "e",
+   "spawn": {
+    "x": 66,
+    "y": 360
+   },
+   "label": "Honkmore Gate"
+  },
+  {
+   "id": "e",
+   "x": 1174,
+   "y": 318.0,
+   "w": 26,
+   "h": 84,
+   "to": "castle-6",
+   "toDoor": "w",
+   "spawn": {
+    "x": 1134,
+    "y": 360
+   },
+   "label": "The Great Kitchen"
+  }
+ ],
+ "paths": [],
+ "biome": "castle",
+ "lightKind": "turtle",
+ "heavyKind": "turtle",
+ "grease": [
+  {
+   "x": 300,
+   "y": 260,
+   "w": 240,
+   "h": 200
+  },
+  {
+   "x": 700,
+   "y": 300,
+   "w": 280,
+   "h": 140
+  }
+ ],
+ "lanterns": [
+  {
+   "x": 600,
+   "y": 360
+  }
+ ],
+ "tiles": true
+}

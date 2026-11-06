@@ -63,7 +63,7 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     nearestFilter(this, Phaser.Textures.FilterMode.NEAREST);
     const forced = roomFromUrl();
-    this.sim = new Sim({ seed: (Date.now() & 0x7fffffff) || 1, room: forced ?? WILLOWMERE });
+    this.sim = new Sim({ seed: (Date.now() & 0x7fffffff) || 1, room: forced ?? WILLOWMERE, difficulty: this.difficulty });
     const saved = forced ? null : loadStoredSave();
     if (saved) { applySave(this.sim, saved); this.resumed = true; }
     const def = this.sim.room.def;
@@ -190,10 +190,10 @@ export class GameScene extends Phaser.Scene {
     if (this.cinema.active) return;
     if (this.pendingCine && !sim.fishing.card) { this.playCinematic(this.pendingCine); this.pendingCine = ''; }
     for (const e of sim.enemies) {
-      const k = e.kind === 'elder' || e.kind === 'heron' || e.kind === 'king' || e.kind === 'gullbeard' ? e.kind : null;
+      const k = e.kind === 'elder' || e.kind === 'heron' || e.kind === 'king' || e.kind === 'gullbeard' || e.kind === 'pelican' ? e.kind : null;
       if (!k) continue;
       if (e.woke > 1.0) this.playCinematic(`${k}-out`);
-      else if (!e.woke && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < (k === 'elder' ? 430 : 900)) this.playCinematic(`${k}-in`);
+      else if (!e.woke && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < (k === 'elder' ? 430 : k === 'pelican' ? 650 : 900)) this.playCinematic(`${k}-in`);
     }
   }
   private cueRoom = '';
@@ -275,8 +275,8 @@ export class GameScene extends Phaser.Scene {
     sound.setRain(sim.storming && !this.paused);
     // the music and ambience follow the place, the fight and Bimbo's water
     const def = sim.room.def, p = sim.player;
-    const boss = sim.enemies.some(e => !e.woke && !e.dead && (e.kind === 'heron' || e.kind === 'king' || e.kind === 'gullbeard' || e.kind === 'elder')
-      && e.mode !== 'stalk' && Math.hypot(e.x - p.x, e.y - p.y) < 900);
+    const boss = sim.enemies.some(e => !e.woke && !e.dead && (e.kind === 'heron' || e.kind === 'king' || e.kind === 'gullbeard' || e.kind === 'elder' || e.kind === 'pelican')
+      && (e.mode !== 'stalk' || e.kind === 'pelican') && Math.hypot(e.x - p.x, e.y - p.y) < 900);
     let danger = 0;
     for (const e of sim.enemies) if (!e.woke && !e.dead && (e.mode === 'wind' || e.mode === 'aim')) danger = Math.max(danger, 1 - Math.hypot(e.x - p.x, e.y - p.y) / 260);
     const b = biomeOf(def) as Theme;
