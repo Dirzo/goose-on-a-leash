@@ -78,7 +78,7 @@ cast('back: buoy to the shore', (1040, 420), SHORE_POST)
 ROOMS.append(room(
     'tide-3', 'Moonlit Cove', 1600, 900,
     [dict(id='w', side='W', at=320, to='tide-2', toDoor='e', label='Echo Grotto'),
-     dict(id='n', side='N', at=520, to='END', toDoor='', gated=True, label='Castle Honkmore')],
+     dict(id='n', side='N', at=520, to='castle-1', toDoor='s', gated=True, label='Castle Honkmore')],
     'w', subtitle='The Tide Caves · Moonlit Cove', **T(),
     gate=rect(478, 30, 84, 12),
     pits=[rect(760, 20, 820, 860, kind='water')],

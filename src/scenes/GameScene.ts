@@ -184,7 +184,7 @@ export class GameScene extends Phaser.Scene {
       this.cueRoom = id;
       const fresh = Object.keys(sim.world).every(k => k === 'willowmere') && !sim.kit.oar;
       if (id === 'willowmere' && fresh && this.cinemaOn && !sim.seen.has('prologue') && this.view instanceof ArtRenderer) { this.startPrologue(); return; }
-      const ch = ({ willowmere: 'ch1', 'reedmarsh-1': 'ch2', 'hollowbark-1': 'ch3', 'driftwood-1': 'ch4', 'driftwood-2': 'wharf-hub', 'tide-1': 'ch5', 'tide-2': 'cove' } as Record<string, string>)[id];
+      const ch = ({ willowmere: 'ch1', 'reedmarsh-1': 'ch2', 'hollowbark-1': 'ch3', 'driftwood-1': 'ch4', 'driftwood-2': 'wharf-hub', 'tide-1': 'ch5', 'tide-2': 'cove', 'castle-1': 'ch6' } as Record<string, string>)[id];
       if (ch) this.playCinematic(ch);
     }
     if (this.cinema.active) return;
@@ -288,7 +288,7 @@ export class GameScene extends Phaser.Scene {
     else if (moved > 26 && !p.air && p.roll <= 0 && !this.paused) {
       this.lastStep = { x: p.x, y: p.y };
       const onPlanks = (def.bridges ?? []).some(r => p.x > r.x && p.x < r.x + r.w && p.y > r.y && p.y < r.y + r.h);
-      sound.footstep(onPlanks ? 'wood' : b === 'wharf' || def.fishing ? 'sand' : b === 'tide' ? 'stone' : 'grass');
+      sound.footstep(onPlanks ? 'wood' : b === 'wharf' || def.fishing ? 'sand' : b === 'tide' || b === 'castle' ? 'stone' : 'grass');
     }
   }
   private lastStep = { x: 0, y: 0 };
@@ -324,6 +324,7 @@ export class GameScene extends Phaser.Scene {
     if (events.some(e => e.type === 'shop')) this.onShop();
     for (const e of events) if (e.type === 'sound') sound.play(e.kind);
     if (events.some(e => e.type === 'morays')) this.pendingCine = 'moray-out';
+    for (const e of events) if (e.type === 'seal') this.pendingCine = `seal-${e.id}`;
     const sim = this.sim;
     for (const e of events) {
       if (e.type === 'room') sound.play('door');

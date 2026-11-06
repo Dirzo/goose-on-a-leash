@@ -734,6 +734,46 @@
   ],
   "points": {}
  },
+ "turtle": {
+  "w": 44,
+  "h": 44,
+  "frames": 5,
+  "anchor": [
+   20,
+   42
+  ],
+  "points": {}
+ },
+ "turtle_awake": {
+  "w": 44,
+  "h": 44,
+  "frames": 2,
+  "anchor": [
+   20,
+   42
+  ],
+  "points": {}
+ },
+ "bellhop": {
+  "w": 32,
+  "h": 46,
+  "frames": 4,
+  "anchor": [
+   15,
+   44
+  ],
+  "points": {}
+ },
+ "bellhop_awake": {
+  "w": 32,
+  "h": 46,
+  "frames": 2,
+  "anchor": [
+   15,
+   44
+  ],
+  "points": {}
+ },
  "tree": {
   "w": 96,
   "h": 140,

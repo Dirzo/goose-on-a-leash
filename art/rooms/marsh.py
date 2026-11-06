@@ -77,12 +77,27 @@ TIDE_P = {k: hx(v) for k, v in {
 }.items()}
 
 
+# Castle Honkmore: torchlit flagstones, red carpets with gold trim, stone columns, brick walls
+CASTLE_P = {k: hx(v) for k, v in {
+    'Q0': '201c24', 'Q1': '2a2530', 'Q2': '34303c', 'Q3': '3e3a48', 'Q4': '4a4656', 'Q5': '5a5668',
+    'D0': '1a1620', 'D1': '2e2a36', 'D2': '403c4a', 'MUD': '24202a',
+    'W0': '0a1420', 'W1': '10202e', 'W2': '1a3444', 'W3': '8ab0c8',
+    'TREE': '0c0a10', 'TREE2': '16121c', 'TREE3': '2a2432',
+    'GROUT': '15121a', 'CP0': '4a1018', 'CP1': '7a1a26', 'CP2': '9a2a34', 'GOLD': 'c8982a',
+    'COL0': '2e2a36', 'COL1': '4e4a5a', 'COL2': '7a7688', 'COL3': 'a8a4b8',
+    'RV0': '050407', 'RV1': '0c0a10', 'RV2': '16131c', 'ROCK0': '2a2632', 'ROCK1': '3e3a48', 'ROCK2': '5a5668', 'ROOT': '2a2632',
+    'ST0': '34303c', 'ST1': '4e4a5a', 'ST2': '6e6a7c', 'B0': '2a1e14', 'B1': '4a3424', 'B2': '6a4a30', 'B3': '8a6a44',
+}.items()}
+
+
 def render(R):
     W, H = R['width'], R['height']
     woods = R.get('biome') == 'woods'
     wharf = R.get('biome') == 'wharf'
     P = dict(BASE_P)
     if woods: P.update(WOODS_P)
+    castle = R.get('biome') == 'castle'
+    if castle: P.update(CASTLE_P)
     tide = R.get('biome') == 'tide'
     cove = tide and bool(R.get('fishing'))
     if wharf or cove: P.update(WHARF_P)
@@ -109,6 +124,23 @@ def render(R):
 
     # ---- ground: organic tone fields, thickets and clearings of clutter (water and trails paint over it)
     paint_ground(img, np.ones((H, W), bool), P, rng_np, int(seed * 1000) % 100000, woods)
+
+    if castle:                                             # flagstones: a big grid, each stone its own shade, dark grout
+        sx_ = (xx // 32).astype(int); sy_ = (yy // 24).astype(int)
+        shade = ((sx_ * 7919 + sy_ * 104729) % 7) / 6.0
+        stone = np.stack([P['Q1'], P['Q2'], P['Q3']])[(shade * 2.99).astype(int)]
+        img[:] = img * 0.35 + stone * 0.65
+        img[(xx.astype(int) % 32 == 0) | (yy.astype(int) % 24 == 0)] = P['GROUT']
+        img[((xx.astype(int) % 32 == 1) | (yy.astype(int) % 24 == 1))] *= 1.15
+        for cp in R.get('carpets', []):
+            x0, y0, x1, y1 = int(cp['x']), int(cp['y']), int(cp['x'] + cp['w']), int(cp['y'] + cp['h'])
+            img[y0:y1, x0:x1] = P['CP1']
+            img[y0 + 5:y1 - 5, x0 + 5:x1 - 5] = P['CP2']
+            for k in (0, 1): img[y0 + 3 + k:y0 + 4 + k, x0:x1] = P['GOLD']; img[y1 - 4 - k:y1 - 3 - k, x0:x1] = P['GOLD']
+            if cp['h'] > cp['w']:
+                for k in (0, 1): img[y0:y1, x0 + 3 + k] = P['GOLD']; img[y0:y1, x1 - 4 - k] = P['GOLD']
+            for x in range(x0 + 12, x1 - 8, 24):                 # a woven diamond pattern
+                for y in range(y0 + 10, y1 - 8, 20): px(x, y, 'GOLD'); px(x - 1, y + 1, 'CP0'); px(x + 1, y + 1, 'CP0')
 
     # ---- water from the pit rects; islands carved back out. Edge noise is small so the shore matches collision.
     allpits = R.get('pits', [])
@@ -207,7 +239,7 @@ def render(R):
         return any(d['x'] - m < x < d['x'] + d['w'] + m and d['y'] - m < y < d['y'] + d['h'] + m for d in docks)
     def near_post(x, y, m=30):
         return any(math.hypot(p['x'] - x, p['y'] - y) < m for p in R.get('posts', []))
-    nb = 0 if wharf or tide else int(bank.sum() / 260)
+    nb = 0 if wharf or tide or castle else int(bank.sum() / 260)
     if wharf:                                              # shells and pebbles on the tide line, foam lace in the shallows
         for _ in range(int(bank.sum() / 90)):
             x, y = rng.randrange(4, W - 4), rng.randrange(4, H - 4)
@@ -219,7 +251,7 @@ def render(R):
             x, y = rng.randrange(24, W - 24), rng.randrange(34, H - 10)
             if bank[y, x] and not near_dock(x, y) and not near_post(x, y):
                 reeds(x - 6, y + 4, rng.randrange(3, 7)); break
-    for _ in range(0 if wharf or tide else int(water.sum() / 9000)):
+    for _ in range(0 if wharf or tide or castle else int(water.sum() / 9000)):
         for _try in range(60):
             lx, ly = rng.randrange(20, W - 20), rng.randrange(20, H - 20)
             if water[ly, lx] and sd[ly, lx] < -14 and not near_dock(lx, ly, 20) and not near_post(lx, ly, 26):
@@ -335,6 +367,22 @@ def render(R):
                 m2 = (np.hypot(xx - x + 1.5, (yy - y + 2) * 1.2) < r * 0.55) & m
                 img[m2] = P['HD2']
             img[y0, x0:x1] = P['HD2']; img[y1 - 1, x0:x1] = P['OUT']
+            continue
+        if kind == 'pillar':
+            cx, cy, r = w['x'] + w['w'] / 2, w['y'] + w['h'] / 2, w['w'] / 2
+            shadow(cx + 8, cy + 10, r + 10, r * 0.6 + 6, 0.5)
+            disk(cx, cy, r + 1, 'OUT'); disk(cx, cy, r, 'COL1'); disk(cx - 2, cy - 2, r - 3, 'COL2'); disk(cx - r * 0.35, cy - r * 0.35, r * 0.3, 'COL3')
+            for a in range(0, 360, 30):
+                ax_, ay_ = cx + math.cos(math.radians(a)) * (r - 1), cy + math.sin(math.radians(a)) * (r - 1); px(ax_, ay_, 'COL0')
+            continue
+        if kind == 'statue':
+            x0, y0, x1, y1 = int(w['x']), int(w['y']), int(w['x'] + w['w']), int(w['y'] + w['h'])
+            shadow((x0 + x1) / 2 + 6, y1 + 4, w['w'] / 2 + 8, 10, 0.5)
+            img[y0 + 10:y1, x0:x1] = P['COL1']; img[y0 + 10, x0:x1] = P['COL3']; img[y1 - 1, x0:x1] = P['OUT']
+            cx = (x0 + x1) // 2
+            disk(cx, y0 + 26, 14, 'COL2', 0.7); disk(cx + 2, y0 + 24, 9, 'COL3', 0.7)               # the swan's body
+            for k in range(14): disk(cx + 10 + k * 0.4, y0 + 20 - k * 1.3, 3, 'COL3')            # her neck
+            disk(cx + 16, y0 + 2, 4, 'COL3'); img[y0 + 1:y0 + 4, cx + 19:cx + 25] = P['GOLD']          # head and crown-gold beak
             continue
         if kind == 'crate':
             x0, y0, x1, y1 = int(w['x']), int(w['y']), int(w['x'] + w['w']), int(w['y'] + w['h'])
@@ -535,11 +583,16 @@ def render(R):
     cc = np.stack([P['TREE'] * 0.8, P['TREE'], P['TREE2'], P['TREE3']])
     inner = canopy & (deep > 3)
     img[inner] = cc[cb][inner]
+    if castle:                                             # the castle walls: courses of dark brick, lit along the top
+        br = ((yy.astype(int) // 8) % 2 * 12 + xx.astype(int)) % 24 == 0
+        bricks = inner & ~br & (yy.astype(int) % 8 != 0)
+        img[inner] = P['TREE2']; img[bricks] = P['TREE3'] * 0.9
+        img[inner & ((yy.astype(int) % 8 == 1))] = P['TREE3'] * 1.2
     lit = inner & (np.roll(crown, 3, 0) < crown - 0.06) & (crown > 0.6)   # crown tops catching the moon
     img[lit] = img[lit] * 0.6 + (P['TREE3'] * 1.6) * 0.4
     far = canopy & (deep > 30)
     img[far] = img[far] * np.clip(1 - (deep[far] - 30) / 140, 0.45, 1)[..., None]
-    for x in range(24, W - 24, 5 if not (wharf or tide) else 10**6):        # hanging strands along the top
+    for x in range(24, W - 24, 5 if not (wharf or tide or castle) else 10**6):        # hanging strands along the top
         if gap[30, x] or not canopy[18, x]: continue
         for y in range(20, 20 + rng.randrange(6, 22)):
             if y + 6 < H and not water[y, x]: px(x + (y // 7) % 2, y + 6, 'RD0')
@@ -577,7 +630,7 @@ def main(ids):
     os.makedirs(OUT, exist_ok=True)
     files = [os.path.join(ROOT, 'src', 'data', 'rooms', f'{i}.json') for i in ids] if ids else \
         sorted(glob.glob(os.path.join(ROOT, 'src', 'data', 'rooms', 'reedmarsh-*.json')) + glob.glob(os.path.join(ROOT, 'src', 'data', 'rooms', 'hollowbark-*.json'))
-               + glob.glob(os.path.join(ROOT, 'src', 'data', 'rooms', 'driftwood-*.json')) + glob.glob(os.path.join(ROOT, 'src', 'data', 'rooms', 'tide-*.json')))
+               + glob.glob(os.path.join(ROOT, 'src', 'data', 'rooms', 'driftwood-*.json')) + glob.glob(os.path.join(ROOT, 'src', 'data', 'rooms', 'tide-*.json')) + glob.glob(os.path.join(ROOT, 'src', 'data', 'rooms', 'castle-*.json')))
     for f in files:
         R = json.load(open(f))
         save_room(render(R), os.path.join(OUT, f"{R['id']}.png"))

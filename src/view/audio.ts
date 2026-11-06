@@ -217,12 +217,12 @@ export class Sound {
     // the bed: waves on the coast, wind in the woods, a low rumble underground, a soft hush on the water
     const sea = b === 'wharf' || b === 'cove';
     bed.filt.type = 'lowpass';
-    bed.filt.frequency.setTargetAtTime(sea ? 300 + swell * 700 : b === 'woods' ? 500 + swell * 500 : b === 'tide' ? 160 : 700, t, 0.4);
+    bed.filt.frequency.setTargetAtTime(sea ? 300 + swell * 700 : b === 'woods' ? 500 + swell * 500 : b === 'tide' || b === 'castle' ? 160 : 700, t, 0.4);
     bed.gain.gain.setTargetAtTime(quiet * (sea ? 0.05 + swell * 0.1 : b === 'woods' ? 0.03 + swell * 0.05 : b === 'tide' ? 0.09 : 0.025), t, 0.5);
     bed2.filt.type = 'bandpass'; bed2.filt.Q.value = b === 'woods' ? 3 : 1;
     bed2.filt.frequency.setTargetAtTime(b === 'woods' ? 900 + Math.sin(t * 0.3) * 400 : sea ? 2500 : 4000, t, 0.5);
     bed2.gain.gain.setTargetAtTime(quiet * (b === 'woods' ? 0.03 * swell : sea ? 0.02 * swell : 0.006), t, 0.5);
-    this.echoSend.gain.setTargetAtTime(b === 'tide' ? 0.35 : 0, t, 0.3);
+    this.echoSend.gain.setTargetAtTime(b === 'tide' ? 0.35 : b === 'castle' ? 0.22 : 0, t, 0.3);
     // muffled music when Bimbo is drying out
     this.musicFilter.frequency.setTargetAtTime(sc.water < 0.25 ? 500 + sc.water * 3000 : 12000, t, 0.4);
     // little sounds of the place
@@ -241,6 +241,10 @@ export class Sound {
         if (r < 0.3) { const f = 1300 + Math.random() * 300; this.tone(f, 0.25, 'sawtooth', 0.012, f * 0.7, 0, A); this.tone(f * 1.1, 0.2, 'sawtooth', 0.01, f * 0.8, 0.28, A); }   // a gull, far off
         else if (r < 0.45) for (const [m, v] of [[1, 0.02], [2.76, 0.008]] as const) this.tone(520 * m, 2, 'sine', v, undefined, 0, A);            // the bell buoy
         else if (r < 0.65 && b === 'wharf') this.tone(70 + Math.random() * 30, 0.5, 'sawtooth', 0.01, 60, 0, A);                                        // a rope creaks
+      } else if (b === 'castle') {
+        if (r < 0.4) for (let k = 0; k < 4; k++) this.noise(0.04, 2400 + Math.random() * 1500, 0.02, 'bandpass', undefined, k * 0.06, 2, A);   // a torch crackles
+        else if (r < 0.55) { this.tone(110, 0.4, 'square', 0.012, 100, 0, A); this.noise(0.2, 800, 0.015, 'bandpass', undefined, 0.05, 4, A); }   // chains, far off
+        else if (r < 0.65) this.tone(87, 3, 'sine', 0.025, undefined, 0, A);                                                                // a low organ note
       } else if (b === 'tide') {
         const f = 900 + Math.random() * 1400;                                                                                           // drips, echoing
         this.tone(f, 0.08, 'sine', 0.05, f * 0.6); if (r < 0.2) this.noise(1.2, 120, 0.05, 'lowpass', 60, 0, 1, A);
@@ -269,7 +273,7 @@ export class Sound {
   dispose(): void { window.clearInterval(this.musicTimer); void this.ctx?.close(); }
 }
 
-export type Theme = 'pond' | 'marsh' | 'woods' | 'wharf' | 'tide' | 'cove' | 'boss' | 'storm';
+export type Theme = 'pond' | 'marsh' | 'woods' | 'wharf' | 'tide' | 'cove' | 'boss' | 'storm' | 'castle';
 export interface SoundScene { biome: Theme; boss: boolean; danger: number; water: number; fishing: boolean; quiet: boolean }
 interface ThemeDef { bpm: number; mel: (number | null)[]; roots: number[]; lead: number; bass: number; wave: Wave; vol: number; len: number; every?: number; drums?: boolean; pad?: boolean }
 const _ = null;
@@ -281,6 +285,7 @@ const THEMES: Record<Theme, ThemeDef> = {
   wharf: { bpm: 104, mel: [0, _, 0, 4, 7, _, 7, _, 5, _, 4, 2, 0, _, 2, _], roots: [0, 5, 0, 7], lead: 392, bass: 98, wave: 'square', vol: 0.06, len: 0.9, every: 1, drums: false, pad: true },
   tide: { bpm: 58, mel: [12, _, _, _, 7, _, _, _, 10, _, _, _, 3, _, _, _], roots: [0, 3, 8, 7], lead: 440, bass: 55, wave: 'sine', vol: 0.09, len: 5, every: 1, pad: true },
   cove: { bpm: 72, mel: [0, _, 4, _, 9, _, 7, _, 4, _, 2, _, 0, _, _, _], roots: [0, 5, 2, 7], lead: 349, bass: 87, wave: 'triangle', vol: 0.12, len: 2.2, every: 1, pad: true },
+  castle: { bpm: 92, mel: [0, _, 3, _, 7, _, 8, 7, 3, _, 2, _, 0, _, -1, _], roots: [0, 8, 5, 7], lead: 262, bass: 65, wave: 'square', vol: 0.05, len: 1.2, every: 1, pad: true, drums: false },
   boss: { bpm: 132, mel: [0, 0, 3, 0, 7, 0, 6, 5, 0, 0, 3, 0, 10, 8, 7, 3], roots: [0, 0, 8, 7], lead: 220, bass: 55, wave: 'sawtooth', vol: 0.05, len: 0.6, every: 1, drums: true },
   storm: { bpm: 84, mel: [0, _, 3, _, 0, _, 7, 5, 0, _, 3, _, 8, 7, 5, 3], roots: [0, 0, 0, 0], lead: 110, bass: 55, wave: 'triangle', vol: 0.18, len: 1.6, every: 1, drums: false },
 };

@@ -2,7 +2,7 @@ import type { Circle, Rect, Vec } from '../core/math';
 import type { LeashId } from './recipes';
 import type { FishingGrounds } from '../core/fishing';
 
-export type EnemyKind = 'bunny' | 'knight' | 'frog' | 'snapper' | 'heron' | 'squirrel' | 'badger' | 'king' | 'elder' | 'crab' | 'gull' | 'gullbeard' | 'eel';
+export type EnemyKind = 'bunny' | 'knight' | 'frog' | 'snapper' | 'heron' | 'squirrel' | 'badger' | 'king' | 'elder' | 'crab' | 'gull' | 'gullbeard' | 'eel' | 'turtle' | 'bellhop';
 
 /** A doorway on a room edge. Walking into it travels to `toDoor` in room `to` (or ends the slice when `to` is 'END'). */
 export interface Door {
@@ -73,13 +73,21 @@ export interface RoomDef {
   /** Glowing mushroom rings: honk one and its spores put nearby critters to sleep. */
   shrooms?: Vec[];
   /** Which art set paints the room. */
-  biome?: 'pond' | 'marsh' | 'woods' | 'wharf' | 'tide';
+  biome?: 'pond' | 'marsh' | 'woods' | 'wharf' | 'tide' | 'castle';
   /** Sea glass washed up on the beach, each picked up once (Pickett trades it at his tackle shop). */
   glass?: Vec[];
   /** A shop: honk at the counter to trade. */
   shop?: Vec & { name: string };
   /** Fishing grounds: spots to stand on, the water the fish swim in, and the trench where the Moray Twins lurk. */
   fishing?: FishingGrounds;
+  /** Castle fire bars: a chain of `n` fireballs turning round a stone hub (radians per second; negative = the other way). */
+  firebars?: (Vec & { n: number; speed: number; phase: number })[];
+  /** Stone goose statues that slam down on anyone who walks under them. */
+  crushers?: Rect[];
+  /** Red carpets (the painter only). */
+  carpets?: Rect[];
+  /** Guards come in waves from the burrows until `count` have been beaten; then the room's Royal Seal is won. */
+  waves?: { kinds: EnemyKind[]; count: number; alive: number; every: number; seal: string; zone?: string };
   /** Dripping freshwater springs in the caves (drawn by the painter; refill zones are in `refills`). */
   springs?: Vec[];
   /** The freshwater pump (drawn by the painter; its refill zone is in `refills`). */

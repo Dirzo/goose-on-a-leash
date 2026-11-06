@@ -40,10 +40,10 @@ export function mountUi(scene: GameScene): void {
 
   // ---- room selection and reset
   const order = Object.values(ROOMS).sort((a, b) => rank(a.id) - rank(b.id));
-  function rank(id: string): number { return id === 'willowmere' ? 0 : id.startsWith('reedmarsh-') ? +id.slice(10) : id.startsWith('hollowbark-') ? 10 + +id.slice(11) : id.startsWith('driftwood-') ? 20 + +id.slice(10) : id.startsWith('tide-') ? 30 + +id.slice(5) : 99; }
+  function rank(id: string): number { return id === 'willowmere' ? 0 : id.startsWith('reedmarsh-') ? +id.slice(10) : id.startsWith('hollowbark-') ? 10 + +id.slice(11) : id.startsWith('driftwood-') ? 20 + +id.slice(10) : id.startsWith('tide-') ? 30 + +id.slice(5) : id.startsWith('castle-') ? 40 + +id.slice(7) : 99; }
   const pick = $<HTMLSelectElement>('room-pick');
   pick.innerHTML = order.map(r => {
-    const tag = r.id === 'willowmere' ? 'Hub' : r.id.startsWith('reedmarsh-') ? `Reedmarsh ${r.id.slice(10)}` : r.id.startsWith('hollowbark-') ? `Hollowbark ${r.id.slice(11)}` : r.id.startsWith('driftwood-') ? `Driftwood ${r.id.slice(10)}` : r.id.startsWith('tide-') ? `Tide Caves ${r.id.slice(5)}` : 'Test';
+    const tag = r.id === 'willowmere' ? 'Hub' : r.id.startsWith('reedmarsh-') ? `Reedmarsh ${r.id.slice(10)}` : r.id.startsWith('hollowbark-') ? `Hollowbark ${r.id.slice(11)}` : r.id.startsWith('driftwood-') ? `Driftwood ${r.id.slice(10)}` : r.id.startsWith('tide-') ? `Tide Caves ${r.id.slice(5)}` : r.id.startsWith('castle-') ? `Castle ${r.id.slice(7)}` : 'Test';
     return `<option value="${r.id}">${tag} · ${esc(r.name)}${r.boss ? ' (boss)' : ''}${r.id === 'room-01' ? ' (gray-box prototype)' : ''}</option>`;
   }).join('');
   const syncPick = () => { pick.value = scene.sim.room.def.id; };

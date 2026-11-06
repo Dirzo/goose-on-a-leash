@@ -1,0 +1,233 @@
+{
+ "id": "castle-1",
+ "name": "Honkmore Gate",
+ "subtitle": "Castle Honkmore \u00b7 the gate",
+ "width": 1280,
+ "height": 900,
+ "playerStart": {
+  "x": 640,
+  "y": 830
+ },
+ "walls": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 880,
+   "w": 598.0,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 682.0,
+   "y": 880,
+   "w": 598.0,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 318.0,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 402.0,
+   "w": 20,
+   "h": 498.0,
+   "kind": "border"
+  },
+  {
+   "x": 1260,
+   "y": 0,
+   "w": 20,
+   "h": 900,
+   "kind": "border"
+  },
+  {
+   "x": 352,
+   "y": 192,
+   "w": 56,
+   "h": 56,
+   "kind": "pillar"
+  },
+  {
+   "x": 872,
+   "y": 192,
+   "w": 56,
+   "h": 56,
+   "kind": "pillar"
+  },
+  {
+   "x": 352,
+   "y": 492,
+   "w": 56,
+   "h": 56,
+   "kind": "pillar"
+  },
+  {
+   "x": 872,
+   "y": 492,
+   "w": 56,
+   "h": 56,
+   "kind": "pillar"
+  },
+  {
+   "x": 560,
+   "y": 60,
+   "w": 160,
+   "h": 70,
+   "kind": "statue"
+  }
+ ],
+ "gate": null,
+ "pits": [
+  {
+   "x": 20,
+   "y": 640,
+   "w": 1240,
+   "h": 120,
+   "kind": "water"
+  }
+ ],
+ "bridges": [
+  {
+   "x": 596,
+   "y": 630,
+   "w": 88,
+   "h": 140,
+   "kind": "dock"
+  }
+ ],
+ "refills": [
+  {
+   "x": 580,
+   "y": 330,
+   "w": 120,
+   "h": 90
+  }
+ ],
+ "posts": [],
+ "bell": null,
+ "exit": null,
+ "vents": [],
+ "bucket": null,
+ "breadSpots": [
+  {
+   "x": 160,
+   "y": 160
+  }
+ ],
+ "enemies": [
+  {
+   "kind": "turtle",
+   "x": 300,
+   "y": 360
+  },
+  {
+   "kind": "turtle",
+   "x": 1000,
+   "y": 360
+  },
+  {
+   "kind": "bellhop",
+   "x": 640,
+   "y": 520
+  }
+ ],
+ "knightSpawn": null,
+ "doors": [
+  {
+   "id": "s",
+   "x": 598.0,
+   "y": 874,
+   "w": 84,
+   "h": 26,
+   "to": "tide-3",
+   "toDoor": "n",
+   "spawn": {
+    "x": 640,
+    "y": 830
+   },
+   "label": "Moonlit Cove"
+  },
+  {
+   "id": "w",
+   "x": 0,
+   "y": 318.0,
+   "w": 26,
+   "h": 84,
+   "to": "castle-2",
+   "toDoor": "e",
+   "spawn": {
+    "x": 66,
+    "y": 360
+   },
+   "label": "The Grand Foyer"
+  }
+ ],
+ "paths": [
+  [
+   [
+    640,
+    834
+   ],
+   [
+    640,
+    420
+   ]
+  ],
+  [
+   [
+    640,
+    300
+   ],
+   [
+    66,
+    360
+   ]
+  ]
+ ],
+ "biome": "castle",
+ "lightKind": "turtle",
+ "heavyKind": "turtle",
+ "springs": [
+  {
+   "x": 640,
+   "y": 370
+  }
+ ],
+ "ferry": {
+  "x": 1060,
+  "y": 560,
+  "name": "Honkmore Gate"
+ },
+ "kits": [
+  {
+   "x": 1150,
+   "y": 160
+  }
+ ],
+ "lanterns": [
+  {
+   "x": 520,
+   "y": 600
+  },
+  {
+   "x": 760,
+   "y": 600
+  },
+  {
+   "x": 640,
+   "y": 160
+  }
+ ],
+ "ventSpawns": false
+}

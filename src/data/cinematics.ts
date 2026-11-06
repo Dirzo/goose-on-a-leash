@@ -190,6 +190,23 @@ export const CINEMATICS: Record<string, Step[]> = {
     { pan: 'player', dur: 0.9 },
     { title: 'Moonlit Cove', sub: 'Stand on a fishing spot · hold to cast · let go when it runs · [J] Fish Journal', hold: 3.4 },
   ],
+  ch6: [
+    { fadeIn: 1 },
+    { title: 'Chapter Six · Castle Honkmore', sub: 'Where the Swan Queen keeps her court', hold: 3 },
+    { pan: { x: 640, y: 120 }, dur: 1.4 },
+    { say: "That's her. The Swan Queen. Or her statue, anyway. The last ingredient's a tear of hers.", who: 'rocco' },
+    { say: "Swans don't cry, Rocco. Swans make OTHER things cry.", who: 'bimbo' },
+    { say: 'Three wings, three Royal Seals to get into the throne room. The Foyer first.', who: 'rocco' },
+    { say: 'HONK.', who: 'biscuit' },
+    { pan: 'player', dur: 0.9 },
+  ],
+  'seal-foyer': [
+    { wait: 0.4 },
+    { sound: 'chest' },
+    { title: 'The Foyer Seal', sub: 'One of three Royal Seals. The Royal Kitchens and the Lava Keep hold the others.', hold: 3.2 },
+    { say: 'One seal. Two to go. And they only get worse from here, I bet.', who: 'bimbo' },
+    { say: "You're getting the hang of being carried into danger, though.", who: 'rocco' },
+  ],
   'moray-out': [
     { wait: 0.6 },
     { say: '...Sister? Why are we on a beach?', who: 'bimbo' },

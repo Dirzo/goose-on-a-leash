@@ -1,0 +1,208 @@
+{
+ "id": "castle-4",
+ "name": "The Ballroom",
+ "subtitle": "Castle Honkmore \u00b7 the Ballroom",
+ "width": 1200,
+ "height": 800,
+ "playerStart": {
+  "x": 1134,
+  "y": 400
+ },
+ "walls": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1200,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 780,
+   "w": 1200,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 800,
+   "kind": "border"
+  },
+  {
+   "x": 1180,
+   "y": 0,
+   "w": 20,
+   "h": 358.0,
+   "kind": "border"
+  },
+  {
+   "x": 1180,
+   "y": 442.0,
+   "w": 20,
+   "h": 358.0,
+   "kind": "border"
+  },
+  {
+   "x": 178,
+   "y": 138,
+   "w": 44,
+   "h": 44,
+   "kind": "pillar"
+  },
+  {
+   "x": 178,
+   "y": 618,
+   "w": 44,
+   "h": 44,
+   "kind": "pillar"
+  },
+  {
+   "x": 978,
+   "y": 138,
+   "w": 44,
+   "h": 44,
+   "kind": "pillar"
+  },
+  {
+   "x": 978,
+   "y": 618,
+   "w": 44,
+   "h": 44,
+   "kind": "pillar"
+  }
+ ],
+ "gate": null,
+ "pits": [],
+ "bridges": [],
+ "refills": [
+  {
+   "x": 1080,
+   "y": 640,
+   "w": 90,
+   "h": 80
+  }
+ ],
+ "posts": [],
+ "bell": null,
+ "exit": null,
+ "vents": [
+  {
+   "x": 120,
+   "y": 400
+  },
+  {
+   "x": 600,
+   "y": 90
+  },
+  {
+   "x": 600,
+   "y": 710
+  },
+  {
+   "x": 300,
+   "y": 700
+  }
+ ],
+ "bucket": null,
+ "breadSpots": [
+  {
+   "x": 1100,
+   "y": 160
+  }
+ ],
+ "enemies": [],
+ "knightSpawn": null,
+ "doors": [
+  {
+   "id": "e",
+   "x": 1174,
+   "y": 358.0,
+   "w": 26,
+   "h": 84,
+   "to": "castle-3",
+   "toDoor": "w",
+   "spawn": {
+    "x": 1134,
+    "y": 400
+   },
+   "label": "Hall of Portraits"
+  }
+ ],
+ "paths": [],
+ "biome": "castle",
+ "lightKind": "turtle",
+ "heavyKind": "turtle",
+ "firebars": [
+  {
+   "x": 420,
+   "y": 400,
+   "n": 6,
+   "speed": 1.2,
+   "phase": 0.0
+  },
+  {
+   "x": 780,
+   "y": 400,
+   "n": 6,
+   "speed": -1.2,
+   "phase": 1.57
+  },
+  {
+   "x": 600,
+   "y": 220,
+   "n": 5,
+   "speed": 1.8,
+   "phase": 0.0
+  }
+ ],
+ "waves": {
+  "kinds": [
+   "turtle",
+   "bellhop",
+   "turtle",
+   "turtle"
+  ],
+  "count": 9,
+  "alive": 3,
+  "every": 2.6,
+  "seal": "foyer",
+  "zone": "The Ballroom"
+ },
+ "springs": [
+  {
+   "x": 1120,
+   "y": 670
+  }
+ ],
+ "lanterns": [
+  {
+   "x": 600,
+   "y": 400
+  },
+  {
+   "x": 300,
+   "y": 400
+  },
+  {
+   "x": 900,
+   "y": 400
+  }
+ ],
+ "carpets": [
+  {
+   "x": 80,
+   "y": 360,
+   "w": 1040,
+   "h": 80
+  },
+  {
+   "x": 560,
+   "y": 80,
+   "w": 80,
+   "h": 640
+  }
+ ],
+ "ventSpawns": false
+}

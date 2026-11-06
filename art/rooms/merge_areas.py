@@ -33,6 +33,8 @@ AREAS = [
     ('driftwood-4', 'The Rusty Gull', 'Driftwood Wharf · Captain Gullbeard', ['driftwood-6']),
     ('tide-1', 'Tidepool Steps', 'The Tide Caves', ['tide-1', 'tide-2']),
     ('tide-2', 'Moonlit Cove', 'The Tide Caves · the fishing grounds', ['tide-3']),
+    ('castle-1', 'Honkmore Gate', 'Castle Honkmore', ['castle-1']),
+    ('castle-2', 'The Grand Foyer', 'Castle Honkmore · the first wing', ['castle-4', 'castle-3', 'castle-2']),
 ]
 ROOM_TO_AREA = {r: a for a, _, _, rs in AREAS for r in rs}
 
@@ -107,7 +109,7 @@ def merge(area_id, name, subtitle, ids):
            'doors': [], 'paths': [], 'zones': [], 'lanterns': [], 'gate': None, 'bell': None, 'exit': None, 'bucket': None,
            'knightSpawn': None}
     lists = ['pits', 'bridges', 'refills', 'posts', 'vents', 'breadSpots', 'enemies', 'kits', 'spools', 'brambles',
-             'bushes', 'barrels', 'shrooms', 'feathers', 'nests', 'glass', 'springs']
+             'bushes', 'barrels', 'shrooms', 'feathers', 'nests', 'glass', 'springs', 'firebars', 'crushers', 'carpets']
     for i in ids:
         R, (ox, oy) = rooms[i], pos[i]
         x0, y0, w, h = rects[i]
@@ -122,6 +124,7 @@ def merge(area_id, name, subtitle, ids):
             fg = R['fishing']
             out['fishing'] = {'spots': [shift_pt(p, ox, oy) for p in fg['spots']], 'water': shift_pt(fg['water'], ox, oy),
                               **({'trench': shift_pt(fg['trench'], ox, oy)} if fg.get('trench') else {})}
+        if R.get('waves'): out['waves'] = R['waves']
         for k in ('gate', 'bell', 'chest', 'shrine', 'ferry', 'shop', 'pump'):
             if R.get(k):
                 assert not out.get(k), f'{area_id}: two {k}s'

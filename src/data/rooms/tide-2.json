@@ -174,8 +174,8 @@
    "y": 0,
    "w": 84,
    "h": 26,
-   "to": "END",
-   "toDoor": "",
+   "to": "castle-1",
+   "toDoor": "s",
    "spawn": {
     "x": 520,
     "y": 70

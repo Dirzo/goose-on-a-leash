@@ -112,6 +112,13 @@ strip('eel_awake', [critters_hd.eel('up', awake=True), critters_hd.eel('up', bli
 for fid, fn in critters_hd.JOURNAL_ART.items():
     im = fn(); strip(f'fish_{fid}', [im], (im.size[0] // 2, im.size[1] // 2))
 
+# Castle Honkmore: shield turtle (idle, blink, wind, bash, flipped), bellhop (idle, blink, ring, run)
+strip('turtle', [critters_hd.shield_turtle(), critters_hd.shield_turtle(blink=True), critters_hd.shield_turtle(pose='wind'),
+                 critters_hd.shield_turtle(pose='bash'), critters_hd.shield_turtle(pose='flipped')], (20, 42))
+strip('turtle_awake', [critters_hd.shield_turtle(awake=True), critters_hd.shield_turtle(blink=True, awake=True)], (20, 42))
+strip('bellhop', [critters_hd.bellhop(), critters_hd.bellhop(blink=True), critters_hd.bellhop(pose='ring'), critters_hd.bellhop(pose='run')], (15, 44))
+strip('bellhop_awake', [critters_hd.bellhop(awake=True), critters_hd.bellhop(blink=True, awake=True)], (15, 44))
+
 strip('tree', [props_hd.tree(v) for v in range(3)], props_hd.TREE_ANCHOR)
 
 # backpack screen: Bimbo (happy, worried, gasping x open/blink), the pack, patches, tears

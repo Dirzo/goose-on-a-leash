@@ -1,0 +1,207 @@
+{
+ "id": "castle-2",
+ "name": "Grand Foyer",
+ "subtitle": "Castle Honkmore \u00b7 the Grand Foyer",
+ "width": 1200,
+ "height": 720,
+ "playerStart": {
+  "x": 1134,
+  "y": 360
+ },
+ "walls": [
+  {
+   "x": 0,
+   "y": 0,
+   "w": 1200,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 700,
+   "w": 1200,
+   "h": 20,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 0,
+   "w": 20,
+   "h": 318.0,
+   "kind": "border"
+  },
+  {
+   "x": 0,
+   "y": 402.0,
+   "w": 20,
+   "h": 318.0,
+   "kind": "border"
+  },
+  {
+   "x": 1180,
+   "y": 0,
+   "w": 20,
+   "h": 318.0,
+   "kind": "border"
+  },
+  {
+   "x": 1180,
+   "y": 402.0,
+   "w": 20,
+   "h": 318.0,
+   "kind": "border"
+  },
+  {
+   "x": 278,
+   "y": 138,
+   "w": 44,
+   "h": 44,
+   "kind": "pillar"
+  },
+  {
+   "x": 278,
+   "y": 538,
+   "w": 44,
+   "h": 44,
+   "kind": "pillar"
+  },
+  {
+   "x": 878,
+   "y": 138,
+   "w": 44,
+   "h": 44,
+   "kind": "pillar"
+  },
+  {
+   "x": 878,
+   "y": 538,
+   "w": 44,
+   "h": 44,
+   "kind": "pillar"
+  },
+  {
+   "x": 520,
+   "y": 40,
+   "w": 160,
+   "h": 50,
+   "kind": "statue"
+  }
+ ],
+ "gate": null,
+ "pits": [],
+ "bridges": [],
+ "refills": [
+  {
+   "x": 1060,
+   "y": 90,
+   "w": 100,
+   "h": 80
+  }
+ ],
+ "posts": [],
+ "bell": null,
+ "exit": null,
+ "vents": [
+  {
+   "x": 120,
+   "y": 120
+  },
+  {
+   "x": 1080,
+   "y": 600
+  }
+ ],
+ "bucket": null,
+ "breadSpots": [],
+ "enemies": [
+  {
+   "kind": "turtle",
+   "x": 380,
+   "y": 300
+  },
+  {
+   "kind": "turtle",
+   "x": 860,
+   "y": 470
+  },
+  {
+   "kind": "bellhop",
+   "x": 600,
+   "y": 160
+  }
+ ],
+ "knightSpawn": null,
+ "doors": [
+  {
+   "id": "e",
+   "x": 1174,
+   "y": 318.0,
+   "w": 26,
+   "h": 84,
+   "to": "castle-1",
+   "toDoor": "w",
+   "spawn": {
+    "x": 1134,
+    "y": 360
+   },
+   "label": "Honkmore Gate"
+  },
+  {
+   "id": "w",
+   "x": 0,
+   "y": 318.0,
+   "w": 26,
+   "h": 84,
+   "to": "castle-3",
+   "toDoor": "e",
+   "spawn": {
+    "x": 66,
+    "y": 360
+   },
+   "label": "Hall of Portraits"
+  }
+ ],
+ "paths": [],
+ "biome": "castle",
+ "lightKind": "turtle",
+ "heavyKind": "turtle",
+ "firebars": [
+  {
+   "x": 600,
+   "y": 360,
+   "n": 7,
+   "speed": 1.4,
+   "phase": 0.0
+  }
+ ],
+ "springs": [
+  {
+   "x": 1110,
+   "y": 120
+  }
+ ],
+ "glass": [
+  {
+   "x": 160,
+   "y": 620
+  }
+ ],
+ "lanterns": [
+  {
+   "x": 300,
+   "y": 360
+  },
+  {
+   "x": 900,
+   "y": 360
+  }
+ ],
+ "carpets": [
+  {
+   "x": 80,
+   "y": 320,
+   "w": 1040,
+   "h": 80
+  }
+ ]
+}

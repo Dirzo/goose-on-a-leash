@@ -133,13 +133,13 @@ describe('travel', () => {
     expect(sim.player.x).toBeCloseTo(425, 0);
   });
 
-  it('the END door finishes the slice', () => {
-    const sim = at(ROOMS['tide-2']!);
-    sim.room.gateClosed = false;
-    const e = sim.room.def.doors!.find(d => d.id === 'n')!;
-    sim.player.x = e.spawn.x; sim.player.y = e.spawn.y;
-    run(sim, 1, { moveX: 0, moveY: -1, aimX: 0, aimY: 0 });
-    expect(sim.won).toBe(true);
+  it('every door leads to a real area, and that area has a door back', () => {
+    for (const def of Object.values(ROOMS)) for (const d of def.doors ?? []) {
+      if (d.to === 'END') continue;
+      const there = ROOMS[d.to];
+      expect(there, `${def.id} -> ${d.to}`).toBeTruthy();
+      expect(there!.doors!.some(x => x.id === d.toDoor && x.to === def.id), `${d.to} back to ${def.id}`).toBe(true);
+    }
   });
 });
 

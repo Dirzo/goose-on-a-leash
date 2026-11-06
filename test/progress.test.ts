@@ -97,7 +97,7 @@ const PATH: [string, string | null, string, boolean][] = [
 /** Driftwood Wharf is crossed with the power cast: posts within a full cast of the starting line. */
 const WHARF: [string, string, string][] = [
   ['driftwood-1', 'w', 'e'], ['driftwood-2', 'w', 'e'], ['driftwood-3', 'w', 'e'], ['driftwood-4', 'w', 'e'],
-  ['tide-1', 'w', 'e'],
+  ['tide-1', 'w', 'e'], ['castle-1', 's', 'w'],
 ];
 const CAST = 230 * C.castReachMul;
 
@@ -121,6 +121,13 @@ describe('every room can be finished', () => {
   it('Moonlit Cove: every fishing spot can be reached (the Far Rock by grapple), and you can get back', () => {
     const def = ROOMS['tide-2']!, at = reachableCells(def, CAST, 'w');
     for (const s of def.fishing!.spots) expect(at(s.x, s.y), s.name).toBe(true);
+  });
+
+  it('the Foyer wing: across the Hall of Portraits (by grapple) to the Ballroom, and back', () => {
+    const def = ROOMS['castle-2']!, z = def.zones!.find(q => q.name === 'The Ballroom')!;
+    expect(reachableCells(def, CAST, 'e')(z.x + z.w / 2, z.y + z.h / 2)).toBe(true);
+    const back = reachable(def, CAST, null);
+    expect([...back.doors]).toContain('e');
   });
 
   it('the sandbar feather in the harbour needs the Spinning Reel', () => {

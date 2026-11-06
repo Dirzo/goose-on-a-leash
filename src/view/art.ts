@@ -543,6 +543,7 @@ export class ArtRenderer {
     this.drawOar(sim, P, time);
     if (sim.castMode && sim.charging) this.drawCharge(sim, P, time);
     if (sim.room.def.fishing) this.drawFishing(sim, P, time);
+    if (sim.room.def.firebars || sim.room.def.crushers) this.drawCastle(sim, time);
 
     // ---- Biscuit
     const hauled = go.state === 'held' && go.drag > 0;     // dragged along after a roll: flapping
@@ -580,7 +581,7 @@ export class ArtRenderer {
       if (e.dead) continue;
       alive.add(e.id);
       let s = this.foes.get(e.id);
-      if (!s) { s = this.worldIgnore(this.scene.add.sprite(0, 0, ({ snapper: 'snapper', elder: 'snapper', heron: 'heron', squirrel: 'squirrel', badger: 'badger', king: 'king', crab: 'crab', gull: 'gull', gullbeard: 'gullbeard', eel: 'eel' } as Record<string, string>)[e.kind] ?? 'frog')); this.foes.set(e.id, s); }
+      if (!s) { s = this.worldIgnore(this.scene.add.sprite(0, 0, ({ snapper: 'snapper', elder: 'snapper', heron: 'heron', squirrel: 'squirrel', badger: 'badger', king: 'king', crab: 'crab', gull: 'gull', gullbeard: 'gullbeard', eel: 'eel', turtle: 'turtle', bellhop: 'bellhop' } as Record<string, string>)[e.kind] ?? 'frog')); this.foes.set(e.id, s); }
       const { x, y } = EP(e);
       const awake = e.woke > 0 || (e.stun > 0 && e.kind !== 'snapper');
       const kind = e.kind === 'heron' ? (e.woke > 0 ? 'heron_awake' : 'heron')
@@ -591,6 +592,7 @@ export class ArtRenderer {
         this.drawWoodsCritter(sim, e, s, x, y, time);
         continue;
       }
+      if (e.kind === 'turtle' || e.kind === 'bellhop') { this.drawCastleCritter(sim, e, s, x, y, time); continue; }
       if (e.kind === 'crab' || e.kind === 'gull' || e.kind === 'gullbeard' || e.kind === 'eel') {
         this.drawWharfCritter(sim, e, s, x, y, time);
         continue;
@@ -877,6 +879,7 @@ export class ArtRenderer {
     });
 
     this.drawFishHud(sim, g, panel, W, H);
+    if (this.wtWave) { panel(W / 2 - 110, 124, 220, 30); this.ht('mono', this.wtWave, W / 2, 144, 13, '#ff8a6a', 0.8 + 0.2 * Math.sin(this.time * 6), 'center', true); }
 
     // boss health
     const boss = sim.enemies.find(e => (e.kind === 'heron' || e.kind === 'king' || (e.kind === 'gullbeard' && e.mode !== 'stalk') || (e.kind === 'elder' && Math.hypot(e.x - sim.player.x, e.y - sim.player.y) < 620)) && !e.woke);
@@ -1213,6 +1216,67 @@ export class ArtRenderer {
     if (e.stun > 0 && e.air <= 2) for (let i = 0; i < 2; i++) { const a = time * 5 + i * 3; f.fillStyle(0xf2c230, 1); this.star(f, x + Math.cos(a) * 10, y - 26 + Math.sin(a) * 3, 2.5); }
     if (e.kind === 'crab' && e.mode === 'wind') this.wt('!', x, y - 30, 11, '#ff4a4a', 1);
   }
+
+  /** Shield turtles (with a gold arc showing which way the shield faces) and bellhops (the bell rings, ripples spread). */
+  private drawCastleCritter(sim: Sim, e: Enemy, s: Phaser.GameObjects.Sprite, x: number, y: number, time: number): void {
+    const g = this.floor, f = this.fxg, awake = e.woke > 0, turtle = e.kind === 'turtle';
+    const blink = ((time * 1.1 + e.id * 0.37) % 3.2) < 0.14;
+    let frame = blink ? 1 : 0;
+    if (!awake) {
+      if (turtle) frame = e.mode === 'wind' ? 2 : e.mode === 'bash' ? 3 : e.mode === 'flipped' ? 4 : frame;
+      else frame = e.mode === 'ring' ? 2 : Math.hypot(e.vx, e.vy) > 30 || (e.mode === 'stalk' && Math.floor(time * 6 + e.id) % 2) ? 3 : frame;
+    }
+    this.show(s, `${e.kind}${awake ? '_awake' : ''}`, frame);
+    const faceX = turtle ? (e.fx_ ?? 1) : sim.player.x - x;
+    const ring = e.mode === 'ring' ? Math.sin(time * 30) * 2 : 0;
+    s.setPosition(Math.round(x + ring), Math.round(y)).setDepth(y).setFlipX(faceX < 0).setAlpha(awake ? Math.min(1, Math.max(0, (1.6 - e.woke) / 0.5)) : 1);
+    const tell = e.mode === 'wind' && Math.floor(e.modeT * 16) % 2 === 0;
+    if (e.hitT > 0 || tell) s.setTint(e.hitT > 0 ? 0xffffff : 0xffd0d0).setTintMode(Phaser.TintModes.FILL);
+    else if (e.haste) s.setTint(0xffb080).setTintMode(Phaser.TintModes.MULTIPLY);
+    else s.clearTint().setTintMode(Phaser.TintModes.MULTIPLY);
+    g.fillStyle(0x000000, 0.35); g.fillEllipse(x, y + 2, turtle ? 34 : 18, turtle ? 9 : 6);
+    if (awake) return;
+    if (turtle && e.mode !== 'flipped') {               // the shield's arc: where bites won't land
+      const a = Math.atan2(e.fy_ ?? 0, e.fx_ ?? 1);
+      g.lineStyle(2, 0xe8b840, 0.55); g.beginPath(); g.arc(x, y - 6, 26, a - 1.3, a + 1.3); g.strokePath();
+    }
+    if (e.mode === 'flipped' || e.stun > 0) for (let i = 0; i < 3; i++) { const a = time * 5 + i * 2.1; f.fillStyle(0xf2c230, 1); this.star(f, x + Math.cos(a) * 14, y - 46 + Math.sin(a) * 3, 2.5); }
+    if (e.mode === 'wind') this.wt('!', x, y - 50, 12, '#ff4a4a', 1);
+    if (e.mode === 'ring') { const k = (e.modeT % 0.3) / 0.3; f.lineStyle(1, 0xf2c94c, 1 - k); f.strokeCircle(x - 10, y - 38, 6 + k * 20); this.wt('DING!', x, y - 56, 8, '#f2c94c', 0.8); }
+    if (e.haste) this.wt('!!', x, y - 50, 9, '#ffb080', 0.8);
+  }
+
+  /** Fire bars (a stone hub, a chain of fireballs, an ember glow) and the slamming goose statues. */
+  private drawCastle(sim: Sim, time: number): void {
+    const g = this.floor, f = this.fxg, def = sim.room.def;
+    for (const b of def.firebars ?? []) { g.fillStyle(0x1a1522, 1); g.fillCircle(b.x, b.y, 9); g.fillStyle(0x4e4a5a, 1); g.fillCircle(b.x, b.y, 7); g.fillStyle(0x7a7688, 1); g.fillCircle(b.x - 2, b.y - 2, 3); }
+    for (const b of sim.fireballs()) {
+      const fl = 1 + Math.sin(time * 30 + b.x) * 0.15;
+      f.fillStyle(0xff6a1a, 0.25); f.fillCircle(b.x, b.y, 11 * fl);
+      f.fillStyle(0xff8a2a, 1); f.fillCircle(b.x, b.y, 6 * fl);
+      f.fillStyle(0xffe08a, 1); f.fillCircle(b.x - 1, b.y - 1, 3 * fl);
+    }
+    (def.crushers ?? []).forEach((c, i) => {
+      const st = sim.crush[i] ?? { t: 0, state: 'up' }, cx = c.x + c.w / 2, cy = c.y + c.h / 2;
+      // height above the floor: high when up, falling fast, resting, then rising
+      const hgt = st.state === 'up' ? 70 : st.state === 'warn' ? 70 + Math.sin(st.t * 40) * 3 : st.state === 'down' ? 0 : 70 * Math.min(1, st.t);
+      const sa = 0.25 + 0.4 * (1 - hgt / 70);
+      g.fillStyle(0x000000, sa); g.fillRect(c.x + 4, c.y + 6, c.w - 8, c.h - 8);
+      if (st.state === 'warn') { g.lineStyle(2, 0xff4a4a, 0.5 + 0.4 * Math.sin(time * 20)); g.strokeRect(c.x, c.y, c.w, c.h); this.wt('!', cx, cy - 30, 14, '#ff4a4a', 1); }
+      // the statue: a stone block with a goose carved on top, lifted by its height
+      const top = c.y - hgt;
+      f.fillStyle(0x1a1522, 1); f.fillRect(c.x - 1, top - 1, c.w + 2, c.h + 2);
+      f.fillStyle(0x4e4a5a, 1); f.fillRect(c.x, top, c.w, c.h);
+      f.fillStyle(0x6e6a7c, 1); f.fillRect(c.x, top, c.w, 8);
+      f.fillStyle(0x8a8698, 1); f.fillEllipse(cx - 4, top + c.h / 2, c.w * 0.5, c.h * 0.35); f.fillCircle(cx + c.w * 0.2, top + c.h * 0.28, 6);
+      f.fillStyle(0xc8982a, 1); f.fillRect(cx + c.w * 0.2 + 5, top + c.h * 0.28 - 1, 6, 3);
+      f.fillStyle(st.state === 'warn' || st.state === 'down' ? 0xff3a3a : 0x2a2632, 1); f.fillRect(cx + c.w * 0.2 + 1, top + c.h * 0.28 - 2, 2, 2);
+    });
+    const w = def.waves;
+    if (w && !sim.waveDone && sim.waveSpawned > 0) this.wtWave = `GUARDS · ${sim.waveLeft()} LEFT`;
+    else this.wtWave = '';
+  }
+  wtWave = '';
 
   /** Tide-pool eels: a ripple while hidden, bubbles and a warning before the lunge, flopping on the rocks. */
   private drawEel(sim: Sim, e: Enemy, s: Phaser.GameObjects.Sprite, x: number, y: number, time: number): void {

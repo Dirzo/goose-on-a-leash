@@ -19,10 +19,10 @@ export type GooseState = 'held' | 'flying' | 'latched' | 'loose' | 'returning';
 export type { EnemyKind };
 
 /** How close Rocco must get before an entranced critter notices him. Room 01's pests see across the room. */
-const AGGRO: Partial<Record<EnemyKind, number>> = { eel: 130, crab: 230, gull: 420, gullbeard: 900, elder: 620, frog: 160, snapper: 210, heron: 520, squirrel: 260, badger: 230, king: 700 };
-const HEAVY: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['knight', 'snapper', 'heron', 'badger', 'king', 'elder']);
+const AGGRO: Partial<Record<EnemyKind, number>> = { turtle: 320, bellhop: 420, eel: 130, crab: 230, gull: 420, gullbeard: 900, elder: 620, frog: 160, snapper: 210, heron: 520, squirrel: 260, badger: 230, king: 700 };
+const HEAVY: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['knight', 'snapper', 'heron', 'badger', 'king', 'elder', 'turtle']);
 /** Animals under the blood moon's trance. Beaten, they wake up and wander off instead of dying. */
-const ENTRANCED: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['frog', 'snapper', 'heron', 'squirrel', 'badger', 'king', 'elder', 'crab', 'gull', 'gullbeard', 'eel']);
+const ENTRANCED: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['frog', 'snapper', 'heron', 'squirrel', 'badger', 'king', 'elder', 'crab', 'gull', 'gullbeard', 'eel', 'turtle', 'bellhop']);
 /** They fly (or live in the water): they don't swim back to shore, they move themselves, and above 30 they're out of reach. */
 const FLIERS: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['gull', 'gullbeard', 'eel']);
 /** Bosses stand their ground: no knockback, they never fall in, and they stay once woken. */
@@ -73,6 +73,10 @@ export interface Enemy {
   hx: number; hy: number;
   /** What a gull made off with: bite it or honk at it to make it drop it. */
   loot?: { mat?: ItemId; bread?: BreadId; n: number };
+  /** Seconds of a bellhop's rallying call left: the guard thinks and moves faster. */
+  haste?: number;
+  /** Which way a shield turtle's shield faces (a unit vector; it turns slowly). */
+  fx_?: number; fy_?: number;
   /** A boss's second timer (peck wind-up). */
   grip2: number;
 }
@@ -87,8 +91,8 @@ export type CritterMode = 'stalk' | 'wind' | 'leap' | 'lash' | 'charge' | 'recov
   /** Old Snapper: winded after a charge, hiding in his shell, flipped on his back. */
   | 'tired' | 'shell' | 'flipped'
   /** Driftwood Wharf: crabs guard with their claws; gulls circle, dive and make off with loot; the Captain swoops and gets tangled. */
-  | 'guard' | 'snap' | 'circle' | 'dive' | 'escape' | 'aim' | 'swoop' | 'tangled' | 'fall' | 'lurk' | 'up' | 'beached';
-export type AttackKind = 'leap' | 'lash' | 'charge' | 'bite' | 'spear' | 'gust' | 'dart' | 'slam' | 'peck' | 'acorn' | 'erupt' | 'rock' | 'thorn' | 'dig' | 'rocks' | 'pinch' | 'dive' | 'bottle' | 'swoop';
+  | 'guard' | 'snap' | 'circle' | 'dive' | 'escape' | 'aim' | 'swoop' | 'tangled' | 'fall' | 'lurk' | 'up' | 'beached' | 'bash' | 'ring';
+export type AttackKind = 'leap' | 'lash' | 'charge' | 'bite' | 'spear' | 'gust' | 'dart' | 'slam' | 'peck' | 'acorn' | 'erupt' | 'rock' | 'thorn' | 'dig' | 'rocks' | 'pinch' | 'dive' | 'bottle' | 'swoop' | 'burn' | 'crush';
 
 /** A feather dart lobbed at Bimbo: it lands on the marked spot when t reaches T. */
 export interface Dart { x0: number; y0: number; tx: number; ty: number; t: number; T: number; kind?: 'feather' | 'acorn' | 'rock' | 'bottle'; /** batted back by the oar: hits critters and bells, not Rocco */ back?: boolean; /** the critter it's batted at (it follows him) */ at?: number }
@@ -162,6 +166,8 @@ export type SimEvent =
   | { type: 'shop' }
   /** Both Moray Twins landed: the Moray Pearl. */
   | { type: 'morays' }
+  /** A Royal Seal won (a castle wing cleared). */
+  | { type: 'seal'; id: string }
   /** A tutorial prompt: shown on screen for a few seconds. */
   | { type: 'hint'; text: string };
 
@@ -498,6 +504,7 @@ export class Sim {
     this.spoolsGot = (def.spools ?? []).map((_, i) => mem?.spools?.[i] ?? false);
     this.glassGot = (def.glass ?? []).map((_, i) => mem?.glass?.[i] ?? false);
     this.fishing.setGrounds(def.fishing ?? null);
+    this.crush = []; this.waveSpawned = 0; this.waveT = 1; this.waveDone = false; this.waveIds = new Set();
     this.atShop = false;
     this.feathersGot = (def.feathers ?? []).map((_, i) => mem?.feathers?.[i] ?? false);
     this.nestsDown = (def.nests ?? []).map((_, i) => mem?.nests?.[i] ?? false);
@@ -516,7 +523,7 @@ export class Sim {
   mkEnemy(kind: EnemyKind, x: number, y: number): Enemy {
     const k = HEAVY.has(kind), boss = BOSS.has(kind);
     const stats: Partial<Record<EnemyKind, [number, number, number]>> = {   // hp, radius, speed
-      heron: [HERON_HP, 24, 0], king: [KING_HP, 34, 48], gullbeard: [GULLBEARD_HP, 28, 0], crab: [4, 14, 72], gull: [2, 11, 150], eel: [3, 12, 0], elder: [ELDER_HP, 26, 46], squirrel: [2, 10, 115], badger: [10, 18, 50],
+      heron: [HERON_HP, 24, 0], king: [KING_HP, 34, 48], gullbeard: [GULLBEARD_HP, 28, 0], crab: [4, 14, 72], gull: [2, 11, 150], eel: [3, 12, 0], turtle: [9, 18, 36], bellhop: [3, 11, 125], elder: [ELDER_HP, 26, 46], squirrel: [2, 10, 115], badger: [10, 18, 50],
     };
     const [hp0, r, spd] = stats[kind] ?? [k ? 8 : 3, k ? 20 : 13, k ? 42 : 78];
     const hp = boss ? Math.round(hp0 * this.diff.bossHp) : hp0;
@@ -634,6 +641,11 @@ export class Sim {
       t.mode = 'flipped'; t.modeT = 0;
       this.fx('slam', t.x, t.y); this.say('HEAVE! Old Snapper flips onto his back!');
       this.hint('flip', 'Flipped! He can\'t get up for a moment: bite, bite, bite!');
+      return;
+    }
+    if (!isPost(t) && t.kind === 'turtle' && t.mode !== 'flipped') {
+      t.mode = 'flipped'; t.modeT = 0; t.fx_ = -(t.fx_ ?? 1); t.fy_ = -(t.fy_ ?? 0);
+      this.fx('slam', t.x, t.y); this.say('HEAVE! The guard spins round, shield the wrong way. Bite!');
       return;
     }
     if (isPost(t) || t.heavy) {
@@ -913,6 +925,10 @@ export class Sim {
     }
     if (e.kind === 'gullbeard' && !e.woke) amt *= e.mode === 'tangled' ? 2 : e.mode === 'dazed' ? 1.5 : 1;
     if (e.kind === 'eel' && e.mode === 'beached') amt *= 2;
+    if (e.kind === 'turtle' && !e.woke) {
+      if (e.mode !== 'flipped' && this.turtleFront(e, this.goose)) { this.fx('block', e.x, e.y - 14); this.hint('turtle', 'CLANG. Shield guards block from the front: cast from the side or behind, or latch on and YANK [E] to spin one round.'); return; }
+      if (e.mode === 'flipped') amt *= 2;
+    }
     if (e.kind === 'elder' && !e.woke) {
       if (e.mode === 'shell') {
         if (this.elderClonkT <= 0) { this.say('CLONK. He\'s in his shell. Yank [E] while Biscuit holds on to flip him!'); this.elderClonkT = 3; }
@@ -1232,6 +1248,7 @@ export class Sim {
     this.stepPack(dt);
     this.stepWoods(dt);
     this.stepWharf(dt);
+    this.stepCastle(dt);
     const chest = room.def.chest;
     if (chest && !this.world[room.def.id]?.chest && Math.hypot(chest.x - p.x, chest.y - p.y) < 30) this.openChest();
     if (room.def.doors) {
@@ -1282,7 +1299,8 @@ export class Sim {
         continue;
       }
       if (e.mode === 'swim') { e.mode = 'recover'; e.modeT = 0; e.cd = 1.2; }   // climbed out, shaking off
-      const edt = dt * this.diff.tempo;
+      if (e.haste) e.haste = Math.max(0, e.haste - dt);
+      const edt = dt * this.diff.tempo * (e.haste ? 1.5 : 1);
       if (e.kind === 'heron') [ax, ay] = this.heronAI(e, edt, d);
       else if (e.kind === 'king') [ax, ay] = this.kingAI(e, edt);
       else if (e.kind === 'elder') [ax, ay] = this.elderAI(e, edt, d);
@@ -1291,6 +1309,8 @@ export class Sim {
       else if (e.kind === 'crab') [ax, ay] = this.crabAI(e, edt, slow);
       else if (e.kind === 'gull') [ax, ay] = this.gullAI(e, edt);
       else if (e.kind === 'eel') [ax, ay] = this.eelAI(e, edt);
+      else if (e.kind === 'turtle') [ax, ay] = this.turtleAI(e, edt, slow);
+      else if (e.kind === 'bellhop') [ax, ay] = this.bellhopAI(e, edt, slow);
       else if (e.kind === 'gullbeard') [ax, ay] = this.gullbeardAI(e, edt);
       else if (critter) [ax, ay] = this.critterAI(e, edt, d, slow);
       else if (!e.stun && d < (AGGRO[e.kind] ?? 300)) { ax = dx * e.spd * slow; ay = dy * e.spd * slow; }
@@ -2205,6 +2225,158 @@ export class Sim {
     }
   }
 
+  // ------------------------------------------------ Castle Honkmore
+
+  /** Is this point in front of a shield turtle's shield? */
+  private turtleFront(e: Enemy, from: Vec): boolean {
+    const fx = e.fx_ ?? 1, fy = e.fy_ ?? 0, dx = from.x - e.x, dy = from.y - e.y, l = Math.hypot(dx, dy) || 1;
+    return (dx * fx + dy * fy) / l > 0.25;
+  }
+
+  /**
+   * Shield turtles: swan guards behind tower shields. The shield turns slowly toward Rocco, so circle round or
+   * cast from the side. They plod in and bash with the shield. A yank while Biscuit holds on spins one round:
+   * shield the wrong way, bites do double.
+   */
+  private turtleAI(e: Enemy, dt: number, slow: number): [number, number] {
+    const p = this.player;
+    e.modeT += dt; e.cd -= dt;
+    const bimbo = this.packPoint(10), [ux, uy, db] = dirTo(e, bimbo);
+    // the shield turns toward Rocco, slowly
+    const want = Math.atan2(uy, ux), cur = Math.atan2(e.fy_ ?? 0, e.fx_ ?? 1);
+    if (e.mode !== 'flipped' && e.stun <= 0) {
+      const da = angDiff(want, cur), turn = (e.mode === 'wind' || e.mode === 'bash' ? 0.6 : 1.5) * dt;
+      const a = cur + Math.max(-turn, Math.min(turn, da)); e.fx_ = Math.cos(a); e.fy_ = Math.sin(a);
+    }
+    if (e.stun > 0) return [0, 0];
+    if (p.dead) return [0, 0];
+    switch (e.mode) {
+      case 'flipped':
+        if (e.modeT > 2.4) { e.mode = 'recover'; e.modeT = 0; }
+        return [0, 0];
+      case 'wind':
+        if (e.modeT < 0.55) return [0, 0];
+        e.mode = 'bash'; e.modeT = 0; e.hit = false; e.vx = (e.fx_ ?? ux) * 300; e.vy = (e.fy_ ?? uy) * 300;
+        return [0, 0];
+      case 'bash':
+        if (!e.hit && db < e.r + p.r + 10) { e.hit = true; this.hurtPlayer(1, true, e, 'charge'); }
+        if (e.modeT > 0.3) { e.mode = 'recover'; e.modeT = 0; }
+        return [0, 0];
+      case 'recover':
+        if (e.modeT > 0.8) { e.mode = 'stalk'; e.modeT = 0; e.cd = 0.8 + this.rng() * 0.8; }
+        return [0, 0];
+      default:
+        if (db > (AGGRO.turtle ?? 320)) return [0, 0];
+        if (e.cd <= 0 && db < 80) { e.mode = 'wind'; e.modeT = 0; return [0, 0]; }
+        return [ux * e.spd * slow, uy * e.spd * slow];
+    }
+  }
+
+  /**
+   * Bellhops: quick swans in livery. They keep their distance and every few seconds ring a handbell: every
+   * guard nearby attacks at once, faster, and a fresh guard marches in. Catch one with a long cast.
+   */
+  private bellhopAI(e: Enemy, dt: number, slow: number): [number, number] {
+    const p = this.player;
+    e.modeT += dt; e.cd -= dt;
+    if (e.stun > 0 || p.dead) { if (e.mode === 'ring') e.mode = 'stalk'; return [0, 0]; }
+    const [ux, uy, d] = dirTo(e, p);
+    if (d > (AGGRO.bellhop ?? 420) && e.mode === 'stalk') return [0, 0];
+    if (e.mode === 'ring') {
+      if (e.modeT < 0.9) return [0, 0];
+      let rallied = 0;
+      for (const o of this.enemies) if (o !== e && this.active(o) && Math.hypot(o.x - e.x, o.y - e.y) < 300) { o.haste = 4; o.cd = 0; rallied++; }
+      const guards = this.enemies.filter(o => o.kind === 'turtle' && this.active(o)).length;
+      const vents = this.room.def.vents;
+      if (guards < 3 && vents.length) { const v = vents[Math.floor(this.rng() * vents.length)]!; const t = this.mkEnemy('turtle', v.x, v.y); t.cd = 1; this.enemies.push(t); this.fx('ring', v.x, v.y); }
+      this.fx('ring', e.x, e.y - 20); this.events.push({ type: 'sound', kind: 'bell' });
+      this.say(rallied ? 'DING DING! "Guards! The FISH!" Everyone charges at once.' : 'DING DING! A bellhop rings for the guard.');
+      this.hint('bellhop', 'Bellhops ring for help. Get them first: they run, so it takes a long cast.');
+      e.mode = 'stalk'; e.modeT = 0; e.cd = 4.5 + this.rng() * 2;
+      return [0, 0];
+    }
+    if (e.cd <= 0 && d < 380) { e.mode = 'ring'; e.modeT = 0; return [0, 0]; }
+    // keep 200-300 away, circling; bolt if Rocco or Biscuit gets close
+    const g = this.goose, near = d < 170 || Math.hypot(g.x - e.x, g.y - e.y) < 90;
+    const radial = near ? -1.4 : d > 300 ? 0.8 : d < 200 ? -0.8 : 0, side = Math.sin(this.time * 0.9 + e.id) > 0 ? 1 : -1;
+    return [(ux * radial - uy * side * 0.7) * e.spd * slow, (uy * radial + ux * side * 0.7) * e.spd * slow];
+  }
+
+  /** Where each fire bar's fireballs are now. */
+  fireballs(): Vec[] {
+    const out: Vec[] = [];
+    for (const f of this.room.def.firebars ?? []) {
+      const a = f.phase + f.speed * this.time;
+      for (let i = 1; i <= f.n; i++) out.push({ x: f.x + Math.cos(a) * i * 16, y: f.y + Math.sin(a) * i * 16 });
+    }
+    return out;
+  }
+  /** Crusher states: 0 up, rising to 1 = slammed down. */
+  crush: { t: number; state: 'up' | 'warn' | 'down' | 'rise' }[] = [];
+  /** Waves in an arena: how many have come and gone. */
+  waveSpawned = 0; private waveT = 0; waveDone = false; private waveIds = new Set<number>();
+
+  /** Fire bars, slamming statues, and the guard waves in the Ballroom. */
+  private stepCastle(dt: number): void {
+    const p = this.player, g = this.goose, def = this.room.def;
+    if (def.firebars) {
+      for (const b of this.fireballs()) {
+        if (!p.air && !p.dead && Math.hypot(b.x - p.x, b.y - (p.y - 10)) < 7 + p.r * 0.7) this.hurtPlayer(1, true, b, 'burn');
+        if (g.state === 'flying' && Math.hypot(b.x - g.x, b.y - g.y) < 12) {
+          g.state = 'held'; g.vx *= -0.2; g.vy *= -0.2; this.addFury(18); this.fx('poof', g.x, g.y);
+          this.say('Biscuit flies through a fireball. HONK! He is singed and FURIOUS.');
+        }
+      }
+    }
+    const cr = def.crushers ?? [];
+    while (this.crush.length < cr.length) this.crush.push({ t: 0, state: 'up' });
+    cr.forEach((c, i) => {
+      const s = this.crush[i]!, cx = c.x + c.w / 2, cy = c.y + c.h / 2;
+      s.t += dt;
+      const under = Math.abs(p.x - cx) < c.w / 2 + 34 && Math.abs(p.y - cy) < c.h / 2 + 34;
+      if (s.state === 'up' && under && s.t > 0.4 && !p.dead) { s.state = 'warn'; s.t = 0; }
+      else if (s.state === 'warn' && s.t > 0.6 / this.diff.tempo) {
+        s.state = 'down'; s.t = 0; this.fx('slam', cx, cy + c.h / 2);
+        if (Math.abs(p.x - cx) < c.w / 2 + 4 && Math.abs(p.y - cy) < c.h / 2 + 4 && !p.air) this.hurtPlayer(2, true, { x: cx, y: cy }, 'crush');
+        for (const e of this.enemies) if (this.active(e) && Math.abs(e.x - cx) < c.w / 2 && Math.abs(e.y - cy) < c.h / 2) { e.stun = 2; this.damage(e, 3); }
+      } else if (s.state === 'down' && s.t > 1.1) { s.state = 'rise'; s.t = 0; }
+      else if (s.state === 'rise' && s.t > 1.0) { s.state = 'up'; s.t = 0; }
+    });
+    const w = def.waves;
+    if (w && !this.waveDone) {
+      if (this.world[def.id]?.boss) { this.waveDone = true; return; }
+      const alive = this.enemies.filter(e => this.waveIds.has(e.id) && this.active(e)).length;
+      this.waveT -= dt;
+      const vents = this.waveVents();
+      if (this.waveSpawned < w.count && alive < w.alive && this.waveT <= 0 && vents.length && (this.waveSpawned > 0 || this.inWaveZone())) {
+        const v = vents[Math.floor(this.rng() * vents.length)]!;
+        const e = this.mkEnemy(w.kinds[this.waveSpawned % w.kinds.length]!, v.x, v.y); e.cd = 1.2; this.enemies.push(e); this.waveIds.add(e.id);
+        this.fx('ring', v.x, v.y); this.waveSpawned++; this.waveT = w.every / this.diff.tempo;
+        if (this.waveSpawned === 1) this.say('The ballroom doors slam. Guards pour in from every side!');
+      }
+      if (this.waveSpawned >= w.count && alive === 0) {
+        this.waveDone = true; this.kit.seals.add(w.seal);
+        this.world[def.id] = { ...(this.world[def.id] ?? { gateOpen: true, bread: [...this.breadGot], chest: false, rang: this.rang }), boss: true };
+        this.pack.water = Math.min(1, this.pack.water + 0.5); this.kit.mats.feather++;
+        this.fx('chest', p.x, p.y - 20); this.fx('pick', p.x, p.y - 46, { text: 'THE ROYAL SEAL · a Golden Feather' });
+        this.events.push({ type: 'seal', id: w.seal });
+        this.say(`The last guard wakes up and bows. On the floor: a ROYAL SEAL. (${this.kit.seals.size} of 3)`);
+      }
+    }
+  }
+
+  /** Guards still to beat in this room's waves. */
+  waveLeft(): number { const w = this.room.def.waves; return w ? w.count - this.waveSpawned + this.enemies.filter(e => this.waveIds.has(e.id) && this.active(e)).length : 0; }
+
+  /** The arena the waves fill: the zone named in the room's waves, or the whole room. */
+  private waveZone(): { x: number; y: number; w: number; h: number } {
+    const def = this.room.def, z = def.waves?.zone ? def.zones?.find(q => q.name === def.waves!.zone) : undefined;
+    return z ?? { x: 0, y: 0, w: def.width, h: def.height };
+  }
+  private waveVents(): Vec[] { const z = this.waveZone(); return this.room.def.vents.filter(v => inRect(v.x, v.y, z)); }
+  /** Rocco has walked into the arena (the waves wait till then). */
+  private inWaveZone(): boolean { const z = this.waveZone(), p = this.player; return inRect(p.x, p.y, { x: z.x + 60, y: z.y, w: z.w - 120, h: z.h }); }
+
   /** The ship's deck in the Captain's arena (the biggest plank surface). */
   private deckRect(): { x: number; y: number; w: number; h: number } {
     const b = this.room.def.bridges ?? [];
@@ -2384,6 +2556,7 @@ export class Sim {
       for (const e of this.enemies) {
         if (!this.active(e)) continue;
         if (Math.hypot(e.x - g.x, e.y - g.y) < e.r + 11 + (this.kit.has('f2') ? 8 : 0)) {
+          if (e.kind === 'turtle' && e.mode !== 'flipped' && this.turtleFront(e, g)) { g.state = 'held'; g.vx *= -0.3; g.vy *= -0.3; g.drag = 0.3; this.damage(e, 1); break; }
           if (e.kind === 'crab' && e.mode === 'guard') {            // claws up: he bounces off
             g.state = 'held'; g.vx *= -0.3; g.vy *= -0.3; g.drag = 0.3; this.damage(e, 1);
             break;

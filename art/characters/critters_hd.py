@@ -620,3 +620,80 @@ JOURNAL_ART = {
     'oarfish': lambda: longfish(90, 16, 'c8d0e0', 'f0f4f8', 'e05a4a', wavy=2),
     'moonfish': lambda: fishy(48, 36, 'c8d8e8', 'f4f8fc', '9ab0c8', tall=0.44, eye=2.2, glow='ffffff'),
 }
+
+
+# ---------------------------------------------------------------- Castle Honkmore
+KPAL = {k: hx(v) for k, v in {
+    'T0': '23301c', 'T1': '3a5228', 'T2': '5a7a3a', 'T3': '8aa858', 'TS': 'c8b888',
+    'AR0': '3a3e4a', 'AR1': '6a7080', 'AR2': 'a8b0bc', 'AR3': 'e0e6ee',
+    'SH0': '4a1a24', 'SH1': '8a2a3a', 'SH2': 'c04a50', 'GOLD': 'e8b840', 'GOLD2': 'fff0a0',
+    'SW0': 'c8ccd8', 'SW1': 'eef0f6', 'SWB': 'f6a020', 'LV0': '5a1a20', 'LV1': '9a2a30', 'LV2': 'c84a40', 'BELL': 'f2c94c', 'BELL2': 'fff4b0',
+    'BK': '15111c', 'BW': 'f8f4ec', 'FR': 'ff3a3a', 'FR2': 'ffb0a0',
+}.items()}
+
+
+def shield_turtle(blink=False, awake=False, pose='idle'):
+    """A castle guard: a turtle in a helmet behind a tall red tower shield with the swan crest.
+    Poses: idle, wind (shield hoisted), bash (lunging behind the shield), flipped (shield swung behind)."""
+    w, h = 44, 44
+    L = []
+    lean = 4 if pose == 'bash' else 0
+    body = Layer('body', w, h, KPAL)
+    body.ell(18 + lean, 30, 12, 10, 'T1'); body.ell(17 + lean, 27, 9, 6, 'T2')
+    for (x, y) in [(13, 26), (19, 24), (24, 28), (15, 32)]: body.ell(x + lean, y, 2.5, 2, 'T3')
+    body.rect(10 + lean, 38, 14 + lean, 42, 'T0'); body.rect(20 + lean, 38, 24 + lean, 42, 'T0')
+    L.append(body)
+    head = Layer('head', w, h, KPAL)
+    hx_, hy = 26 + lean, 14
+    head.ell(hx_, hy, 6, 5, 'T2'); head.ell(hx_ + 4, hy + 1, 3, 2.5, 'TS')
+    head.poly([(hx_ - 7, hy - 1), (hx_, hy - 9), (hx_ + 7, hy - 1)], 'AR1'); head.rect(hx_ - 7, hy - 2, hx_ + 7, hy, 'AR2')
+    head.line([(hx_, hy - 9), (hx_ - 3, hy - 13)], 'SH2', 2)
+    L.append(head)
+    eye = Layer('eye', w, h, KPAL)
+    if blink: eye.line([(hx_ + 1, hy), (hx_ + 3, hy)], 'T0')
+    else: eye.rect(hx_ + 2, hy - 1, hx_ + 3, hy, 'BK' if awake else 'FR'); eye.px(hx_ + 2, hy - 1, 'BW' if awake else 'FR2')
+    L.append(eye)
+    if pose != 'flipped':
+        sh = Layer('shield', w, h, KPAL)
+        sy = -4 if pose == 'wind' else 0
+        sx = 34 + lean
+        sh.poly([(sx - 5, 12 + sy), (sx + 5, 10 + sy), (sx + 6, 34 + sy), (sx, 42 + sy), (sx - 6, 34 + sy)], 'SH1')
+        sh.poly([(sx - 3, 14 + sy), (sx + 3, 13 + sy), (sx + 4, 32 + sy), (sx, 38 + sy), (sx - 4, 32 + sy)], 'SH2')
+        sh.line([(sx - 5, 12 + sy), (sx + 5, 10 + sy)], 'GOLD')
+        sh.ell(sx, 22 + sy, 2.5, 2, 'SW1'); sh.line([(sx, 20 + sy), (sx + 1, 16 + sy)], 'SW1'); sh.px(sx + 2, 16 + sy, 'GOLD')   # the swan crest
+        L.append(sh)
+    else:
+        sh = Layer('shield', w, h, KPAL)
+        sh.poly([(4, 14), (12, 12), (12, 34), (8, 40), (3, 34)], 'SH0'); L.insert(0, sh)
+    return composite(L)
+
+
+def bellhop(blink=False, awake=False, pose='idle'):
+    """A bellhop: a slim white swan in a red livery jacket and pillbox hat, a brass handbell.
+    Poses: idle, ring (bell raised, swinging), run (leaning forward)."""
+    w, h = 32, 46
+    L = []
+    lean = 3 if pose == 'run' else 0
+    b = Layer('body', w, h, KPAL)
+    b.line([(12, 38), (11, 44)], 'SWB', 2); b.line([(18, 38), (19, 44)], 'SWB', 2)
+    b.ell(15 + lean, 31, 8, 8, 'SW1')
+    b.poly([(8 + lean, 26), (22 + lean, 26), (21 + lean, 36), (9 + lean, 36)], 'LV1'); b.rect(14 + lean, 26, 16 + lean, 36, 'LV2')
+    for y in (28, 31, 34): b.px(15 + lean, y, 'GOLD')
+    L.append(b)
+    n = Layer('neck', w, h, KPAL)
+    for i in range(8): n.ell(16 + lean + i * 0.5 * (1 + lean / 3), 25 - i * 2, 2.5, 2.5, 'SW1')
+    hx_, hy = 20 + lean * 2, 9
+    n.ell(hx_, hy, 4.5, 4, 'SW1'); n.poly([(hx_ + 3, hy), (hx_ + 9, hy + 2), (hx_ + 3, hy + 3)], 'SWB')
+    n.rect(hx_ - 4, hy - 8, hx_ + 2, hy - 4, 'LV1'); n.line([(hx_ - 4, hy - 4), (hx_ + 2, hy - 4)], 'GOLD')
+    L.append(n)
+    e = Layer('eye', w, h, KPAL)
+    if blink: e.line([(hx_, hy - 1), (hx_ + 2, hy - 1)], 'SW0')
+    else: e.px(hx_ + 1, hy - 1, 'BK' if awake else 'FR')
+    L.append(e)
+    bell = Layer('bell', w, h, KPAL)
+    if pose == 'ring':
+        bell.line([(10, 28), (4, 14)], 'SW1', 2); bell.poly([(0, 14), (8, 14), (6, 6), (2, 6)], 'BELL'); bell.px(3, 8, 'BELL2'); bell.ell(4, 15, 1.5, 1, 'GOLD')
+    else:
+        bell.line([(9, 30), (6, 34)], 'SW1', 2); bell.poly([(3, 40), (9, 40), (8, 34), (4, 34)], 'BELL')
+    L.append(bell)
+    return composite(L)
