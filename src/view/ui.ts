@@ -201,6 +201,7 @@ export function mountUi(scene: GameScene): void {
 
   scene.controls.onUi = a => {
     if (scene.cinema.active) { if (a === 'advance') scene.cinema.advance(); else if (a === 'close') scene.cinema.skip(); return; }
+    if (scene.prologue?.active) { if (a === 'close') scene.skipPrologue(); return; }
     if (a === 'book') { if (open) closeBook(); else { scene.setPackOpen(false); openBook(); } }
     else if (a === 'pack') { if (open) closeBook(); scene.setPackOpen(!scene.packOpen); }
     else if (a === 'closeBook' || a === 'close') { if (open) closeBook(); if (ferryOpen) closeFerry(); scene.setPackOpen(false); }

@@ -146,7 +146,7 @@ export class ArtRenderer {
     return { world: this.worldIgnore, screen: this.screenOnly };
   }
   /** Staging for the prologue: hide Biscuit and the leash until he's tied on; where the rod tip is. */
-  stage: { hideGoose: boolean } | null = null;
+  stage: { hideGoose: boolean; hideLine?: boolean } | null = null;
   rodTip: Vec = { x: 0, y: 0 };
 
   private setOrigin(s: Phaser.GameObjects.Sprite, strip: string): void {
@@ -643,7 +643,7 @@ export class ArtRenderer {
     const smooth = smoothRope(rp);
     this.rodTip = tipW;
     const taut = Math.hypot(G.x - P.x, G.y - P.y) > sim.leashLen() * 0.97;
-    if (this.stage?.hideGoose) smooth.length = 0;
+    if (this.stage?.hideGoose || this.stage?.hideLine) smooth.length = 0;
     this.line.lineStyle(leash.heavy ? 2 : 1, hex(leash.ropeColor), 1);
     if (!smooth.length) { /* no leash yet */ } else if (leash.heavy) dashed(this.line, smooth, 4, 2); else this.line.strokePoints(smooth as unknown as Phaser.Math.Vector2[], false);
     if (taut || go.strain > 0.7) { this.line.lineStyle(1, 0xf2c230, 0.4 + 0.4 * Math.sin(time * 20)); this.line.strokePoints(smooth as unknown as Phaser.Math.Vector2[], false); }

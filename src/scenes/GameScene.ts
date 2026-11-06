@@ -4,8 +4,9 @@ import { Sim } from '../core/sim';
 import { ROOMS, WILLOWMERE, type RoomDef } from '../data/rooms';
 import { Controls } from '../view/controls';
 import { Renderer, snapshot, type Snapshot } from '../view/render';
-import { ArtRenderer, CANVAS_H, CANVAS_W } from '../view/art';
+import { ArtRenderer, CANVAS_H, CANVAS_W, HUD_SCALE, SCREEN_H, SCREEN_W } from '../view/art';
 import { Cinema } from '../view/cinema';
+import { Prologue } from '../view/prologue';
 import { ROOM_ART, nearestFilter, preloadArt } from '../view/assets';
 import { applySave, loadStoredSave, snapshotSave, storeSave } from '../core/save';
 import { sound } from '../view/audio';
@@ -41,6 +42,8 @@ export class GameScene extends Phaser.Scene {
   onShrine: () => void = () => {};
   /** The cinematic player (chapter cards, boss entrances and wake-ups). */
   cinema = new Cinema();
+  /** The playable opening (fishing up Bimbo), on a fresh game. */
+  prologue: Prologue | null = null;
   /** Set by the UI: Rocco called the ferry. */
   onFerry: () => void = () => {};
 
@@ -63,8 +66,16 @@ export class GameScene extends Phaser.Scene {
       this.view = new Renderer(this);
     }
     this.controls = new Controls(this, this.game.canvas);
-    this.cinema.onCue = c => { if (c.sound) sound.play(c.sound as Parameters<typeof sound.play>[0]); if (c.shake) this.cameras.main.shake(c.shake * 1000, 0.012); };
-    this.cinema.onEnd = () => { this.controls.dropPending(); this.lastNow = performance.now(); };
+    this.cinema.onCue = c => {
+      if (c.sound) sound.play(c.sound as Parameters<typeof sound.play>[0]);
+      if (c.shake) this.cameras.main.shake(c.shake * 1000, 0.012);
+      if (c.act) this.stageAct(c.act);
+    };
+    this.cinema.onEnd = id => {
+      this.controls.dropPending(); this.lastNow = performance.now();
+      if (id === 'pro-open' && this.prologue) { this.prologue.logic.phase = 'cast'; this.prologue.logic.t = 0; }
+      if (id === 'pro-catch') this.endPrologue();
+    };
     if (this.view instanceof ArtRenderer) this.view.cinema = this.cinema.state;
     this.feed(this.sim.drainEvents());
     this.onReady(this);
@@ -77,10 +88,20 @@ export class GameScene extends Phaser.Scene {
     const now = performance.now();
     const dt = this.lastNow ? Math.min(0.25, (now - this.lastNow) / 1000) : STEP;
     this.lastNow = now;
-    const film = this.cinema.active;
-    this.controls.paused = this.paused || film; this.controls.cinema = film;
+    const film = this.cinema.active, pro = !!this.prologue?.active;
+    this.controls.paused = this.paused || film || pro; this.controls.cinema = film;
     this.controls.pollPad();
     if (film) { this.cinema.update(dt, this.sim, this.sim.player); this.acc = 0; }
+    else if (pro && this.view instanceof ArtRenderer) {
+      const pl = this.prologue!;
+      pl.update(dt, this.controls.aim(this.sim.player), this.view.rodTip);
+      const L = pl.logic;
+      if (L.out.length) { this.feed(L.out); L.out = []; }
+      for (const s of L.sounds) sound.play(s as Parameters<typeof sound.play>[0]);
+      L.sounds = [];
+      if (L.phase === 'catch' && !this.cinema.active) this.cinema.play('pro-catch');
+      this.acc = 0;
+    }
     else if (!this.paused && this.hitStop > 0) { this.hitStop -= dt; }
     else if (!this.paused) {
       this.acc += dt;
@@ -94,10 +115,11 @@ export class GameScene extends Phaser.Scene {
       if (steps === MAX_STEPS) this.acc = 0;
       this.feed(this.sim.drainEvents());
     }
-    if (!film) { this.cinema.update(dt, this.sim, this.sim.player); this.cues(); }
+    if (!film && !pro) { this.cinema.update(dt, this.sim, this.sim.player); this.cues(); }
     this.listen();
-    const still = this.paused || film, alpha = still ? 1 : this.acc / STEP;
+    const still = this.paused || film || pro, alpha = still ? 1 : this.acc / STEP;
     this.view.draw(this.sim, still ? null : this.prev, alpha, this.paused ? 0 : dt, this.controls.aim(this.sim.player), !film);
+    if (this.prologue && this.view instanceof ArtRenderer) this.prologue.draw(this.view.rodTip, performance.now() / 1000, SCREEN_W, SCREEN_H, film || !this.prologue.active);
   }
 
   /** Start a cinematic once (the save remembers which were shown). */
@@ -121,6 +143,8 @@ export class GameScene extends Phaser.Scene {
     const sim = this.sim, id = sim.room.def.id;
     if (this.cueRoom !== id) {
       this.cueRoom = id;
+      const fresh = Object.keys(sim.world).every(k => k === 'willowmere') && !sim.kit.oar;
+      if (id === 'willowmere' && fresh && this.cinemaOn && !sim.seen.has('prologue') && this.view instanceof ArtRenderer) { this.startPrologue(); return; }
       const ch = ({ willowmere: 'ch1', 'reedmarsh-1': 'ch2', 'hollowbark-1': 'ch3' } as Record<string, string>)[id];
       if (ch) this.playCinematic(ch);
     }
@@ -133,6 +157,49 @@ export class GameScene extends Phaser.Scene {
     }
   }
   private cueRoom = '';
+
+  /** The opening: Rocco on the end of the dock, a pale moon, no goose yet. */
+  startPrologue(): void {
+    if (!(this.view instanceof ArtRenderer)) return;
+    const sim = this.sim, dock = sim.room.def.bridges?.[0];
+    if (!dock) return;
+    sim.player.x = dock.x + dock.w - 22; sim.player.y = dock.y + dock.h / 2; sim.player.fx = 1; sim.player.fy = 0;
+    sim.goose.x = sim.player.x - 30; sim.goose.y = sim.player.y; sim.goose.state = 'held';
+    this.view.stage = { hideGoose: true };
+    this.view.atmo.calm = 1;
+    this.prologue = new Prologue(this, sim, this.view.layers(), HUD_SCALE);
+    this.cinema.play('pro-open');
+  }
+
+  /** Cues from the prologue's cinematic. */
+  private stageAct(act: string): void {
+    if (!(this.view instanceof ArtRenderer)) return;
+    if (act === 'redmoon') { this.view.atmo.calm = 0; if (this.prologue) this.prologue.redT = 0; }
+    if (act === 'goose') {
+      const p = this.sim.player;
+      this.sim.goose.x = p.x - 40; this.sim.goose.y = p.y; this.sim.goose.face = 1;
+      this.view.stage = { hideGoose: false, hideLine: true };
+    }
+    if (act === 'tie') this.view.stage = null;
+  }
+
+  /** Esc during the fishing: jump to the end of the prologue. */
+  skipPrologue(): void {
+    if (!this.prologue?.active) return;
+    this.cinema.skip();
+    this.endPrologue();
+  }
+
+  private endPrologue(): void {
+    if (!this.prologue) return;
+    this.prologue.logic.phase = 'done';
+    this.prologue.destroy(); this.prologue = null;
+    this.sim.seen.add('prologue');
+    if (this.view instanceof ArtRenderer) { this.view.stage = null; this.view.atmo.calm = 0; }
+    const p = this.sim.player; this.sim.goose.x = p.x - 30; this.sim.goose.y = p.y; this.sim.goose.state = 'held';
+    this.controls.dropPending(); this.lastNow = performance.now();
+    this.cueRoom = '';                         // now Chapter One
+  }
 
   private modes = new Map<number, string>();
   /** Sounds that come from state, not events: critters winding up, the leash creak, the rain. */
