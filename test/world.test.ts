@@ -389,3 +389,22 @@ describe('the Heron Ferryman', () => {
     expect(h.hp).toBeLessThan(h.max);
   });
 });
+
+describe('respawn spots', () => {
+  it('falling off the edge of a dock never respawns Rocco on the edge again (no fall loop)', () => {
+    const sim = new Sim({ room: WILLOWMERE, seed: 1 });
+    sim.enterRoom(ROOMS['reedmarsh-3']!, 'w');
+    sim.enemies = []; sim.spawnT = 1e9;
+    // the Leaky Boardwalk's corner, right on the plank edge: stand there a moment, then hold up-right toward the water
+    sim.lastSafe = { x: sim.player.x, y: sim.player.y };     // the door Rocco came in by
+    sim.player.x = 526; sim.player.y = 426; sim.player.vx = sim.player.vy = 0;
+    for (let i = 0; i < 10; i++) sim.step(STEP, { moveX: 0, moveY: 0, aimX: 600, aimY: 400 });
+    sim.drainEvents();
+    let falls = 0;
+    for (let i = 0; i < 60; i++) {
+      sim.step(STEP, { moveX: 0.78, moveY: -0.63, aimX: 600, aimY: 400 });
+      falls += sim.drainEvents().filter(e => e.type === 'fx' && e.kind === 'splash').length;
+    }
+    expect(falls).toBeLessThan(3);                       // was 60, one a frame: he respawned on the plank edge and fell straight back in
+  });
+});

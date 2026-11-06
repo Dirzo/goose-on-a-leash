@@ -76,3 +76,12 @@ describe("Rocco's fishing glasses", () => {
     expect(sim.glassCracks).toBeGreaterThan(0);
   });
 });
+
+describe('fainting and the glasses', () => {
+  it('a faint tapes the glasses back to one crack, so the trance stumbles stop', () => {
+    const sim = room('tide-3');
+    sim.glassCracks = 3; sim.pack.water = 0.0001; sim.pack.holes = 3;
+    run(sim, 4, () => stand(sim));
+    expect(sim.glassCracks).toBe(1);
+  });
+});

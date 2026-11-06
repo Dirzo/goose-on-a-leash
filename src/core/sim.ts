@@ -23,6 +23,8 @@ export type { EnemyKind };
 const AGGRO: Partial<Record<EnemyKind, number>> = { fox: 380, queen: 900, blackswan: 900, pelican: 800, mimic: 46, turtle: 320, bellhop: 420, eel: 130, crab: 230, gull: 420, gullbeard: 900, elder: 620, frog: 160, snapper: 210, heron: 520, squirrel: 260, badger: 230, king: 700 };
 const HEAVY: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['knight', 'snapper', 'heron', 'badger', 'king', 'elder', 'turtle', 'pelican', 'blackswan']);
 /** Animals under the blood moon's trance. Beaten, they wake up and wander off instead of dying. */
+/** Points round Rocco that must all be on solid ground for his respawn spot. */
+const SAFE_PROBE: [number, number][] = [[22, 0], [-22, 0], [0, 22], [0, -22]];
 const ENTRANCED: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['frog', 'snapper', 'heron', 'squirrel', 'badger', 'king', 'elder', 'crab', 'gull', 'gullbeard', 'eel', 'turtle', 'bellhop', 'mimic', 'pelican', 'blackswan', 'queen', 'fox']);
 /** They fly (or live in the water): they don't swim back to shore, they move themselves, and above 30 they're out of reach. */
 const FLIERS: ReadonlySet<EnemyKind> = new Set<EnemyKind>(['gull', 'gullbeard', 'eel']);
@@ -206,7 +208,7 @@ export type SimEvent =
   /** A Royal Seal won (a castle wing cleared). */
   | { type: 'seal'; id: string }
   /** A tutorial prompt: shown on screen for a few seconds. */
-  | { type: 'hint'; text: string };
+  | { type: 'hint'; text: string; id?: string };
 
 const QUIPS = {
   fling: ['HONK!', 'Airborne goose', 'Yeet.', 'Go get em'],
@@ -1207,7 +1209,17 @@ export class Sim {
     const p = this.player, g = this.goose, room = this.room, T = this.tuning;
     this.time += dt;
     if (this.won) return;
-    if (p.dead) { p.dead -= dt; if (p.dead <= 0) { if (this.room.def.endless) this.endBasement(); this.restartRoom(); } return; }
+    if (p.dead) {
+      p.dead -= dt;
+      if (p.dead <= 0) {
+        if (this.room.def.endless) this.endBasement();
+        // while he ties emergency knots he tapes up his glasses too: a faint never leaves the red moon seeping in
+        // (the playtest bot found a novice stuck at three cracks stumbling into the Lava Keep's lava again and again)
+        if (this.glassCracks > 1) this.glassCracks = 1;
+        this.restartRoom();
+      }
+      return;
+    }
 
     if (input && this.room.def.fishing) {
       const spot = p.dead || p.air || p.roll > 0 ? null : this.room.def.fishing.spots.find(s => Math.hypot(s.x - p.x, s.y - p.y) < 28) ?? null;
@@ -1424,7 +1436,10 @@ export class Sim {
         this.say(this.pick(pond ? 'swim' : 'fall'));
       }
     }
-    if (!p.air && !p.pull && !room.inPit(p.x, p.y, -22)) this.lastSafe = { x: p.x, y: p.y };
+    // a safe spot to come back to: well clear of the water. On a dock or a bridge (where the pit is right
+    // under the planks) that means the middle of the planks, not the edge: respawning on the edge while
+    // still holding a direction dropped Rocco straight back in, every frame (found by the playtest bot).
+    if (!p.air && !p.pull && !room.inPit(p.x, p.y, -22) && SAFE_PROBE.every(([dx, dy]) => !room.inPit(p.x + dx, p.y + dy, 0))) this.lastSafe = { x: p.x, y: p.y };
     this.stepPack(dt);
     this.stepWoods(dt);
     this.stepWharf(dt);
@@ -1982,7 +1997,7 @@ export class Sim {
   hint(id: string, text: string): void {
     if (this.hintsShown.has(id)) return;
     this.hintsShown.add(id);
-    this.events.push({ type: 'hint', text });
+    this.events.push({ type: 'hint', text, id });
   }
 
   /**
