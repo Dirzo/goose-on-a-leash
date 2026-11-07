@@ -109,6 +109,8 @@ export interface FishingHost {
   reel(): boolean;
   /** Difficulty: how hard fish fight. */
   pull(): number;
+  /** Seconds a thrash warning shows (the difficulty sets it). */
+  warnTime?(): number;
   /** How far a cast at this power reaches. */
   castReach(pw: number): number;
   say(t: string): void;
@@ -345,7 +347,7 @@ export class Fishing {
     if (!tired) {
       if (h.runT > 0) { h.runT -= dt; if (h.runT <= 0) h.runIn = d.runEvery * (0.7 + this.host.rng() * 0.6); }
       else if (h.warn > 0) { h.warn -= dt; if (h.warn <= 0) { h.runT = d.runFor * (0.8 + this.host.rng() * 0.4); this.host.fx('splash', this.bob.x, this.bob.y); } }
-      else { h.runIn -= dt; if (h.runIn <= 0) { h.warn = 0.45; this.host.sound('blip'); } }
+      else { h.runIn -= dt; if (h.runIn <= 0) { h.warn = this.host.warnTime?.() ?? 0.45; this.host.sound('blip'); } }
     }
     const running = h.runT > 0;
     const pull = (tired ? d.pull * 0.4 : d.pull) * this.host.pull();

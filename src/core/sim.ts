@@ -3,6 +3,7 @@
  * In world rooms (those with water) Bimbo's water is Rocco's life; hearts only apply in the gray-box Room 01.
  * No Phaser imports: everything here runs headless in tests. Room 01 behaviour is ported 1:1 from the prototype.
  */
+import { HATS } from '../data/hats';
 import { C, DEFAULT_TUNING, DIFFICULTY, type Difficulty, type Tuning } from './config';
 import { Kit } from './crafting';
 import { FISH, Fishing, type FishDef } from './fishing';
@@ -42,7 +43,7 @@ const WAKE_TIME = 1.6;
 
 /** What a room remembers after you leave it. */
 export interface RoomMemory { gateOpen: boolean; bread: boolean[]; chest: boolean; rang: boolean; kits?: boolean[]; spools?: boolean[]; glass?: boolean[]; feathers?: boolean[]; nests?: boolean[]; boss?: boolean;
-  bushes?: boolean[]; barrels?: number[] }
+  bushes?: boolean[]; barrels?: number[]; refills?: number[] }
 
 export interface Player {
   x: number; y: number; r: number; vx: number; vy: number;
@@ -81,6 +82,12 @@ export interface Enemy {
   loot?: { mat?: ItemId; bread?: BreadId; n: number };
   /** Seconds of a bellhop's rallying call left: the guard thinks and moves faster. */
   haste?: number;
+  /** A boss in its second phase: faster, and its windows close sooner. */
+  phase2?: boolean;
+  /** Seconds a boss's roar leaves it unhurtable. */
+  armorT?: number;
+  /** Bites Biscuit has landed in this latch (bosses shake him off after the difficulty's limit). */
+  bites?: number;
   /** Which way a shield turtle's shield faces (a unit vector; it turns slowly). */
   fx_?: number; fy_?: number;
   /** A boss's second timer (peck wind-up). */
@@ -113,6 +120,21 @@ function segCross(ax: number, ay: number, bx: number, by: number, cx: number, cy
   const o = (px: number, py: number, qx: number, qy: number, rx: number, ry: number) => Math.sign((qx - px) * (ry - py) - (qy - py) * (rx - px));
   return o(ax, ay, bx, by, cx, cy) !== o(ax, ay, bx, by, dx, dy) && o(cx, cy, dx, dy, ax, ay) !== o(cx, cy, dx, dy, bx, by);
 }
+
+/** What each boss shouts as its second phase starts. */
+const PHASE2_LINES: Partial<Record<EnemyKind, string>> = {
+  elder: 'Old Snapper hisses and his shell goes red-hot with fury!',
+  heron: 'The Heron Ferryman shrieks and the frogs answer!',
+  king: 'The Burrow King ROARS. The whole sett shakes!',
+  gullbeard: '"ALL HANDS!" Captain Gullbeard whistles up his crew!',
+  pelican: 'The Pelican Chef bellows for the kitchen staff!',
+  blackswan: 'The Black Swan lowers his visor. No more games.',
+  queen: 'The Swan Queen screams, and the moat boils!',
+};
+/** How much of the difficulty's boss HP bonus each boss gets (early bosses less: they teach). */
+const BOSS_TIER: Partial<Record<EnemyKind, number>> = { elder: 0.8, heron: 0.6, king: 2.0, gullbeard: 0.9, pelican: 1, blackswan: 0.4, queen: 1.4 };
+const SHRUGS = ['It shakes Biscuit off like a wet sock.', 'Biscuit gets flung off, honking indignantly.', 'It throws Biscuit across the room. He lands on his face.', 'Shrugged off! Biscuit spits out a feather that is not his.'];
+const pickOf = <T,>(a: readonly T[], r: number): T => a[Math.floor(r * a.length)]!;
 
 /** Bimbo, when nothing much is happening. */
 const BIMBO_IDLE = [
@@ -201,6 +223,16 @@ export type SimEvent =
   | { type: 'basementOver'; floor: number; kills: number; time: number }
   /** Took the stairs up out of the Basement. */
   | { type: 'leaveBasement' }
+  /** A critter jumped at a honk, or fled a furious goose. */
+  | { type: 'startle'; x: number; y: number }
+  /** Biscuit stole a hat. */
+  | { type: 'hat'; id: string }
+  /** Biscuit swallowed something (or coughed it back up). */
+  | { type: 'gulp'; x: number; y: number; up?: boolean }
+  /** Reached a new zone: a faint now restarts here. */
+  | { type: 'checkpoint'; name: string }
+  /** A boss went into its second phase. */
+  | { type: 'phase2'; kind: EnemyKind }
   /** Both Moray Twins landed: the Moray Pearl. */
   | { type: 'morays' }
   /** The Swan Queen woke (her tear); the Moon Elixir brewed; the Blood Shark landed for good (the end). */
@@ -258,6 +290,7 @@ export class Sim {
     record: () => this.kit.fish,
     reel: () => this.kit.reel,
     pull: () => this.diff.fishPull,
+    warnTime: () => this.diff.fishWarn,
     castReach: pw => this.castReach(pw),
     say: t => this.say(t),
     fx: (k, x, y) => this.fx(k, x, y),
@@ -364,6 +397,8 @@ export class Sim {
    */
   enterRoom(def: RoomDef, doorId: string | null, revive = false, keepMemory = true): void {
     if (keepMemory) this.remember();
+    if (this.room?.def.id !== def.id) { this.checkpoint = null; }
+    this.cpZone = -1;
     const door = doorId ? def.doors?.find(d => d.id === doorId) : undefined;
     const s = door ? door.spawn : def.playerStart;
     const hp = revive ? C.maxHp : this.player?.hp ?? C.maxHp;
@@ -383,7 +418,31 @@ export class Sim {
   /** Back to where Rocco entered the current room, hearts refilled. */
   restartRoom(): void {
     if (!this.room.def.doors) { this.reset(); return; }
+    const cp = this.checkpoint && this.checkpoint.room === this.room.def.id ? this.checkpoint : null;
     this.enterRoom(this.room.def, this.entryDoor, true);
+    if (cp) {
+      // back at the last zone reached, not the area's door
+      const p = this.player, g = this.goose;
+      p.x = cp.x; p.y = cp.y; this.lastSafe = { x: cp.x, y: cp.y };
+      g.x = cp.x - 30; g.y = cp.y + 10; g.vx = g.vy = 0;
+      this.checkpoint = cp; this.cpZone = cp.zone;
+      this.say(`Back at ${cp.name}.`);
+    }
+  }
+
+  /** The last zone of this area Rocco reached (on difficulties with checkpoints): a faint puts him back there. */
+  checkpoint: { room: string; x: number; y: number; zone: number; name: string } | null = null;
+  private cpZone = -1;
+  private stepCheckpoint(): void {
+    const zs = this.room.def.zones, p = this.player, room = this.room;
+    if (!this.diff.checkpoints || !zs?.length || p.air || p.pull || p.dead) return;
+    const zi = zs.findIndex(z => p.x > z.x && p.x < z.x + z.w && p.y > z.y && p.y < z.y + z.h);
+    if (zi < 0 || zi === this.cpZone) return;
+    if (room.inPit(p.x, p.y, -22) || !SAFE_PROBE.every(([dx, dy]) => !room.inPit(p.x + dx, p.y + dy, 0) && !room.collide({ x: p.x + dx, y: p.y + dy, r: 4 }))) return;
+    const first = this.cpZone < 0;
+    this.cpZone = zi;
+    this.checkpoint = { room: room.def.id, x: p.x, y: p.y, zone: zi, name: zs[zi]!.name };
+    if (!first) { this.events.push({ type: 'checkpoint', name: zs[zi]!.name }); this.fx('pick', p.x, p.y - 50, { text: 'CHECKPOINT' }); }
   }
 
   /** The closest spot a critter can climb out onto: dry, inside the room, clear of walls (docks and islands count). */
@@ -534,7 +593,7 @@ export class Sim {
     const id = this.room.def.id;
     this.world[id] = { gateOpen: !!this.room.def.gate && !this.room.gateClosed, bread: [...this.breadGot],
       chest: this.world[id]?.chest ?? false, rang: this.rang, kits: [...this.kitsGot], spools: [...this.spoolsGot], glass: [...this.glassGot], feathers: [...this.feathersGot], nests: [...this.nestsDown],
-      bushes: [...this.room.bushAlive], barrels: [...this.barrelWater],
+      bushes: [...this.room.bushAlive], barrels: [...this.barrelWater], refills: this.refillWater.map(w => Number.isFinite(w) ? w : 99),
       boss: this.world[id]?.boss || this.enemies.some(e => BOSS.has(e.kind) && e.woke > 0) };
   }
 
@@ -559,6 +618,7 @@ export class Sim {
     this.nestsDown = (def.nests ?? []).map((_, i) => mem?.nests?.[i] ?? false);
     if (mem?.bushes) this.room.bushAlive = (def.bushes ?? []).map((_, i) => mem.bushes![i] ?? true);
     this.barrelWater = (def.barrels ?? []).map((_, i) => mem?.barrels?.[i] ?? 0.6);
+    this.refillWater = (def.refills ?? []).map((_, i) => Math.min(this.puddleCap(), mem?.refills?.[i] ?? this.puddleCap()));
     this.shroomCd = (def.shrooms ?? []).map(() => 0);
     this.atShrine = false;
     this.rope = new Rope(s);
@@ -575,7 +635,8 @@ export class Sim {
       heron: [HERON_HP, 24, 0], king: [KING_HP, 34, 48], gullbeard: [GULLBEARD_HP, 28, 0], crab: [4, 14, 72], gull: [2, 11, 150], eel: [3, 12, 0], turtle: [9, 18, 36], bellhop: [3, 11, 125], mimic: [2, 10, 90], pelican: [PELICAN_HP, 28, 52], blackswan: [BLACKSWAN_HP, 26, 60], queen: [QUEEN_HP, 26, 70], elder: [ELDER_HP, 26, 46], squirrel: [2, 10, 115], fox: [3, 12, 150], badger: [10, 18, 50],
     };
     const [hp0, r, spd] = stats[kind] ?? [k ? 8 : 3, k ? 20 : 13, k ? 42 : 78];
-    const hp = boss ? Math.round(hp0 * this.diff.bossHp) : hp0;
+    // the difficulty's boss HP bonus ramps in over the story: the first bosses get a little of it, the castle all of it
+    const hp = boss ? Math.round(hp0 * (1 + (this.diff.bossHp - 1) * (BOSS_TIER[kind] ?? 1))) : hp0;
     return { id: this.nextId++, kind, x, y, r, hp, max: hp, heavy: k, stun: 0,
       vx: 0, vy: 0, falling: 0, dead: false, hitT: 0, spd, woke: 0,
       mode: 'stalk', modeT: 0, cd: boss ? 2 : 0.8 + this.rng() * 1.2, tx: x, ty: y, hit: false, attack: 'leap', grip: 0, wet: false, air: 0, hx: x, hy: y, grip2: 0 };
@@ -753,6 +814,10 @@ export class Sim {
         const k = (e.heavy ? 260 : 470) * (furyB ? 1.4 : 1) * (0.8 + 0.1 * this.power());
         e.vx += (ex / (d || 1)) * k; e.vy += (ey / (d || 1)) * k; e.stun = Math.max(e.stun, 1.3 + (this.kit.has('h2') ? 0.7 : 0));
         if (g.state === 'latched' && g.target === e) g.state = 'held';
+      } else if (d < range * 1.4 && !BOSS.has(e.kind)) {
+        // everyone else in earshot jumps out of their skin
+        e.vx -= (ex / (d || 1)) * -120; e.vy -= (ey / (d || 1)) * -120;
+        if (this.rng() < 0.5) this.events.push({ type: 'startle', x: e.x, y: e.y - e.r - 10 });
       }
     }
     const shop = this.room.def.shop;
@@ -852,6 +917,94 @@ export class Sim {
     else { g.grabCd = C.grabCooldown; g.state = 'loose'; g.feral = false; g.t = 4; this.say('Goose unleashed. Good luck everyone.'); }
   }
 
+  /**
+   * A boss's second phase: below the difficulty's share of HP it roars (unhurtable for a moment), throws
+   * Biscuit off, shoves Rocco back, calls in critters, and from then on thinks and moves 30% faster, so its
+   * openings close sooner.
+   */
+  private bossPhase(e: Enemy, dt: number): void {
+    if (e.armorT) e.armorT = Math.max(0, e.armorT - dt);
+    if (e.phase2 || !this.diff.phaseAt || e.hp > e.max * this.diff.phaseAt || e.woke || e.dead) return;
+    e.phase2 = true; e.armorT = 1.1; e.stun = 0;
+    const g = this.goose, p = this.player;
+    if (g.state === 'latched' && g.target === e) { g.state = 'held'; g.grabCd = C.grabCooldown; const [ux, uy] = dirTo(e, g); g.vx = ux * 520; g.vy = uy * 520; }
+    const [px, py, d] = dirTo(e, p);
+    if (d < 260) { p.vx += px * 420; p.vy += py * 420; }
+    this.fx('ring', e.x, e.y); this.fx('boing', e.x, e.y);
+    this.events.push({ type: 'phase2', kind: e.kind });
+    this.say(PHASE2_LINES[e.kind] ?? 'It roars! Now it is angry.');
+    const vents = this.room.def.vents, kind = this.room.def.lightKind ?? 'frog';
+    const adds = e.kind === 'heron' || e.kind === 'blackswan' ? 0 : this.diff.adds;      // the Heron calls her own frogs; the Keep has lava enough
+    for (let i = 0; i < adds && vents.length; i++) {
+      const v = vents[i % vents.length]!, a = this.mkEnemy(kind, v.x + (this.rng() - 0.5) * 30, v.y + (this.rng() - 0.5) * 30);
+      a.cd = 1 + this.rng(); this.enemies.push(a); this.fx('ring', v.x, v.y);
+    }
+  }
+
+  // ------------------------------------------------ Biscuit's mischief
+  /** Beat something wearing a hat and Biscuit takes it: always from a boss, a third of the time otherwise. He wears the newest. */
+  private stealHat(e: Enemy): void {
+    const hat = HATS.find(h => h.from === e.kind);
+    if (!hat || this.kit.hats.has(hat.id) || (!BOSS.has(e.kind) && this.rng() > 0.33)) return;
+    this.kit.hats.add(hat.id); this.kit.hat = hat.id;
+    this.fx('pick', this.goose.x, this.goose.y - 60, { text: `BISCUIT STOLE: ${hat.name.toUpperCase()}` });
+    this.events.push({ type: 'hat', id: hat.id });
+    this.say(hat.line);
+    this.bimbo(pickOf(['He looks ridiculous. Never tell him.', 'Rocco. Rocco. The goose has a HAT now.', 'That hat is going straight to his head. Literally.', 'I want a hat. Why does HE get a hat?'], this.rng()), undefined, true);
+  }
+
+  /** Things Biscuit has swallowed, and when he'll cough each one back up. */
+  belly: { what: string; t: number; give: () => void }[] = [];
+  /** Where he's wandered off to on the leash while Rocco stands about (the nearest shiny thing). */
+  mischief: Vec | null = null;
+  private idleT = 0;
+  /** Pickups lying about that Biscuit could gulp (glass, crusts, sewing kits, spools). */
+  private loosePickups(): { at: Vec; what: string; take: () => void; give: () => void }[] {
+    const def = this.room.def, out: { at: Vec; what: string; take: () => void; give: () => void }[] = [];
+    (def.glass ?? []).forEach((k, i) => { if (!this.glassGot[i]) out.push({ at: k, what: 'the sea glass', take: () => { this.glassGot[i] = true; }, give: () => { this.kit.mats.glass++; } }); });
+    (def.breadSpots ?? []).forEach((k, i) => { if (!this.breadGot[i]) out.push({ at: k, what: 'a stale crust', take: () => { this.breadGot[i] = true; }, give: () => { this.kit.bread.stale++; } }); });
+    (def.kits ?? []).forEach((k, i) => { if (!this.kitsGot[i]) out.push({ at: k, what: 'a whole sewing kit', take: () => { this.kitsGot[i] = true; }, give: () => { this.pack.needles += C.kitNeedles; if (this.glassCracks) this.mendGlasses(1); } }); });
+    (def.spools ?? []).forEach((k, i) => { if (!this.spoolsGot[i]) out.push({ at: k, what: 'a spool of twine', take: () => { this.spoolsGot[i] = true; }, give: () => { this.kit.mats.fluff += C.spoolTwine; } }); });
+    return out;
+  }
+  private gulp(it: { at: Vec; what: string; take: () => void; give: () => void }): void {
+    it.take();
+    this.belly.push({ what: it.what, t: 12 + this.rng() * 14, give: it.give });
+    this.fx('chomp', it.at.x, it.at.y);
+    this.events.push({ type: 'gulp', x: it.at.x, y: it.at.y });
+    this.say(pickOf([`Biscuit swallows ${it.what} whole. It'll come back out. Eventually.`, `GULP. Biscuit ate ${it.what}. He looks extremely pleased with himself.`, `Biscuit wolfs down ${it.what} before Rocco can stop him.`], this.rng()));
+  }
+  private stepMischief(dt: number): void {
+    const g = this.goose, p = this.player;
+    // coughing things back up
+    for (const b of this.belly) b.t -= dt;
+    const up = this.belly.find(b => b.t <= 0);
+    if (up && g.state !== 'flying' && !p.dead) {
+      this.belly.splice(this.belly.indexOf(up), 1); up.give();
+      this.fx('pick', g.x, g.y - 40, { text: `*HACK* ${up.what}` }); this.fx('splash', g.x, g.y - 10);
+      this.events.push({ type: 'gulp', x: g.x, y: g.y, up: true });
+      this.say(pickOf([`Biscuit coughs up ${up.what}. It's... mostly clean.`, `*HACK HACK* Out comes ${up.what}, slightly damp.`, `Biscuit hacks up ${up.what} and looks at Rocco as if it was his fault.`], this.rng()));
+    }
+    // fetch: fling him over something lying about and he gulps it on the way
+    if (g.state === 'flying' || this.mischief) {
+      const it = this.loosePickups().find(q => Math.hypot(q.at.x - g.x, q.at.y - g.y) < 22);
+      if (it) { this.gulp(it); this.mischief = null; }
+    }
+    // idle mischief: stand about and he wanders off to the end of the leash after something shiny
+    const still = Math.hypot(p.vx, p.vy) < 15 && g.state === 'held' && !this.charging && !this.fishing.busy && !this.enemies.some(e => this.active(e) && Math.hypot(e.x - p.x, e.y - p.y) < 320);
+    this.idleT = still ? this.idleT + dt : 0;
+    if (this.mischief && (!still || g.state !== 'held')) {
+      if (Math.hypot(p.vx, p.vy) >= 15) this.say(pickOf(['Biscuit is dragged away from his treasure, sulking.', 'Biscuit lets himself be hauled back. He will remember this.'], this.rng()));
+      this.mischief = null;
+    }
+    if (!this.mischief && this.idleT > 9 && this.castMode) {
+      this.idleT = 0;
+      const reach = this.lineLen() + 20;
+      const it = this.loosePickups().filter(q => Math.hypot(q.at.x - p.x, q.at.y - p.y) < reach).sort((a, b) => Math.hypot(a.at.x - p.x, a.at.y - p.y) - Math.hypot(b.at.x - p.x, b.at.y - p.y))[0];
+      if (it) { this.mischief = { x: it.at.x, y: it.at.y }; this.say('Biscuit has spotted something shiny...'); }
+    }
+  }
+
   /** Rocco is terrified of a feral goose: within reach of one, he scrambles (faster, and the view makes him sweat). */
   panicked(): boolean { const g = this.goose, p = this.player; return g.feral && g.state === 'loose' && Math.hypot(g.x - p.x, g.y - p.y) < 190; }
 
@@ -920,7 +1073,7 @@ export class Sim {
   }
 
   /** Leak in pack fractions per second. */
-  leakRate(): number { return C.packDrain + C.holeDrain * this.pack.holes; }
+  leakRate(): number { return C.packDrain * this.diff.seep + C.holeDrain * this.pack.holes; }
 
   /** Bimbo chimes in from the backpack: about the water, the goose, the place. Not too often. */
   private bimboT = 8; private bimboIdle = 0; private bimboSaid = new Set<string>();
@@ -977,9 +1130,21 @@ export class Sim {
     this.stepBimbo(dt); this.stepGlasses(dt);
     if (!pk.enabled || p.dead) return;
     const was = pk.refilling;
-    pk.refilling = !p.air && this.room.inRefill(p.x, p.y);
+    // puddles seep back slowly
+    for (let i = 0; i < this.refillWater.length; i++) this.refillWater[i] = Math.min(this.puddleCap(), this.refillWater[i]! + C.refillRegen * (this.bossRoom() ? 3 : 1) * dt);
+    const ri = p.air ? -1 : this.refillAt(p.x, p.y);
+    pk.refilling = ri >= 0 && this.refillWater[ri]! > 0.005;
+    if (ri >= 0 && !pk.refilling && pk.water < 0.98 && !this.mudSaid) { this.mudSaid = true; this.say('The puddle is mud. It seeps back slowly; find another, or move on.'); }
+    if (ri < 0) this.mudSaid = false;
     if (pk.refilling) {
-      pk.water = Math.min(1, pk.water + C.refillRate * (this.storming ? this.room.def.stormRefill ?? 1 : 1) * dt);
+      const take = Math.min(1 - pk.water, C.refillRate * (this.storming ? this.room.def.stormRefill ?? 1 : 1) * dt, this.refillWater[ri]!);
+      pk.water += take;
+      if (Number.isFinite(this.refillWater[ri]!)) {
+        const before = this.refillWater[ri]!;
+        this.refillWater[ri] = before - take;
+        if (before > 0.25 && this.refillWater[ri]! <= 0.25) this.say('The puddle is running low.');
+        if (before > 0.005 && this.refillWater[ri]! <= 0.005) { this.fx('poof', p.x, p.y); this.say('Slurp. That puddle is dry now.'); }
+      }
       pk.lastWater = { x: p.x, y: p.y };
       if (!was && pk.water < 0.98) { this.fx('splash', p.x - 10, p.y - 34); this.say('Refilling the pack. Bimbo perks up.'); }
       return;
@@ -1042,6 +1207,7 @@ export class Sim {
   }
 
   damage(e: Enemy, amt: number): void {
+    if ((e.armorT ?? 0) > 0) { this.fx('poof', e.x, e.y - 20); return; }
     if (e.dead) return;
     if (e.loot) this.dropLoot(e);
     if (e.kind === 'crab' && e.mode === 'guard' && !e.woke) {
@@ -1075,6 +1241,7 @@ export class Sim {
     e.hp -= amt; e.hitT = 0.15;
     if (e.hp > 0) return;
     this.handled++;
+    this.stealHat(e);
     if (ENTRANCED.has(e.kind)) {
       e.woke = 0.001; e.stun = 0; e.hp = 0;
       this.fx('wake', e.x, e.y);
@@ -1181,7 +1348,7 @@ export class Sim {
       pk.water = Math.max(0, pk.water - C.slurpSpill * amt * this.diff.hurt);
       this.fx('splash', bk.x, bk.y - 34);
       if (pk.water > 0.3) this.say(this.pick('slurp'));
-    } else if (pk.holes < C.maxHoles && this.rng() < (heavy ? C.heavyHoleChance : C.holeChance) * side * this.diff.hurt * (this.kit.has('z3') && this.goose.furious > 0 ? 0.5 : 1)) {
+    } else if (pk.holes < C.maxHoles && ((this.diff.backTear && side > 1 && kind !== 'acorn') || this.rng() < (heavy ? C.heavyHoleChance : C.holeChance) * side * this.diff.hurt * (this.kit.has('z3') && this.goose.furious > 0 ? 0.5 : 1))) {
       pk.holes++;
       this.fx('tear', bk.x, bk.y - 30);
       this.say(pk.holes === 1 ? 'RIP! It went for Bimbo and tore the pack. [P] to patch.' : `Another tear! ${pk.holes} leaking now.`);
@@ -1445,6 +1612,8 @@ export class Sim {
     this.stepWharf(dt);
     this.stepCastle(dt);
     this.stepBasement(dt);
+    this.stepCheckpoint();
+    this.stepMischief(dt);
     const chest = room.def.chest;
     if (chest && !this.world[room.def.id]?.chest && Math.hypot(chest.x - p.x, chest.y - p.y) < 30) this.openChest();
     if (room.def.doors) {
@@ -1465,6 +1634,11 @@ export class Sim {
       e.stun = Math.max(0, e.stun - dt); e.hitT = Math.max(0, e.hitT - dt);
       const [dx, dy, d] = dirTo(e, p);
       if (e.woke && BOSS.has(e.kind)) { e.woke += dt; continue; }   // the Ferryman stays, friendly
+      // a furious goose is frightening even to the cursed: small critters scatter from him
+      if (this.goose.furious > 0 && !e.woke && !e.heavy && !BOSS.has(e.kind) && e.stun <= 0 && this.goose.state !== 'latched') {
+        const gx = e.x - this.goose.x, gy = e.y - this.goose.y, gd = Math.hypot(gx, gy);
+        if (gd < 90 && gd > 0) { e.vx += (gx / gd) * 900 * dt; e.vy += (gy / gd) * 900 * dt; if (this.rng() < dt * 1.5) this.events.push({ type: 'startle', x: e.x, y: e.y - e.r - 10 }); }
+      }
       if (e.woke) {
         // awake and grateful: hop away from Rocco (frogs are happy to swim), then gone
         e.woke += dt;
@@ -1501,7 +1675,8 @@ export class Sim {
       }
       if (e.mode === 'swim') { e.mode = 'recover'; e.modeT = 0; e.cd = 1.2; }   // climbed out, shaking off
       if (e.haste) e.haste = Math.max(0, e.haste - dt);
-      const edt = dt * this.diff.tempo * (e.haste ? 1.5 : 1);
+      if (BOSS.has(e.kind)) this.bossPhase(e, dt);
+      const edt = dt * this.diff.tempo * (e.haste ? 1.5 : 1) * (e.phase2 ? 1.3 : 1);
       if (e.kind === 'heron') [ax, ay] = this.heronAI(e, edt, d);
       else if (e.kind === 'king') [ax, ay] = this.kingAI(e, edt);
       else if (e.kind === 'elder') [ax, ay] = this.elderAI(e, edt, d);
@@ -2206,6 +2381,18 @@ export class Sim {
 
   /** Barrel water left in this room (fractions of a pack). */
   barrelWater: number[] = [];
+  /** Water left in each refill puddle, in packs (Infinity on Classic). Seeps back at C.refillRegen. */
+  refillWater: number[] = [];
+  private mudSaid = false;
+  /** How much a puddle holds here: boss arenas get deeper ones (a fight there is long and wet). */
+  puddleCap(): number { return this.diff.reserve * (this.bossRoom() ? 2 : 1); }
+  private bossRoom(): boolean { const d = this.room.def; return !!d.boss || (d.enemies ?? []).some(e => BOSS.has(e.kind)); }
+  /** Which refill puddle (index) a point is in, or -1. */
+  refillAt(x: number, y: number): number {
+    const rf = this.room.def.refills ?? [];
+    for (let i = 0; i < rf.length; i++) { const r = rf[i]!; if (x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h) return i; }
+    return -1;
+  }
   shroomCd: number[] = [];
 
   // ------------------------------------------------ Driftwood Wharf
@@ -3231,7 +3418,7 @@ export class Sim {
       if (g.state === 'held') {
         g.drag = Math.max(0, g.drag - dt);
         // hauled along after a roll he scrambles to catch up, lagging behind; otherwise he trots at heel
-        const tx = p.x - p.fx * 34, ty = p.y - p.fy * 34, k = 1 - Math.exp(-(g.drag > 0 ? 3.5 : 9) * dt);
+        const m = this.mischief, tx = m ? m.x : p.x - p.fx * 34, ty = m ? m.y : p.y - p.fy * 34, k = 1 - Math.exp(-(g.drag > 0 ? 3.5 : m ? 1.6 : 9) * dt);
         g.vx = ((tx - g.x) / Math.max(dt, 1e-3)) * k; g.vy = ((ty - g.y) / Math.max(dt, 1e-3)) * k;
       } else {
         const [dx, dy, d] = dirTo(g, p);
@@ -3288,6 +3475,13 @@ export class Sim {
             t.stun = Math.max(t.stun, this.kit.stat('biteStun') + (this.kit.has('b2') ? 0.4 : 0));
             this.damage(t, (g.furious > 0 ? this.kit.stat('furyDmg') : 1) * 0.75 * this.pw());
             this.addFury(7);
+            // bosses don't stand there being chewed: after a few bites they throw him off (fewer once enraged)
+            const cap = this.diff.latchBites - (t.phase2 ? 1 : 0);
+            if (BOSS.has(t.kind) && this.diff.latchBites && (t.bites = (t.bites ?? 0) + 1) >= Math.max(1, cap)) {
+              t.bites = 0; g.state = 'held'; g.grabCd = C.grabCooldown;
+              const [ux, uy] = dirTo(t, g); g.vx = ux * 480; g.vy = uy * 480;
+              this.fx('poof', g.x, g.y); this.say(pickOf(SHRUGS, this.rng()));
+            }
           }
         }
         const dx = p.x - t.x, dy = p.y - t.y, d = Math.hypot(dx, dy);

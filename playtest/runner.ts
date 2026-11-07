@@ -55,15 +55,16 @@ function goalFor(def: RoomDef): Goal {
   return { door: fwd?.id, boss: !!def.boss, limit: def.boss ? 600 : 420 };
 }
 
-export function runArea(id: string, diff: Difficulty, skill: Skill, seed: number, opts: { limit?: number; trace?: (sim: Sim, t: number) => void } = {}): RunResult {
+export function runArea(id: string, diff: Difficulty, skill: Skill, seed: number, opts: { limit?: number; trace?: (sim: Sim, t: number) => void; sim?: Sim } = {}): RunResult {
   const def = ROOMS[id]!;
-  const sim = new Sim({ seed: seed * 7919 + rank(id), difficulty: diff });
+  // chained runs (opts.sim) carry the pack, water and kit over from the area before, as in a real playthrough
+  const sim = opts.sim ?? new Sim({ seed: seed * 7919 + rank(id), difficulty: diff });
   sim.castMode = true;
-  kitFor(sim, id);
+  if (!opts.sim) kitFor(sim, id);
   const goal = goalFor(def);
   if (opts.limit) goal.limit = opts.limit;
   const entry = def.doors?.find(d => d.to !== 'END' && rank(d.to) < rank(id))?.id ?? null;
-  sim.enterRoom(def, entry, true);
+  if (sim.room.def.id !== id) sim.enterRoom(def, entry, !opts.sim);
   sim.drainEvents();
   const bot = new Bot(sim, skill, seed);
   (globalThis as unknown as { __bot?: Bot }).__bot = bot;
@@ -126,4 +127,17 @@ export function runArea(id: string, diff: Difficulty, skill: Skill, seed: number
   res.fishCaught = Object.values(sim.kit.fish).reduce((a, f) => a + f.n, 0);
   delete (res as unknown as Record<string, unknown>)._f;
   return res;
+}
+
+/** A whole region in one go, water and kit carried from area to area: what a real playthrough feels like. */
+export function runChain(ids: string[], diff: Difficulty, skill: Skill, seed: number): RunResult[] {
+  const sim = new Sim({ seed: seed * 104729 + rank(ids[0]!), difficulty: diff });
+  sim.castMode = true; kitFor(sim, ids[0]!);
+  const out: RunResult[] = [];
+  for (const id of ids) {
+    const r = runArea(id, diff, skill, seed, { sim });
+    out.push(r);
+    if (r.outcome !== 'clear') break;
+  }
+  return out;
 }

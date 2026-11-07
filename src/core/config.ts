@@ -85,7 +85,8 @@ export const C = {
   packDrain: 0.002,       // a sound pack lasts about 8 minutes away from water
   holeDrain: 0.006,       // each tear adds this per second; 3 tears empty a full pack in about 50 s
   refillRate: 0.45,
-  hitSpill: 0.07,         // a hit that doesn't tear splashes this much water out
+  refillRegen: 0.005,     // a dry puddle seeps back this much (packs per second)
+  hitSpill: 0.07,         // a hit that doesn't tear splashes this much water out (x the difficulty's hurt)
   heavySpill: 0.13,       // Old Snapper hits harder
   slurpSpill: 0.05,       // a frog tongue that reaches Bimbo slurps this much
   holeChance: 0.25,       // chance a light hit tears the pack instead of splashing (more from behind, less from the front)
@@ -106,9 +107,31 @@ export const C = {
  * fish fight) scale the rest.
  */
 export type Difficulty = 'classic' | 'story' | 'normal' | 'brutal';
-export const DIFFICULTY: Record<Difficulty, { name: string; tempo: number; hurt: number; bossHp: number; spawn: number; fishPull: number; blurb: string }> = {
-  classic: { name: 'Classic', tempo: 1, hurt: 1, bossHp: 1, spawn: 1, fishPull: 1, blurb: '' },
-  story: { name: 'Story', tempo: 0.85, hurt: 0.7, bossHp: 0.85, spawn: 1.4, fishPull: 0.85, blurb: 'Gentler critters, more forgiving fish.' },
-  normal: { name: 'Normal', tempo: 1.12, hurt: 1.3, bossHp: 1.2, spawn: 0.85, fishPull: 1.1, blurb: 'The way it is meant to be played: hard.' },
-  brutal: { name: 'Brutal', tempo: 1.28, hurt: 1.65, bossHp: 1.45, spawn: 0.7, fishPull: 1.25, blurb: 'Everything is faster, angrier and thirstier.' },
+export interface DifficultyDef {
+  name: string; blurb: string;
+  /** Critter thinking speed; chance to spill/tear on a hit; boss HP; seconds between burrow spawns; fish strength. */
+  tempo: number; hurt: number; bossHp: number; spawn: number; fishPull: number;
+  /** Bosses go into a second phase below this share of HP (0 = never): faster, a roar that throws Biscuit off, adds. */
+  phaseAt: number;
+  /** Critters a boss calls in when its second phase starts. */
+  adds: number;
+  /** Bites a boss tolerates per latch before it shakes Biscuit off (0 = no limit). */
+  latchBites: number;
+  /** How much water a refill puddle holds, in full packs (Infinity = bottomless). It seeps back slowly. */
+  reserve: number;
+  /** Every hit on the pack side tears it. */
+  backTear: boolean;
+  /** A faint puts Rocco back at the last zone he reached, not the area's door. */
+  checkpoints: boolean;
+  /** Seconds a hooked fish's thrash warning lasts (the reaction window). */
+  fishWarn: number;
+  /** How fast a sound pack seeps (x the base drain): the clock that makes puddles matter. */
+  seep: number;
+}
+
+export const DIFFICULTY: Record<Difficulty, DifficultyDef> = {
+  classic: { name: 'Classic', tempo: 1, hurt: 1, bossHp: 1, spawn: 1, fishPull: 1, blurb: '', phaseAt: 0, adds: 0, latchBites: 0, reserve: Infinity, backTear: false, checkpoints: false, fishWarn: 0.45, seep: 1 },
+  story: { name: 'Story', tempo: 0.85, hurt: 0.7, bossHp: 0.9, spawn: 1.4, fishPull: 0.85, blurb: 'Gentler critters, deeper puddles, forgiving fish.', phaseAt: 0.4, adds: 0, latchBites: 4, reserve: 2.5, backTear: false, checkpoints: true, fishWarn: 0.7, seep: 0.8 },
+  normal: { name: 'Normal', tempo: 1.12, hurt: 1.3, bossHp: 2.0, spawn: 0.85, fishPull: 1.1, blurb: 'The way it is meant to be played: hard.', phaseAt: 0.5, adds: 2, latchBites: 3, reserve: 1.1, backTear: false, checkpoints: true, fishWarn: 0.55, seep: 1.8 },
+  brutal: { name: 'Brutal', tempo: 1.28, hurt: 1.65, bossHp: 2.6, spawn: 0.7, fishPull: 1.25, blurb: 'Bosses rage sooner and call for help, every hit from behind tears the pack, and puddles run dry.', phaseAt: 0.65, adds: 3, latchBites: 2, reserve: 0.6, backTear: true, checkpoints: true, fishWarn: 0.4, seep: 2.4 },
 };

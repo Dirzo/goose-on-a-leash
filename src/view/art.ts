@@ -29,6 +29,33 @@ interface ViewFx { kind: string; x: number; y: number; t: number; a?: number; co
 interface Quip { text: string; life: number; bimbo?: boolean }
 interface Drip { x: number; y: number; z: number; vz: number; life: number }
 
+/** Where Biscuit's head is on each strip (from the sprite's anchor, facing right), for his hat. */
+const HAT_HEAD: Record<string, [number, number]> = { biscuit_idle: [9, -52], biscuit_walk: [10, -51], biscuit_honk: [11, -57], biscuit_hiss: [26, -29], biscuit_bite: [34, -30], biscuit_fling: [14, -28] };
+/** Little pixel hats, drawn over Biscuit's head. */
+function drawHat(g: Phaser.GameObjects.Graphics, id: string, x: number, y: number, flip: boolean, rot: number): void {
+  const f = flip ? -1 : 1, t = Math.round(rot * 8);
+  const r = (c: number, dx: number, dy: number, w: number, h: number) => { g.fillStyle(c, 1); g.fillRect(x + (f > 0 ? dx : -dx - w) + t, y + dy, w, h); };
+  switch (id) {
+    case 'lilypad': r(0x3f8f3a, -6, -2, 13, 3); r(0x5fb04f, -5, -3, 9, 1); r(0xe86aa0, 1, -5, 3, 2); break;
+    case 'acorn': r(0x7a4a22, -4, -4, 9, 4); r(0x5a3214, -3, -6, 7, 2); r(0x3a2010, 0, -8, 2, 2); break;
+    case 'foxhat': r(0xc8642a, -5, -5, 11, 5); r(0xf6eee0, 4, -4, 4, 3); break;
+    case 'lamp': r(0xe0b030, -5, -3, 10, 3); r(0x40382a, -4, -5, 8, 2); r(0xfff3a0, 4, -6, 3, 3); break;
+    case 'bucket': r(0x7a8a96, -5, -9, 10, 9); r(0x9aaab6, -6, -1, 12, 2); r(0xd8d0c0, -2, -7, 2, 2); break;
+    case 'sailor': r(0xf6f2ea, -5, -4, 10, 4); r(0x2a4a8a, -6, -1, 12, 2); break;
+    case 'pillbox': r(0xb02a2a, -4, -5, 8, 5); r(0xe0b030, -4, -1, 8, 1); r(0x2a1a1a, 3, 0, 4, 1); break;
+    case 'helm': r(0x5f8a4a, -6, -5, 12, 6); r(0x3f6a2a, -4, -4, 3, 3); r(0x3f6a2a, 1, -4, 3, 3); break;
+    case 'crust': r(0xc88a40, -6, -4, 12, 4); r(0xe8b060, -5, -5, 10, 1); break;
+    case 'shellcap': r(0x5f6a3a, -5, -4, 10, 4); r(0x7fa04a, -3, -5, 6, 1); break;
+    case 'straw': r(0xd8b860, -8, -2, 16, 2); r(0xc8a040, -4, -6, 8, 4); r(0x8a2a2a, -4, -3, 8, 1); break;
+    case 'kingcrown': r(0xe0b030, -6, -4, 12, 4); r(0xe0b030, -6, -7, 2, 3); r(0xe0b030, -1, -7, 2, 3); r(0xe0b030, 4, -7, 2, 3); r(0xc02a2a, -1, -3, 2, 2); break;
+    case 'tricorn': r(0x1a1418, -8, -3, 16, 3); r(0x1a1418, -5, -6, 10, 3); r(0xf6f2ea, -2, -5, 4, 2); break;
+    case 'toque': r(0xf6f6f2, -4, -12, 8, 12); r(0xf6f6f2, -6, -14, 12, 4); r(0xd8d8d0, -4, -1, 8, 1); break;
+    case 'plume': r(0x1a1418, -1, -11, 3, 11); r(0x3a2a4a, 1, -13, 4, 6); break;
+    case 'tiara': r(0xd8e0f0, -5, -3, 10, 2); r(0xd8e0f0, -1, -6, 2, 3); r(0x8ad0f0, -1, -6, 2, 1); r(0xd8e0f0, -4, -5, 1, 2); r(0xd8e0f0, 3, -5, 1, 2); break;
+    default: r(0x6a4a8a, -5, -4, 10, 4);
+  }
+}
+
 const CHOMP_WORDS = ['CHOMP!', 'NOM', 'chomp', 'GNASH', '*crunch*', 'nyom', 'CHOMP', 'munch'];
 const pickOne = <T,>(a: readonly T[]): T => a[Math.floor(Math.random() * a.length)]!;
 const HEART = ['.XX.XX.', 'XXXXXXX', 'XXXXXXX', '.XXXXX.', '..XXX..', '...X...'];
@@ -194,6 +221,10 @@ export class ArtRenderer {
       if (e.type === 'say') this.quips.push({ text: e.text, life: 2.6 });
       else if (e.type === 'bimbo') this.quips.push({ text: `Bimbo: ${e.text}`, life: 4.2, bimbo: true });
       else if (e.type === 'hint') { this.hintText = e.text; this.hintT = 6; }
+      else if (e.type === 'startle') this.pop(pickOne(['!?', '!!', 'eek', '?!', 'yip']), e.x, e.y, '#ffe9a0', 9);
+      else if (e.type === 'gulp') { this.pop(e.up ? pickOne(['*HACK*', '*HURK*', 'bleh']) : pickOne(['GULP', 'gulp.', 'NOM']), e.x, e.y - 30, '#fff1c8', 12); sound.play(e.up ? 'squawk' : 'chomp'); if (!e.up) this.pop(pickOne(['SPIT THAT OUT', 'no no no', 'BISCUIT.', 'that was ours']), this.lastP.x, this.lastP.y - 84, '#9fe8ff', 9); }
+      else if (e.type === 'hat') { this.pop('NEW HAT', this.lastG.x, this.lastG.y - 80, '#ffd27a', 15); sound.honk(this.power); }
+      else if (e.type === 'phase2') { this.pop(pickOne(['ENRAGED', 'PHASE TWO', 'UH OH']), this.lastP.x, this.lastP.y - 110, '#ff6a5a', 16); sound.play('slam'); SETTINGS.shake && this.scene.cameras.main.shake(400, 0.008); }
       else if (e.type === 'fx') {
         this.fx.push({ kind: e.kind, x: e.x, y: e.y, t: 0, a: e.a, cone: e.cone, range: e.range, text: e.text });
         this.atmo.flashAt(e.kind, e.x, e.y);
@@ -675,6 +706,17 @@ export class ArtRenderer {
     if (!this.stage?.hideGoose) { g.fillStyle(0x000000, glift ? 0.22 : 0.35); g.fillEllipse(latched ? bx + (bflip ? -6 : 6) : G.x, (latched ? by - 12 : G.y) + (flying ? 6 : 1), latched ? 34 : 22, 6); }
     const neck = point(bstrip, 'neck', bflip);
     const neckW = { x: Math.round(bx) + neck.x, y: Math.round(by - glift) + neck.y };
+    if (sim.kit.hat && !this.stage?.hideGoose) {
+      const ho = HAT_HEAD[bstrip] ?? [9, -50], wob = bstrip === 'biscuit_bite' ? (Math.random() - 0.5) * 3 : 0;
+      drawHat(this.fxg, sim.kit.hat, Math.round(bx + (bflip ? -ho[0]! : ho[0]!) + wob), Math.round(by - glift + ho[1]!), bflip, bstrip === 'biscuit_walk' ? rot : 0);
+    }
+    (sim.room.def.refills ?? []).forEach((r, i) => {
+      const w = sim.refillWater[i] ?? Infinity;
+      if (!Number.isFinite(w) || w > 0.6) return;
+      const a = (1 - w / 0.6) * 0.6;
+      g.fillStyle(0x4a3624, a); g.fillRoundedRect(r.x + 4, r.y + 4, r.w - 8, r.h - 8, 10);
+      if (w < 0.01) this.wt('dry', r.x + r.w / 2, r.y + r.h / 2 + 4, 8, '#c9a46a', 0.8);
+    });
     if (furious || go.feral) for (let i = 0; i < 2; i++) {
       const a = time * 3 + i * 3;
       this.fxg.fillStyle(0xe05a47, 0.7); this.fxg.fillRect(Math.round(G.x - 4 + Math.sin(a) * 4 + i * 6), Math.round(G.y - 64 - ((time * 26 + i * 11) % 14)), 2, 2);

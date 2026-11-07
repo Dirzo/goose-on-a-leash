@@ -31,6 +31,9 @@ export class Kit {
   elixir = false;
   /** Castle Honkmore's Royal Seals (one per wing): together they open the throne room. */
   seals = new Set<string>();
+  /** Hats Biscuit has stolen, and the one he's wearing. */
+  hats = new Set<string>();
+  hat: string | null = null;
   /** The fish journal: how many of each, and the biggest (cm). */
   fish: Record<string, { n: number; best: number }> = {};
 

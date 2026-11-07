@@ -235,11 +235,16 @@ export class Bot {
       if (this.refilling) { this.branch = 'refill';
         if (pk.water > 0.95) { this.refilling = false; this.log.refills++; }
         else {
-          const rf = sim.room.def.refills!;
-          if (rf.some(r => pl.x > r.x && pl.x < r.x + r.w && pl.y > r.y && pl.y < r.y + r.h)) { I.moveX = 0; I.moveY = 0; this.fightFromHere(); return; }
+          // only puddles with water left in them (a person sees the dry mud)
+          const rf = sim.room.def.refills!.filter((_, i) => (sim.refillWater[i] ?? Infinity) > 0.12);
+          const here = sim.refillAt(pl.x, pl.y);
+          if (here >= 0 && (sim.refillWater[here] ?? Infinity) > 0.005) { I.moveX = 0; I.moveY = 0; this.fightFromHere(); return; }
+          if (!rf.length) { this.refilling = false; this.decideT = 0.5; }
+          else {
           const ok = this.goTo(i => { const c = this.nav.center(i); return rf.some(r => c.x > r.x + 6 && c.x < r.x + r.w - 6 && c.y > r.y + 6 && c.y < r.y + r.h - 6); }, 'refill');
           if (ok) { this.fightOnTheWay(); return; }
           this.refilling = false;
+          }
         }
       }
     }

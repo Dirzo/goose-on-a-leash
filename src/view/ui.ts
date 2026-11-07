@@ -1,4 +1,6 @@
 /** DOM layer: tuning bench and recipe book. Reads and writes the sim; never draws the game. */
+import { HATS, HAT_BY_ID } from '../data/hats';
+const pickQ = (a: string[]): string => a[Math.floor(Math.random() * a.length)]!;
 import { count, exportStats, top, STATS } from './analytics';
 import { loadBoard, playerName, setPlayerName, type BasementRun } from './leaderboard';
 import { ACTION_NAMES, DEFAULT_KEYS, SETTINGS, bind, keyLabel, saveSettings, type Action } from './settings';
@@ -212,6 +214,11 @@ export function mountUi(scene: GameScene): void {
   function renderShop(): void {
     const k = scene.sim.kit;
     purse.textContent = `You have ${k.mats.glass} Sea Glass and ${k.mats.chain} Shell Scute.`;
+    // Pickett has opinions about the goose
+    const hat = k.hat ? HAT_BY_ID[k.hat] : null, belly = scene.sim.belly.length;
+    $('shop-quote').textContent = belly ? '"Is your goose... digesting something of mine? Keep him off the counter."'
+      : hat ? pickQ([`"Nice ${hat.name.toLowerCase()}. Where'd the goose get that? ...Don't tell me."`, `"I'm not serving a goose in a ${hat.name.toLowerCase()}. ...Fine. Sea glass only."`, `"Is that the ${hat.name}? Someone's going to want that back."`])
+      : '"Sea glass only. Shiny things are the only honest money."';
     const price = (c: Partial<Record<string, number>>) => Object.entries(c).map(([id, n]) => `${n} ${ITEMS[id as keyof typeof ITEMS].name}`).join(' + ');
     wares.innerHTML = scene.sim.shopStock().map(it => {
       const ok = !it.sold && scene.sim.canAfford(it.cost);
@@ -320,7 +327,17 @@ export function mountUi(scene: GameScene): void {
             : `<b>???</b><small>${f.rarity === 'legendary' ? 'Legendary. Rarely seen.' : f.rarity}</small>`) + '</div></div>';
       }
     }
+    // Biscuit's hat collection: click one to put it on him
+    html += `<h3>Biscuit's hats (${k.hats.size} of ${HATS.length})</h3>`;
+    for (const h of HATS) {
+      const has = k.hats.has(h.id);
+      html += `<div class="fish-card ${has ? '' : 'unknown'}"><div>` + (has
+        ? `<b>${esc(h.name)}</b><small>${k.hat === h.id ? 'wearing it' : `<button type="button" class="hat-btn" data-hat="${h.id}">Put it on</button>`}</small>`
+        : `<b>???</b><small>Beat something wearing it</small>`) + '</div></div>';
+    }
+    if (k.hat) html += `<p><button type="button" class="hat-btn" data-hat="">Take his hat off</button></p>`;
     jlist.innerHTML = html;
+    jlist.querySelectorAll<HTMLButtonElement>('.hat-btn').forEach(b => { b.onclick = () => { k.hat = b.dataset.hat || null; scene.saveNow(); openJournal(); }; });
     journalOpen = true; journal.hidden = false; scene.paused = true; $('journal-close').focus();
   }
   $('journal-close').onclick = closeJournal;
