@@ -167,30 +167,32 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--caution);outlin
 .pack-tabs button:last-child{margin-right:0}
 .pack-tabs button.on{background:#f3e7cf;color:#3a2a1a}
 .pack-tabs button:focus-visible{outline:3px solid #f2c230;outline-offset:-3px}
-.pack-tabs b{font-size:1em}.pack-tabs small{font-size:.75em;opacity:.75}
-.tab-pic{display:block;width:44px;height:44px;background-repeat:no-repeat;image-rendering:pixelated}
-.pack-body{flex:1;overflow:auto;padding:12px 16px}
-.pack-foot{font-family:var(--mono);font-size:.75em;padding:6px 16px;background:#e6d6b6;color:#6e5232}
-.pack-body h3{margin:0 0 4px;font-size:1.35em}
-.pack-body .sub{margin:0 0 10px;color:#6e5232}
-.pack-rows{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;font-family:var(--mono);font-size:.9em;margin-bottom:10px}
-.pack-rows dt{color:#8a6a44;text-transform:uppercase;letter-spacing:.06em}
-.pack-rows dd{margin:0}
-.pack-rows .bad{color:#b0382a}.pack-rows .good{color:#2e7d3e}
-.pips{display:flex;gap:6px;margin:4px 0 10px}
-.pips i{width:22px;height:10px;background:#d8c6a2;border:2px solid #8a6a44}
-.pips i.got{background:#e0a030;border-color:#6e5232}
-.up-card{border:2px solid #8a6a44;background:#fffaf0;padding:8px 12px;margin-bottom:10px;box-shadow:3px 3px 0 rgba(58,42,26,.25)}
-.up-card b{font-size:1.1em}
-.cost{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-.cost span{font-family:var(--mono);font-size:.85em;padding:2px 6px;border:1px solid #8a6a44;background:#f3e7cf}
-.cost span.short{border-color:#b0382a;color:#b0382a;background:#fbe3dc}
+.tab-pic{display:block;width:52px;height:52px;background-repeat:no-repeat;image-rendering:pixelated}
+.tab-pic.small{width:34px;height:34px}.tab-pic.big{width:120px;height:120px;margin:0 auto}
+.pack-body{flex:1;overflow:auto;padding:12px 16px;position:relative}
+.pk-head{text-align:center;cursor:help;outline:0}.pk-head h3{margin:0 0 2px;font-size:1.2em}.pk-head:focus-visible{outline:2px solid #f2c230}
+.pips{display:flex;gap:8px;justify-content:center;margin:4px 0 12px}
+.pips i{width:30px;height:14px;background:#d8c6a2;border:2px solid #8a6a44;border-radius:3px}
+.pips i.got{background:#e0a030;border-color:#6e5232;box-shadow:inset 0 -3px 0 #b07818}
+.pk-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:10px;align-items:center}
+.pk-chip{display:inline-flex;align-items:center;gap:3px;font-family:var(--mono);font-size:.95em;padding:2px 7px 2px 3px;border:2px solid #8a6a44;background:#fffaf0;border-radius:14px}
+.pk-chip.short{border-color:#b0382a;color:#b0382a;background:#fbe3dc}
+.ico{display:block;flex:none}
+.bag-water{display:flex;align-items:center;gap:8px;margin:2px 0 12px}
+.bag-water .bar{flex:1;height:16px;border:2px solid #3a2a1a;background:#d8c6a2;border-radius:8px;overflow:hidden}
+.bag-water .bar i{display:block;height:100%;background:linear-gradient(#5aaedc,#2f7fb0);transition:width .3s}
+.bag-water .bar i.low{background:linear-gradient(#e88a6a,#b0382a);animation:glow .5s ease-in-out infinite alternate}
+.patch-btn{display:inline-flex;align-items:center;padding:3px 8px;border:2px solid #3a2a1a;background:#f2c230;cursor:pointer;box-shadow:3px 3px 0 #3a2a1a;border-radius:6px}
+.patch-btn:disabled{background:#d8c6a2;box-shadow:none;opacity:.5;cursor:default}
+.ups{display:flex;flex-direction:column;gap:2px;align-items:center}
+.up-row{display:flex;align-items:center;gap:10px}.up-row .pips{margin:0}
 .craft{display:flex;flex-direction:column;align-items:center;gap:8px;padding:6px 0;position:relative}
 .craft svg{width:auto;max-width:min(260px,70%);height:auto;max-height:clamp(110px,24vw,190px);touch-action:manipulation}
-.craft .hint{font-size:.9em;color:#6e5232;text-align:center;min-height:1.3em}
-.craft button.big{font:inherit;font-weight:700;padding:8px 18px;border:2px solid #3a2a1a;background:#f2c230;color:#3a2a1a;cursor:pointer;box-shadow:3px 3px 0 #3a2a1a}
-.craft button.big:disabled{background:#d8c6a2;cursor:default;box-shadow:none;opacity:.7}
-.craft button.big:active:not(:disabled){transform:translate(2px,2px);box-shadow:1px 1px 0 #3a2a1a}
+.craft.locked>*:not(.lock){filter:grayscale(1);opacity:.35;pointer-events:none}
+.craft .lock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:2.6em;pointer-events:none}
+.craft button.big{font:inherit;font-size:1.6em;line-height:1;padding:6px 18px;border:2px solid #3a2a1a;background:#f2c230;cursor:pointer;box-shadow:3px 3px 0 #3a2a1a}
+.craft button.big:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #3a2a1a}
+.dots{display:flex;gap:5px}.dots i{width:10px;height:10px;border-radius:50%;background:#d8c6a2;border:2px solid #8a6a44}.dots i.got{background:#e0a030}
 .strand{cursor:pointer}.strand.next{animation:glow .6s ease-in-out infinite alternate}
 @keyframes glow{from{filter:drop-shadow(0 0 0 #f2c230)}to{filter:drop-shadow(0 0 6px #f2c230)}}
 .dough{cursor:pointer;transition:transform .08s}.dough.squish{transform:scale(1.15,.85)}
@@ -198,8 +200,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--caution);outlin
 .oven-bar{position:relative;width:min(260px,80%);height:18px;background:linear-gradient(90deg,#f6e2a8 0 55%,#e0a030 55% 75%,#7a3a1a 75% 100%);border:2px solid #3a2a1a}
 .oven-bar i{position:absolute;top:-4px;width:4px;height:26px;background:#3a2a1a;left:0}
 .celebrate{position:absolute;inset:0;pointer-events:none;display:flex;align-items:center;justify-content:center}
-.celebrate b{font-size:1.8em;color:#3a2a1a;background:#f2c230;padding:6px 14px;box-shadow:4px 4px 0 #3a2a1a;animation:popin .45s cubic-bezier(.2,1.6,.4,1)}
+.celebrate .star{font-size:3.2em;color:#f2c230;text-shadow:3px 3px 0 #3a2a1a;animation:popin .45s cubic-bezier(.2,1.6,.4,1)}
 .celebrate .bit{position:absolute;width:8px;height:8px;animation:burst .9s ease-out forwards}
 @keyframes popin{from{transform:scale(.2) rotate(-12deg)}to{transform:scale(1) rotate(-3deg)}}
 @keyframes burst{from{transform:translate(0,0) rotate(0);opacity:1}to{transform:translate(var(--dx),var(--dy)) rotate(540deg);opacity:0}}
-.maxed{text-align:center;padding:14px;font-size:1.05em}
+.maxed{text-align:center;padding:14px}.maxed .stars{font-size:2em;color:#e0a030;text-shadow:2px 2px 0 #3a2a1a}

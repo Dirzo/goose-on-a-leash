@@ -1023,7 +1023,6 @@ export class Sim {
     for (const [id, n] of Object.entries(u.cost)) this.kit.mats[id as ItemId] -= n!;
     this.pack.needles -= u.needles ?? 0;
     this.kit.up[t]++;
-    this.say(u.done);
     this.events.push({ type: 'upgrade', track: t, tier: this.kit.up[t] });
     return true;
   }

@@ -199,7 +199,14 @@ export class Sound {
       case 'bush': this.noise(0.25, 1800, 0.25, 'bandpass', 700, 0, 1.5); this.tone(120, 0.1, 'triangle', 0.2, 70); break;
       case 'chatter': this.tone(1400, 0.04, 'square', 0.05, 1800); this.tone(1500, 0.04, 'square', 0.05, 1900, 0.06); break;
       case 'growl': this.tone(80, 0.5, 'sawtooth', 0.12, 60); this.noise(0.4, 400, 0.1, 'lowpass', 200); break;
-      case 'learn': [392, 494, 587, 784, 988].forEach((f, i) => this.tone(f, 0.4, 'sine', 0.13, undefined, i * 0.09)); break;
+      // backpack crafting: each step climbs a little scale (power = step number), so a puzzle plays a tune as you go
+      case 'pluck': { const f = 262 * Math.pow(2, [0, 2, 4, 5, 7, 9, 11, 12, 14][power % 9]! / 12); this.tone(f, 0.22, 'triangle', 0.16, f * 0.99); this.tone(f * 2, 0.08, 'square', 0.03); break; }   // twang
+      case 'squish': { const f = 140 + power * 18; this.noise(0.09, 700, 0.18, 'lowpass', 250); this.kazoo(f, 0.12, 0.06, f * 1.5, 0.02, undefined, 18); break; }   // splorch
+      case 'stitch': { const f = 523 * Math.pow(2, [0, 2, 4, 7, 9, 12, 14, 16][power % 8]! / 12); this.noise(0.03, 3500, 0.1, 'highpass'); this.tone(f, 0.1, 'sine', 0.13, f * 1.25, 0.02); break; }   // pip!
+      case 'ovending': this.tone(1568, 0.5, 'sine', 0.12); this.tone(2093, 0.4, 'sine', 0.06, undefined, 0.02); break;
+      case 'burnt': this.kazoo(220, 0.4, 0.1, 110, 0, undefined, 16); this.noise(0.3, 900, 0.1, 'lowpass', 200, 0.1); break;   // wah-wahh
+      case 'tada': [523, 659, 784].forEach((f, i) => this.kazoo(f, 0.12, 0.1, f, i * 0.1)); this.kazoo(1046, 0.4, 0.12, 1100, 0.3, undefined, 10); this.honk(3); break;
+      case 'learn':[392, 494, 587, 784, 988].forEach((f, i) => this.tone(f, 0.4, 'sine', 0.13, undefined, i * 0.09)); break;
     }
   }
 
