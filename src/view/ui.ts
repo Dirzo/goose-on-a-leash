@@ -74,6 +74,15 @@ export function mountUi(scene: GameScene): void {
     $('room-note').textContent = `Jumped to ${def.name}.`;
     scene.game.canvas.focus();
   };
+  /** Open or close the backpack; before Rocco has the pack (the opening pond), say so instead of doing nothing. */
+  function togglePack(): void {
+    if (open) closeBook();
+    if (journalOpen) closeJournal();
+    if (scene.packOpen) { scene.setPackOpen(false); return; }
+    if (!scene.setPackOpen(true)) scene.sayNow('No backpack yet. Catch something worth carrying first.');
+  }
+  $('b-pack').onclick = togglePack;
+  $('book-pack').onclick = togglePack;
   $('b-room-restart').onclick = () => { if (open) closeBook(); scene.setPackOpen(false); scene.resetRoom(); scene.game.canvas.focus(); };
   const soundBtn = $('b-sound'), soundLabel = () => { soundBtn.textContent = `Sound: ${sound.muted ? 'off' : 'on'} [M]`; };
   soundLabel(); sound.onChange = soundLabel;
@@ -355,7 +364,7 @@ export function mountUi(scene: GameScene): void {
     if (settingsOpen) { if (a === 'close') closeSettings(); return; }
     if (basementOpen) { if (a === 'close') closeBasement(); return; }
     if (a === 'book') { if (open) closeBook(); else { scene.setPackOpen(false); openBook(); } }
-    else if (a === 'pack') { if (open) closeBook(); scene.setPackOpen(!scene.packOpen); }
+    else if (a === 'pack') togglePack();
     else if (a === 'closeBook' || a === 'close') { if (open) closeBook(); if (ferryOpen) closeFerry(); if (shopOpen) closeShop(); scene.setPackOpen(false); }
     else if (a === 'patch') { if (scene.packOpen) { scene.patchFromPack(); packUi.refresh(); } }
     else if (a === 'reset') { if (open) closeBook(); scene.setPackOpen(false); scene.resetRoom(); }

@@ -55,6 +55,8 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--caution);outlin
   padding-block:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));overflow:auto}
 .book-inner{width:100%;max-width:920px;background:var(--paper);color:var(--paper-ink);border-radius:4px 10px 10px 4px;
   box-shadow:inset 14px 0 0 -6px #b89f6a,0 20px 60px rgba(0,0,0,.6);padding:22px 24px 26px 34px;display:flex;flex-direction:column;gap:14px}
+.book-head-btns{display:flex;gap:8px;flex-wrap:wrap}
+.book,.packui{-webkit-user-select:none;user-select:none}
 .book-head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:10px}
 .book-head h2{font-family:var(--display);font-weight:400;font-size:clamp(22px,3.4vw,32px);line-height:1.05;margin:0;text-wrap:balance}
 .book-head p{margin:4px 0 0;color:var(--paper-dim);font-size:14px;max-width:60ch}

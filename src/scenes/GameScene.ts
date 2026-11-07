@@ -338,6 +338,8 @@ export class GameScene extends Phaser.Scene {
   /** Patch from the backpack screen (the sim is paused, so feed its events straight to the view). */
   ferryTo(id: string): void { if (this.sim.ferryTo(id)) this.feed(this.sim.drainEvents()); }
   buy(id: ShopItem['id']): boolean { const ok = this.sim.buy(id); this.feed(this.sim.drainEvents()); return ok; }
+  /** Show a speech line now (from the UI). */
+  sayNow(text: string): void { this.feed([{ type: 'say', text }]); }
   patchFromPack(): void { this.sim.patchPack(); this.feed(this.sim.drainEvents()); }
 
   /** Write the autosave now (also done on every room arrival). */
