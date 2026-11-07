@@ -1186,35 +1186,7 @@ export class ArtRenderer {
     const [bx, by] = pts.bimbo!;
     u.bimbo.setFrame(mood + blink).setPosition(P0.x + bx! * S3, P0.y + by! * S3 + Math.round(Math.sin(time * 2.4) * 4) + (low ? 10 : 0))
       .setAngle(Math.sin(time * 1.7) * (low ? 2 : 5));
-    // the words
-    const X = 620, k = sim.kit;
-    this.ut('display', 'BACKPACK', X, 150, 40, '#f6f1e6', 1, 'left');
-    const moodText = lvl > 0.6 ? 'Bimbo is happy. Splashy, even.' : lvl > 0.3 ? 'Bimbo is getting thirsty…' : 'Bimbo is GASPING. Water, now!';
-    this.ut('body', moodText, X, 186, 20, lvl > 0.3 ? '#9ae0ff' : '#ff8a8a', 1, 'left', true);
-    const rows: [string, string, string][] = [
-      ['Water', `${Math.ceil(lvl * 100)}%`, low ? '#ff8a8a' : '#9ae0ff'],
-      ['Leak rate', `−${(sim.leakRate() * 100).toFixed(1)}% per second`, pk.holes ? '#ff9a7a' : '#9aa3a6'],
-      ['Open tears', `${pk.holes}`, pk.holes ? '#ff9a7a' : '#9aa3a6'],
-      ['Patches sewn', `${pk.patches}`, '#e0c890'],
-      ['Needle uses', `${pk.needles}  (sewing kits give ${C.kitNeedles})`, pk.needles ? '#e9e4d6' : '#ff8a8a'],
-      ['Twine', `${k.mats.fluff}  (one per patch)`, k.mats.fluff ? '#e0c890' : '#ff8a8a'],
-    ];
-    rows.forEach(([a, b, c], i) => {
-      this.ut('mono', a.toUpperCase(), X, 236 + i * 30, 13, '#9aa3a6', 1, 'left', true);
-      this.ut('mono', b, X + 170, 236 + i * 30, 15, c, 1, 'left', true);
-    });
-    const sup = (Object.keys(MATERIALS) as ItemId[]).filter(id => id !== 'fluff').map(id => `${ITEMS[id].name} ${k.mats[id]}`).join(' · ');
-    const breads = BREADS.filter(b => k.bread[b.id] > 0).map(b => `${b.name} ×${k.bread[b.id]}`).join(' · ') || 'no bread';
-    this.ut('mono', 'SUPPLIES', X, 430, 13, '#9aa3a6', 1, 'left', true);
-    this.ut('body', sup, X, 458, 15, '#e9e4d6', 1, 'left');
-    this.ut('body', breads, X, 482, 15, '#e9c9a0', 1, 'left');
-    this.ut('body', `Leash: ${k.leashDef.name}${k.reel ? ' · Spinning Reel' : ''}`, X, 506, 15, '#c9a46a', 1, 'left');
-    const have = INGREDIENTS.filter(i => k.ingredients.has(i.id));
-    this.ut('body', `Elixir: ${have.length} of ${INGREDIENTS.length}${have.length ? ' · ' + have.map(i => i.name).join(' · ') : ' · nothing yet'}`, X, 530, 15, have.length ? '#8fe0d0' : '#9aa3a6', 1, 'left');
-    const canPatch = pk.holes > 0 && pk.needles > 0 && k.mats.fluff > 0;
-    this.ut('mono', canPatch ? '[P] PATCH A TEAR' : pk.holes ? (pk.needles ? 'NEED TWINE TO PATCH' : 'NEED A SEWING KIT TO PATCH') : 'NO TEARS TO PATCH', X, 570, 15,
-      canPatch ? '#f2c230' : pk.holes ? '#ff8a8a' : '#7cc48a', 1, 'left', true);
-    this.ut('mono', '[I] / [ESC] CLOSE', X, 600, 12, '#9aa3a6', 1, 'left', true);
+    // the words, tabs and upgrades are the HTML panel over the right half (view/packui.ts)
   }
 
   /** Old Snapper: a huge mossy snapping turtle. Rears before a charge, pants when winded, hides, flips. */

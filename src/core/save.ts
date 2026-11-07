@@ -21,7 +21,7 @@ export interface SaveData {
   hp: number;
   pack: { water: number; holes: number; patches: number; needles: number };
   seen?: string[];
-  kit: { mats: Partial<Record<ItemId, number>>; owned: LeashId[]; leash: LeashId; bread: Partial<Record<BreadId, number>>; active: BreadId; toothFirst: boolean; traits?: TraitId[]; oar?: boolean; ferries?: string[]; reel?: boolean; ingredients?: string[]; fish?: Record<string, { n: number; best: number }>; seals?: string[]; elixir?: boolean; cracks?: number; hats?: string[]; hat?: string | null };
+  kit: { mats: Partial<Record<ItemId, number>>; owned: LeashId[]; leash: LeashId; bread: Partial<Record<BreadId, number>>; active: BreadId; toothFirst: boolean; traits?: TraitId[]; oar?: boolean; ferries?: string[]; reel?: boolean; ingredients?: string[]; fish?: Record<string, { n: number; best: number }>; seals?: string[]; elixir?: boolean; cracks?: number; hats?: string[]; hat?: string | null; up?: { line: number; bread: number; patch: number } };
   world: Record<string, RoomMemory>;
   savedAt: number;
 }
@@ -31,7 +31,7 @@ export function snapshotSave(sim: Sim): SaveData {
   return {
     v: 2, room: sim.room.def.id, door: sim.entryDoor, hp: sim.player.hp,
     pack: { water: sim.pack.water, holes: sim.pack.holes, patches: sim.pack.patches, needles: sim.pack.needles },
-    kit: { mats: { ...k.mats }, owned: [...k.owned], leash: k.leash, bread: { ...k.bread }, active: k.active, toothFirst: k.toothFirst, traits: [...k.traits], oar: k.oar, ferries: [...k.ferries], reel: k.reel, ingredients: [...k.ingredients], fish: structuredClone(k.fish), seals: [...k.seals], elixir: k.elixir, cracks: sim.glassCracks, hats: [...k.hats], hat: k.hat },
+    kit: { mats: { ...k.mats }, owned: [...k.owned], leash: k.leash, bread: { ...k.bread }, active: k.active, toothFirst: k.toothFirst, traits: [...k.traits], oar: k.oar, ferries: [...k.ferries], reel: k.reel, ingredients: [...k.ingredients], fish: structuredClone(k.fish), seals: [...k.seals], elixir: k.elixir, cracks: sim.glassCracks, hats: [...k.hats], hat: k.hat, up: { ...k.up } },
     world: structuredClone({ ...sim.world }), seen: [...sim.seen],
     savedAt: Date.now(),
   };
@@ -71,6 +71,7 @@ export function validateSave(raw: unknown): SaveData | null {
       fish: Object.fromEntries(FISH.filter(f => d.kit?.fish?.[f.id]).map(f => [f.id, { n: Math.floor(num(d.kit!.fish![f.id]!.n, 0, 9999, 0)), best: Math.floor(num(d.kit!.fish![f.id]!.best, 0, 999, 0)) }])),
       elixir: d.kit?.elixir === true, cracks: Math.round(num(d.kit?.cracks, 0, 3, 0)),
       hats: Array.isArray(d.kit?.hats) ? d.kit!.hats.filter(h => typeof h === 'string' && !!HAT_BY_ID[h]) : [], hat: typeof d.kit?.hat === 'string' && HAT_BY_ID[d.kit.hat] ? d.kit.hat : null,
+      up: { line: Math.round(num(d.kit?.up?.line, 0, 3, 0)), bread: Math.round(num(d.kit?.up?.bread, 0, 3, 0)), patch: Math.round(num(d.kit?.up?.patch, 0, 3, 0)) },
       seals: Array.isArray(d.kit?.seals) ? d.kit!.seals.filter(x => x === 'foyer' || x === 'kitchens' || x === 'keep') : [],
       reel: d.kit?.reel === true, ingredients: Array.isArray(d.kit?.ingredients) ? d.kit!.ingredients.filter(i => INGREDIENTS.some(x => x.id === i)) : [] },
     world, seen: Array.isArray(d.seen) ? d.seen.filter(x => typeof x === 'string').slice(0, 64) : [],
@@ -83,7 +84,7 @@ export function applySave(sim: Sim, s: SaveData): void {
   const k = sim.kit;
   Object.assign(k.mats, s.kit.mats);
   k.owned = new Set(s.kit.owned); k.leash = s.kit.leash;
-  Object.assign(k.bread, s.kit.bread); k.active = s.kit.active; k.toothFirst = s.kit.toothFirst; k.traits = new Set(s.kit.traits ?? []); k.oar = !!s.kit.oar; k.ferries = new Set(s.kit.ferries ?? []); k.reel = !!s.kit.reel; k.fish = structuredClone(s.kit.fish ?? {}); k.seals = new Set(s.kit.seals ?? []); k.elixir = !!s.kit.elixir; sim.glassCracks = s.kit.cracks ?? 0; k.hats = new Set(s.kit.hats ?? []); k.hat = s.kit.hat ?? null;
+  Object.assign(k.bread, s.kit.bread); k.active = s.kit.active; k.toothFirst = s.kit.toothFirst; k.traits = new Set(s.kit.traits ?? []); k.oar = !!s.kit.oar; k.ferries = new Set(s.kit.ferries ?? []); k.reel = !!s.kit.reel; k.fish = structuredClone(s.kit.fish ?? {}); k.seals = new Set(s.kit.seals ?? []); k.elixir = !!s.kit.elixir; sim.glassCracks = s.kit.cracks ?? 0; k.hats = new Set(s.kit.hats ?? []); k.hat = s.kit.hat ?? null; k.up = { line: 0, bread: 0, patch: 0, ...(s.kit.up ?? {}) };
   // ingredients that came from bosses beaten before they were handed out
   if (s.world['reedmarsh-5']?.boss) k.ingredients.add('lilydew');
   if (s.world['hollowbark-4']?.boss) k.ingredients.add('honey'); k.ingredients = new Set(s.kit.ingredients ?? []);

@@ -16,6 +16,29 @@ The unit tests run on **Classic** (the original tuning); the game starts on **No
 Normal is meant to be hard: about a third more damage than the original tuning, with critters acting ~12% sooner.
 Story is for players who want the story and the fishing; it should never feel like a separate game.
 
+## What makes Normal hard (November 2026 pass, tuned with the playtest bot)
+
+| | Story | Normal | Brutal |
+|---|---|---|---|
+| Boss HP bonus | 0.9× | up to 2.0× | up to 2.6× |
+| Boss second phase | below 40% | below 50% | below 65% |
+| Critters a boss calls in phase two | 0 | 2 | 3 |
+| Bites per latch before a boss shakes Biscuit off | 4 | 3 (2 enraged) | 2 (1 enraged) |
+| Water a refill puddle holds | 2.5 packs | 1.1 packs | 0.6 packs |
+| Pack seep (× base drain) | 0.8 | 1.8 | 2.4 |
+| Hits from behind | chance to tear | chance to tear | always tear (critters) |
+| Fish thrash warning | 0.7 s | 0.55 s | 0.4 s |
+| Checkpoint per zone | yes | yes | yes |
+
+* The boss HP bonus ramps in over the story (`BOSS_TIER` in sim.ts): Old Snapper and the Heron get a little of it, the Burrow King and the castle bosses all of it.
+* Second phase: a roar (1.1 s unhurtable), Biscuit thrown off, Rocco shoved back, adds from the vents, and 30% faster thinking, so every opening closes sooner.
+* Puddles seep back at 0.005 packs a second (3× in boss arenas, where they also hold twice as much). Dry ones show as mud.
+* Bot results, average skill, Normal: 97% of areas cleared, about 8 faints a playthrough, bosses 45 s to 2.5 min; chained regions finish with the lowest water point at a median 46%.
+
+## Backpack upgrades
+
+Three tiers each, made in the backpack (weave, bake, sew). Line: +10% cast reach and −12% strain a tier. Bread: +15% bite a tier. Patches: −15% leak and −15% tear chance a tier. Costs are in `src/data/upgrades.ts`.
+
 ## Bimbo's water (the life bar)
 
 | Source | Value | What it means |

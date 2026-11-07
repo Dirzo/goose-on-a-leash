@@ -33,6 +33,8 @@ export class Kit {
   seals = new Set<string>();
   /** Hats Biscuit has stolen, and the one he's wearing. */
   hats = new Set<string>();
+  /** Backpack upgrade tiers made so far (0-3 each). */
+  up = { line: 0, bread: 0, patch: 0 };
   hat: string | null = null;
   /** The fish journal: how many of each, and the biggest (cm). */
   fish: Record<string, { n: number; best: number }> = {};

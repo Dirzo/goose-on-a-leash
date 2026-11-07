@@ -16,7 +16,18 @@
     <span class="tag">Willowmere · Reedmarsh · Hollowbark · Driftwood Wharf · The Tide Caves</span>
   </header>
 
-  <div class="stage"><div id="stage"></div></div>
+  <div class="stage"><div id="stage"></div>
+    <div id="packui" class="packui" hidden>
+      <div class="pack-tabs" role="tablist">
+        <button type="button" role="tab" data-tab="bag" class="on"><span class="tab-pic pic-pack"></span><b>Bag</b></button>
+        <button type="button" role="tab" data-tab="line"><span class="tab-pic pic-rocco"></span><b>Line</b><small>Rocco</small></button>
+        <button type="button" role="tab" data-tab="bread"><span class="tab-pic pic-biscuit"></span><b>Bread</b><small>Biscuit</small></button>
+        <button type="button" role="tab" data-tab="patch"><span class="tab-pic pic-bimbo"></span><b>Patches</b><small>Bimbo</small></button>
+      </div>
+      <div id="pack-body" class="pack-body"></div>
+      <div class="pack-foot">[I] / [Esc] close · [P] patch a tear</div>
+    </div>
+  </div>
 
   <div class="bench">
     <section class="card" style="grid-column:1/-1">
@@ -52,7 +63,7 @@
         <dt><kbd>C</kbd></dt><dd>Switch which bread <kbd>F</kbd> throws</dd>
         <dt>Bimbo</dt><dd><b>Bimbo the Moon Koi's water is your life.</b> Hits splash water out of the backpack or tear it, and every tear makes it leak faster. Stand on a shoreline to refill. If the water runs out, Bimbo faints and you restart the room.</dd>
         <dt><kbd>P</kbd></dt><dd><b>Patch a tear.</b> Costs one needle use (sewing kits hold three) and one twine. Out of needle? Race to the next sewing kit.</dd>
-        <dt><kbd>I</kbd> / <kbd>Tab</kbd></dt><dd><b>Backpack:</b> Bimbo, the patches you've sewn, the leak rate and your supplies. Pauses the game; press <kbd>P</kbd> there to patch.</dd>
+        <dt><kbd>I</kbd> / <kbd>Tab</kbd></dt><dd><b>Backpack:</b> Bimbo and your supplies, plus upgrades for all three of you: weave Rocco a stronger <b>Line</b>, bake Biscuit a harder-biting <b>Bread</b>, sew Bimbo tougher <b>Patches</b>. Tabs <kbd>1</kbd>–<kbd>4</kbd>; <kbd>P</kbd> patches a tear. Pauses the game.</dd>
         <dt><kbd>B</kbd></dt><dd><b>Recipe book.</b> Craft leashes and breads, and see Biscuit's traits. Pauses the game.</dd>
         <dt>Shrine</dt><dd><b>Biscuit's shrine</b> in Willowmere: spend Golden Feathers (from bosses, and a few hidden spots) on traits. Every two traits add one Goose Power.</dd>
         <dt>Fishing spots</dt><dd><b>Fish</b> at Moonlit Cove: stand on a fishing rock, hold to wind up, let go to cast near a shadow. Wait out the nibbles, click when it takes the bait, then hold to reel. When the fish thrashes, <b>let go</b> or the line snaps. At the shore, <kbd>E</kbd> sends Biscuit to grab it.</dd>

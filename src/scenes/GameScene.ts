@@ -1,3 +1,4 @@
+import type { Track } from '../data/upgrades';
 import { addTime, basementRun, count, trackQuits } from '../view/analytics';
 import { playerName, recordRun, type BasementRun } from '../view/leaderboard';
 import { SETTINGS } from '../view/settings';
@@ -326,9 +327,14 @@ export class GameScene extends Phaser.Scene {
   setPackOpen(on: boolean): boolean {
     if (!(this.view instanceof ArtRenderer) || (on && !this.sim.pack.enabled)) return false;
     this.view.packOpen = on; this.paused = on;
+    this.onPackToggle(on);
     if (!on) this.game.canvas.focus();
     return true;
   }
+  /** The backpack panel (HTML, over the canvas) shows and hides with the pack. */
+  onPackToggle: (on: boolean) => void = () => {};
+  /** Make a backpack upgrade (the sim is paused: feed its events straight to the view). */
+  upgrade(t: Track): boolean { const ok = this.sim.upgrade(t); this.feed(this.sim.drainEvents()); if (ok) this.saveNow(); return ok; }
   /** Patch from the backpack screen (the sim is paused, so feed its events straight to the view). */
   ferryTo(id: string): void { if (this.sim.ferryTo(id)) this.feed(this.sim.drainEvents()); }
   buy(id: ShopItem['id']): boolean { const ok = this.sim.buy(id); this.feed(this.sim.drainEvents()); return ok; }

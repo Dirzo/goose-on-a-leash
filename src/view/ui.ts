@@ -1,5 +1,6 @@
 /** DOM layer: tuning bench and recipe book. Reads and writes the sim; never draws the game. */
 import { HATS, HAT_BY_ID } from '../data/hats';
+import { setupPackUi } from './packui';
 const pickQ = (a: string[]): string => a[Math.floor(Math.random() * a.length)]!;
 import { count, exportStats, top, STATS } from './analytics';
 import { loadBoard, playerName, setPlayerName, type BasementRun } from './leaderboard';
@@ -207,6 +208,8 @@ export function mountUi(scene: GameScene): void {
   ferry.addEventListener('click', e => { if (e.target === ferry) closeFerry(); });
   scene.onFerry = () => { if (!open && !ferryOpen) { scene.setPackOpen(false); openFerry(); } };
 
+  const packUi = setupPackUi(scene);
+
   // Pickett's Tackle: trade sea glass
   const shop = $('shop'), wares = $('shop-items'), purse = $('shop-purse');
   let shopOpen = false;
@@ -354,7 +357,7 @@ export function mountUi(scene: GameScene): void {
     if (a === 'book') { if (open) closeBook(); else { scene.setPackOpen(false); openBook(); } }
     else if (a === 'pack') { if (open) closeBook(); scene.setPackOpen(!scene.packOpen); }
     else if (a === 'closeBook' || a === 'close') { if (open) closeBook(); if (ferryOpen) closeFerry(); if (shopOpen) closeShop(); scene.setPackOpen(false); }
-    else if (a === 'patch') { if (scene.packOpen) scene.patchFromPack(); }
+    else if (a === 'patch') { if (scene.packOpen) { scene.patchFromPack(); packUi.refresh(); } }
     else if (a === 'reset') { if (open) closeBook(); scene.setPackOpen(false); scene.resetRoom(); }
   };
 }

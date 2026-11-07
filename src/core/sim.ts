@@ -4,6 +4,7 @@
  * No Phaser imports: everything here runs headless in tests. Room 01 behaviour is ported 1:1 from the prototype.
  */
 import { HATS } from '../data/hats';
+import { TRACKS, type Track, type UpgradeTier } from '../data/upgrades';
 import { C, DEFAULT_TUNING, DIFFICULTY, type Difficulty, type Tuning } from './config';
 import { Kit } from './crafting';
 import { FISH, Fishing, type FishDef } from './fishing';
@@ -132,7 +133,7 @@ const PHASE2_LINES: Partial<Record<EnemyKind, string>> = {
   queen: 'The Swan Queen screams, and the moat boils!',
 };
 /** How much of the difficulty's boss HP bonus each boss gets (early bosses less: they teach). */
-const BOSS_TIER: Partial<Record<EnemyKind, number>> = { elder: 0.8, heron: 0.6, king: 2.0, gullbeard: 0.9, pelican: 1, blackswan: 0.4, queen: 1.4 };
+const BOSS_TIER: Partial<Record<EnemyKind, number>> = { elder: 0.8, heron: 0.3, king: 2.0, gullbeard: 0.9, pelican: 1, blackswan: 0.4, queen: 1.4 };
 const SHRUGS = ['It shakes Biscuit off like a wet sock.', 'Biscuit gets flung off, honking indignantly.', 'It throws Biscuit across the room. He lands on his face.', 'Shrugged off! Biscuit spits out a feather that is not his.'];
 const pickOf = <T,>(a: readonly T[], r: number): T => a[Math.floor(r * a.length)]!;
 
@@ -223,6 +224,8 @@ export type SimEvent =
   | { type: 'basementOver'; floor: number; kills: number; time: number }
   /** Took the stairs up out of the Basement. */
   | { type: 'leaveBasement' }
+  /** A backpack upgrade was made. */
+  | { type: 'upgrade'; track: Track; tier: number }
   /** A critter jumped at a honk, or fled a furious goose. */
   | { type: 'startle'; x: number; y: number }
   /** Biscuit stole a hat. */
@@ -359,13 +362,13 @@ export class Sim {
   /** The line's working length: the whole leash, or in casting mode as much as is out. */
   lineLen(): number { return this.castMode ? Math.min(this.castMax(), this.castLen) : this.leashLen(); }
   /** Power cast: the most line a full cast can run out (better leashes cast further). */
-  castMax(): number { return this.leashLen() * (C.castReachMul + (this.kit.reel ? C.reelReach : 0)); }
+  castMax(): number { return this.leashLen() * (C.castReachMul + (this.kit.reel ? C.reelReach : 0)) * (1 + 0.1 * this.kit.up.line); }
   /** Release at or above this for a perfect cast (wider with the Spinning Reel). */
   sweet(): number { return this.kit.reel ? C.reelSweet : C.castSweet; }
   /** Goose damage multiplier from Goose Power. */
   /** Goose Power: the bench base plus one for every two traits Biscuit has learned. */
   power(): number { return this.tuning.power + Math.floor(this.kit.traits.size / 2); }
-  pw(): number { return (0.6 + 0.4 * this.power()) * (this.kit.has('b1') ? 1.35 : 1); }
+  pw(): number { return (0.6 + 0.4 * this.power()) * (this.kit.has('b1') ? 1.35 : 1) * (1 + 0.15 * this.kit.up.bread); }
   /** Positive when the goose outclasses the leash. */
   gap(): number { return this.power() - this.str(); }
   refuseChance(): number {
@@ -1005,6 +1008,26 @@ export class Sim {
     }
   }
 
+  // ------------------------------------------------ backpack upgrades
+  /** The next tier of a track, or null when it's maxed. */
+  nextUpgrade(t: Track): UpgradeTier | null { return TRACKS[t].tiers[this.kit.up[t]] ?? null; }
+  /** Have we the supplies for the next tier? */
+  canUpgrade(t: Track): boolean {
+    const u = this.nextUpgrade(t);
+    return !!u && this.canAfford(u.cost) && this.pack.needles >= (u.needles ?? 0);
+  }
+  /** Make the next tier (the backpack's weave/bake/sew is done): spend the supplies, raise the track. */
+  upgrade(t: Track): boolean {
+    const u = this.nextUpgrade(t);
+    if (!u || !this.canUpgrade(t)) return false;
+    for (const [id, n] of Object.entries(u.cost)) this.kit.mats[id as ItemId] -= n!;
+    this.pack.needles -= u.needles ?? 0;
+    this.kit.up[t]++;
+    this.say(u.done);
+    this.events.push({ type: 'upgrade', track: t, tier: this.kit.up[t] });
+    return true;
+  }
+
   /** Rocco is terrified of a feral goose: within reach of one, he scrambles (faster, and the view makes him sweat). */
   panicked(): boolean { const g = this.goose, p = this.player; return g.feral && g.state === 'loose' && Math.hypot(g.x - p.x, g.y - p.y) < 190; }
 
@@ -1073,7 +1096,7 @@ export class Sim {
   }
 
   /** Leak in pack fractions per second. */
-  leakRate(): number { return C.packDrain * this.diff.seep + C.holeDrain * this.pack.holes; }
+  leakRate(): number { return (C.packDrain * this.diff.seep + C.holeDrain * this.pack.holes) * (1 - 0.15 * this.kit.up.patch); }
 
   /** Bimbo chimes in from the backpack: about the water, the goose, the place. Not too often. */
   private bimboT = 8; private bimboIdle = 0; private bimboSaid = new Set<string>();
@@ -1348,7 +1371,7 @@ export class Sim {
       pk.water = Math.max(0, pk.water - C.slurpSpill * amt * this.diff.hurt);
       this.fx('splash', bk.x, bk.y - 34);
       if (pk.water > 0.3) this.say(this.pick('slurp'));
-    } else if (pk.holes < C.maxHoles && ((this.diff.backTear && side > 1 && kind !== 'acorn') || this.rng() < (heavy ? C.heavyHoleChance : C.holeChance) * side * this.diff.hurt * (this.kit.has('z3') && this.goose.furious > 0 ? 0.5 : 1))) {
+    } else if (pk.holes < C.maxHoles && ((this.diff.backTear && side > 1 && kind !== 'acorn' && !(from && 'kind' in from && BOSS.has((from as Enemy).kind))) || this.rng() < (heavy ? C.heavyHoleChance : C.holeChance) * side * this.diff.hurt * (1 - 0.15 * this.kit.up.patch) * (this.kit.has('z3') && this.goose.furious > 0 ? 0.5 : 1))) {
       pk.holes++;
       this.fx('tear', bk.x, bk.y - 30);
       this.say(pk.holes === 1 ? 'RIP! It went for Bimbo and tore the pack. [P] to patch.' : `Another tear! ${pk.holes} leaking now.`);
@@ -1438,7 +1461,7 @@ export class Sim {
     // leash strain: only builds while the goose is furious and on the leash
     const onLeash = g.state === 'held' || g.state === 'latched' || g.state === 'flying';
     if (g.furious > 0 && onLeash) {
-      g.strain += this.strainRate() * dt;
+      g.strain += this.strainRate() * (1 - 0.12 * this.kit.up.line) * dt;
       if (g.strain >= 1) { g.strain = 0; this.fx('snap', (p.x + g.x) / 2, (p.y + g.y) / 2); this.goFeral('SNAP! The leash broke. Run.'); }
     } else g.strain = Math.max(0, g.strain - 0.25 * dt);
 
