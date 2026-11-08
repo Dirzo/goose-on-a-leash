@@ -74,12 +74,13 @@ for walk in (False, True):
     name = f"rocco_{'walk' if walk else 'idle'}_empty"
     strip(name, [rocco_hd.build(i, leak=False, water_level=0.5, walk=walk, koi_in=False) for i in range(8)], (40, 69), R_POINTS)
 
-strip('biscuit_idle', [biscuit_hd.build_idle(i) for i in range(8)], (24, 58), {'neck': [31, 26]})
-strip('biscuit_walk', [biscuit_hd.build_walk(i) for i in range(8)], (24, 58), {'neck': [31, 26]})
-strip('biscuit_bite', [biscuit_hd.build_bite(i) for i in range(8)], (16, 48), {'neck': [24, 20]})
-strip('biscuit_honk', [biscuit_hd.build_honk(i) for i in range(4)], (24, 58), {'neck': [31, 26]})
-strip('biscuit_hiss', [biscuit_hd.build_hiss(i) for i in range(4)], (22, 58), {'neck': [29, 30]})
-strip('biscuit_fling', [biscuit_hd.build_fling(i) for i in range(8)], (22, 28), {'neck': [32, 16]})
+BP = biscuit_hd.PAD
+strip('biscuit_idle', [biscuit_hd.build_idle(i) for i in range(8)], (24 + BP, 58 + BP), {'neck': [31 + BP, 26 + BP]})
+strip('biscuit_walk', [biscuit_hd.build_walk(i) for i in range(8)], (24 + BP, 58 + BP), {'neck': [31 + BP, 26 + BP]})
+strip('biscuit_bite', [biscuit_hd.build_bite(i) for i in range(8)], (16 + BP, 48 + BP), {'neck': [24 + BP, 20 + BP]})
+strip('biscuit_honk', [biscuit_hd.build_honk(i) for i in range(4)], (24 + BP, 58 + BP), {'neck': [31 + BP, 26 + BP]})
+strip('biscuit_hiss', [biscuit_hd.build_hiss(i) for i in range(4)], (22 + BP, 58 + BP), {'neck': [29 + BP, 30 + BP]})
+strip('biscuit_fling', [biscuit_hd.build_fling(i) for i in range(8)], (22 + BP, 28 + BP), {'neck': [32 + BP, 16 + BP]})
 strip('frog', [critters_hd.frog(False), critters_hd.frog(True)], (13, 15))
 strip('frog_awake', [critters_hd.frog(False, awake=True), critters_hd.frog(True, awake=True)], (13, 15))
 strip('snapper', [critters_hd.snapper(False, submerged=False), critters_hd.snapper(True, submerged=False)], (30, 24))

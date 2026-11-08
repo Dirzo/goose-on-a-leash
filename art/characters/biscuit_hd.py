@@ -15,7 +15,21 @@ import sys
 from PIL import Image
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from hdkit import Layer, composite, hx  # noqa: E402
+from hdkit import Layer as _Layer, composite, hx  # noqa: E402
+
+PAD = 6
+"""Every Biscuit frame gets PAD pixels of empty margin on each side, so an open beak, a flung wing or a lifted
+foot is never cut off at the frame edge (export_sprites shifts each strip's anchor and points by PAD to match)."""
+
+
+class Layer(_Layer):
+    def __init__(self, name, w, h, pal):
+        super().__init__(name, w + 2 * PAD, h + 2 * PAD, pal)
+    def ell(self, cx, cy, rx, ry, c): super().ell(cx + PAD, cy + PAD, rx, ry, c)
+    def poly(self, pts, c): super().poly([(x + PAD, y + PAD) for x, y in pts], c)
+    def rect(self, x0, y0, x1, y1, c): super().rect(x0 + PAD, y0 + PAD, x1 + PAD, y1 + PAD, c)
+    def line(self, pts, c, w=1): super().line([(x + PAD, y + PAD) for x, y in pts], c, w)
+    def px(self, x, y, c): super().px(x + PAD, y + PAD, c)
 
 PAL = {k: hx(v) for k, v in {
     'gw': 'f8f4ea', 'gs': 'dcd4c6', 'gd': 'b4ab9c', 'gd2': '948b7e',
